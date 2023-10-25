@@ -10,10 +10,6 @@ from scipy.io import savemat
 
 
 # TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
-# TODO: Run corrected recording time for all the datasets.(This has been done on UVAF)
-# TODO: Run SQI new policy on all datasets and on all windows. (This has been done on UVAF)
-# TODO: Find solution to regularize ectopics loading for UVAF.
-#TODO: AFDB PROBLEM FOR PARSING.
 
 
 class BaseParser:
@@ -41,8 +37,6 @@ class BaseParser:
         # Helper variables
         self.curr_ecg = None
         self.curr_id = None
-        self.dem_feats = np.array([])
-
 
         """ Variables relative to the ECG signals. """
         self.orig_fs = None                                 # Sampling frequency of the original files
@@ -51,8 +45,12 @@ class BaseParser:
         self.ref_lead = 1                                   # The lead according to which all the elementary dictionnaries are computed
         self.name = None                                    # Name of the Dataset
         self.ecg_format = None                              # The format of the ECG files. Should be "wfdb", "edf", "rf"
-        self.rhythms = None                                 # The rhythms defined in the dataset
-        self.rhythms_dict = None                            # Mapping between rhythms and unique ids
+        self.rhythms = np.array(['NSR', 'AFIB', 'AB', 'AFL', 'B', 'BII', 'IVR', 'NOD',
+                            'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
+                            'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
+                                                            # The rhythms defined in the dataset
+        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+                                                            # Mapping between rhythms and unique ids
 
         """ Variables relative to the different paths. """
         self.raw_ecg_path = None                            # Path of the raw ECG files
@@ -66,7 +64,7 @@ class BaseParser:
 
         """
         # ------------------------------------------------------------------------------- #
-        # ------------------------- Overriden variables end here ------------------------ #
+        # ------------------------- Overridden variables end here ------------------------ #
         # ------------------------------------------------------------------------------- #
         """
 

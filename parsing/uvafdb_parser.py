@@ -29,8 +29,6 @@ class UVAFDB_Parser(BaseParser):
         self.ref_lead = 1
         self.name = "UVAFDB"
         self.ecg_format = "rf"
-        self.rhythms = cts.rhythms
-        self.rhythms_dict = cts.rhythms_dict
 
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR

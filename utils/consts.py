@@ -40,10 +40,6 @@ BINARY_TITLES = np.array(['$Non-Prominent-AF$', '$Prominent-AF$'])
 WINDOW_LAB_TITLES = np.array(['$N$', '$AF$', '$O$', '$Unknown$'])
 
 # rhythm dict for physiozoo
-rhythms = np.array(['NSR', 'AFIB', 'AB', 'AFL', 'B', 'BII', 'IVR', 'NOD',
-                         'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
-                         'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
-rhythms_dict = {rhythms[i]: i for i in range(len(rhythms))}
 
 # Constants definitions (time related)
 N_S_IN_HOUR = 3600
