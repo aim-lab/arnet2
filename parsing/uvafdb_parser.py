@@ -102,23 +102,21 @@ class UVAFDB_Parser(BaseParser):
         rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return beats, rhythm
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
+    def record_to_wfdb(self, id, lead):
         file = self.raw_ecg_path / ("UVA" + id + ".rf")
         record = self._read_rf(file, lead=lead - 1)
-        # ecg_raw = record[:, 0]
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
         return record
 
-    def parse_raw_ecg(self, patient_id, lead=1, start=0, end=-1, type='epltd0'):
-        record = self._read_rf(self.raw_ecg_path / ('UVA' + patient_id + '.rf'), lead=lead - 1)
-        ecg = record
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
+        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + '.rf'), lead=lead - 1)
+        ann = self.parse_annotation(id, type=type, lead=lead)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
@@ -387,9 +385,10 @@ class UVAFDB_Parser(BaseParser):
         self.reann_pat = np.intersect1d(self.reann_pat, self.parsed_ecgs)
         self.not_reann_pat = np.intersect1d(self.not_reann_pat, self.parsed_ecgs)
 
-    def _read_rf(self, file, lead=1):
+    def _read_rf(self, file, lead):
         """ This function reads the raw ECG files, which are given in an encoded (.rf) format.
-        :param file: The path to the .rf file."""
+        :param file: The path to the .rf file.
+        :param lead: ECG lead."""
         n_chans = 3
         n_bits_per_chan = 10
         f = open(self.raw_ecg_path / file, "rb")

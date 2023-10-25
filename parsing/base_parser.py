@@ -126,7 +126,7 @@ class BaseParser:
         :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         """ Returns, if exists, for a given ID, the peak annotation.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :param type: Annotation type. Can be epltd0, xqrs, gqrs.
@@ -134,16 +134,17 @@ class BaseParser:
         :returns ann: A numpy array listing the indices of the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def record_to_wfdb(self, id):
+    def record_to_wfdb(self, id, lead):
         """ This functions converts a raw ECG signal to the wfdb format under the code directory.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param lead: ECG lead.
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0'):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
         """Returns the raw ECG and the corresponding annotation for a given patient. The signal is resampled at 200 [Hz]
         to generate the epltd annotation."
-        :param patient_id: The ID of the patient.
+        :param id: The ID of the patient.
         :param lead: The ECG lead.
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
@@ -440,7 +441,7 @@ class BaseParser:
         refqrs = (rrt * self.actual_fs).astype(int)
         ecg_win_starts = self.start_windows_dict[id][win] * self.actual_fs
         ecg_win_ends = self.end_windows_dict[id][win] * self.actual_fs
-        testqrs = self.parse_annotation(id, type=test_ann, lead=lead)
+        testqrs = self.parse_annotation(id, lead=lead, type=test_ann)
         testqrs = [testqrs[np.where(
             np.logical_and(testqrs > ecg_win_starts[i], testqrs <= ecg_win_ends[i]))] for i in
                    range(len(ecg_win_starts))]
