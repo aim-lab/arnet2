@@ -81,7 +81,7 @@ elif os.name == 'posix':
 
 
 # Paths definition
-DATA_DIR = BASE_DIR / "Shany" / "databases"
+DATA_DIR = BASE_DIR / "databases"
 CLASSIFIERS_DIR = BASE_DIR /"Shany" / "Classifiers"
 SNAPSHOTS_DIR = BASE_DIR / "Shany" / "Snapshots"
 MATLAB_TEST_VECTORS_DIR = BASE_DIR / "Shany" / "Matlab_test_vectors"
@@ -90,6 +90,7 @@ WQRS_PROG_DIR = pathlib.PurePath('/usr/local/bin/wqrs')
 PARSING_PROJECT_DIR = REPO_DIR_POSIX / "parsing"
 ERROR_ANALYSIS_DIR = BASE_DIR / "Shany" / "ErrorAnalysis"
 PREPROCESSED_DATA_DIR = BASE_DIR / "Shany" / "PreprocessedDatabases"
+GEN_ANN_DIR = BASE_DIR / "Shany" / "Annotations"
 REANNOTATION_DIR = BASE_DIR / 'Shany' / 'medAIM'
 MODEL_DIR = REPO_DIR / "saved_models"
 
