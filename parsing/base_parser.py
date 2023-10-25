@@ -48,6 +48,7 @@ class BaseParser:
         self.orig_fs = None                                 # Sampling frequency of the original files
         self.actual_fs = None                               # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
         self.n_leads = 1                                    # Number of ECG leads in the database
+        self.ref_lead = 1                                   # The lead according to which all the elementary dictionnaries are computed
         self.name = None                                    # Name of the Dataset
         self.ecg_format = None                              # The format of the ECG files. Should be "wfdb", "edf", "rf"
         self.rhythms = None                                 # The rhythms defined in the dataset
