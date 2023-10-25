@@ -142,13 +142,13 @@ class BaseParser:
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, lead=1, type='epltd0'):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0'):
         """Returns the raw ECG and the corresponding annotation for a given patient. The signal is resampled at 200 [Hz]
         to generate the epltd annotation."
         :param patient_id: The ID of the patient.
+        :param lead: The ECG lead.
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
-        :param lead: The ECG lead.
         :param type: The annotation type.
         :returns raw_ecg: the ECG recording.
         :returns ann: the peaks annotation indices.
@@ -187,7 +187,7 @@ class BaseParser:
         """
         return os.path.exists(self.generated_anns_path / type / str(lead) / (id + '.' + type))
 
-    def parse_elem_data(self, pat, reannotated=False):
+    def parse_elem_data(self, pat):
         """ This function is responsible for extracting the basic raw data for the given id.
         It fills the following elementary dictionnaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
         rrt (timestamp of each RR interval), mask RR (which windows we can rely on based on the presence of proper annotations),
@@ -206,7 +206,7 @@ class BaseParser:
         sec_int = 0  # Security interval for RR exclusion (number of beats to exclude around a problematic RR
 
         # Extracting data based on Automatic annotation (default EPLTD)
-        ecg, ann = self.parse_raw_ecg(pat, type=self.sqi_ref_ann)
+        ecg, ann = self.parse_raw_ecg(pat, type=self.sqi_ref_ann, lead=self.ref_lead)
         self.recording_time[pat] = len(ecg) / self.actual_fs
         rr = np.diff(ann) / self.actual_fs
         start_rr, end_rr = ann[:-1] / self.actual_fs, ann[1:] / self.actual_fs
@@ -313,14 +313,14 @@ class BaseParser:
 
         self.destroy_pool()
 
-    def generate_wrqrs_annotations(self, pat_list=None, force=False, tol=0.05, lead=1):
+    def generate_wrqrs_annotations(self, lead, pat_list=None, force=False, tol=0.05):
         """ This function performs a correction on the wqrs annotation. The gqrs annotation locates the Q onset rather than the
             R-Peak. To correct the behaviour, this function generates the rqrs annotation, which looks for the local maximum
             absolute value over the ECG with a given tolerance window.
+            :param lead: ECG lead.
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
-            :param lead: ECG lead.
         """
         dest_path = str(self.generated_anns_path / 'wrqrs')
         if not os.path.exists(dest_path):
@@ -338,14 +338,14 @@ class BaseParser:
                 wfdb.wrann(id, 'wrqrs', rqrs_ann, symbol=['q'] * len(rqrs_ann))
                 shutil.move(id + '.wrqrs', self.generated_anns_path / 'wrqrs' / str(lead) / (id + '.wrqrs'))
 
-    def generate_rqrs_annotations(self, pat_list=None, force=False, tol=0.05, lead=1):
+    def generate_rqrs_annotations(self, lead, pat_list=None, force=False, tol=0.05):
         """ This function performs a correction on the gqrs annotation. The gqrs annotation locates the Q onset rather than the
             R-Peak. To correct the behaviour, this function generates the rqrs annotation, which looks for the local maximum
             absolute value over the ECG with a given tolerance window.
+            :param lead: ECG lead.
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
-            :param lead: ECG lead.
         """
         if pat_list is None:
             pat_list = self.parse_available_ids()
@@ -379,7 +379,7 @@ class BaseParser:
         self.create_pool()
         for i, id in enumerate(patient_list):
             print("Parsing patient number " + id)
-            ecg, ann = self.parse_raw_ecg(id, type=self.sqi_ref_ann)
+            ecg, ann = self.parse_raw_ecg(id, lead=self.ref_lead, type=self.sqi_ref_ann)
             self.curr_ecg, self.curr_id = ecg, id
             if len(ann) > self.min_annotation_len:
                 self.parse_elem_data(id)        # First deriving rr, rlab, rrt dictionnaries and other basic elements.
@@ -861,19 +861,19 @@ class BaseParser:
     # ---------------------- Import/Export functions -------------------------- #
     # ------------------------------------------------------------------------- #
 
-    def plot_ecg(self, patient_id, disp_peaks=True, start=0, end=-1, ann_type='epltd0', lead=1, savefig=False, add_peak=None,
+    def plot_ecg(self, patient_id, lead, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False, add_peak=None,
                  correct_peaks=False, format='png'):
         """
         Plots the ECG raw signal with annotation peaks and the RR intervals.
         :param patient_id: The ID of the patient.
+        :param lead: ECG lead
         :param disp_peaks: Display or not the R Peaks
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
         :param ann_type: The type of annotation (can be "epltd", "xqrs", "gqrs")
-        :param lead: ECG lead
         :param savefig: Boolean value to indicate if the figure should be saved under cts.SNAPSHOTS_DIR or not.
         """
-        ecg, annot = self.parse_raw_ecg(patient_id, start, end, type=ann_type, lead=lead)
+        ecg, annot = self.parse_raw_ecg(patient_id, lead, start, end, type=ann_type)
         fig, axes = graph.create_figure(subplots=(2, 1), sharex=True)
         timeline = np.arange(0, len(ecg) / self.actual_fs, 1 / self.actual_fs)
         axes[0][0].plot(timeline[:len(ecg)], ecg, label='Signal')
@@ -883,7 +883,7 @@ class BaseParser:
                 cannot = i_o.qrs_adjust(ecg=ecg, qrs=annot, fs=self.actual_fs, inputsign=1)
                 axes[0][0].scatter(timeline[cannot], ecg[cannot], marker='x', color='orange', label=('c-' + ann_type))
             if add_peak is not None:
-                _, annot2 = self.parse_raw_ecg(patient_id, start, end, type=add_peak, lead=lead)
+                _, annot2 = self.parse_raw_ecg(patient_id, lead, start, end, type=add_peak)
                 axes[0][0].scatter(timeline[annot2], ecg[annot2], marker='x', color='purple', label=add_peak)
 
         rr = np.diff(annot) / self.actual_fs
@@ -957,7 +957,7 @@ class BaseParser:
 
 
         ecgs = np.concatenate(tuple([self.parse_raw_ecg(pat, start=start, end=end, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in range(1, n_leads+1)]), axis=1)
-        ann = self.parse_raw_ecg(pat, start=start, end=end, type=ann_type)[1]
+        ann = self.parse_raw_ecg(pat, lead=self.ref_lead, start=start, end=end, type=ann_type)[1]
         if end == -1:
             end = self.recording_time[pat]
 
@@ -1269,7 +1269,7 @@ class BaseParser:
             ecg = []
             annot = []
             for j in range(1, n_lead+1):
-                ecg_j, ann_j = self.parse_raw_ecg(r.id, r.start_time, r.end_time, type=self.sqi_ref_ann, lead=j)
+                ecg_j, ann_j = self.parse_raw_ecg(r.id, j, r.start_time, r.end_time, type=self.sqi_ref_ann)
                 cann_j = i_o.qrs_adjust(ecg=ecg_j,qrs=ann_j,fs=self.actual_fs,inputsign=1, debug=0)
                 annot.append(cann_j)
                 ecg.append(ecg_j)

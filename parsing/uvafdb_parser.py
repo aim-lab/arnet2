@@ -26,6 +26,7 @@ class UVAFDB_Parser(BaseParser):
         self.orig_fs = cts.EPLTD_FS
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 3
+        self.ref_lead = 1
         self.name = "UVAFDB"
         self.ecg_format = "rf"
         self.rhythms = cts.rhythms
@@ -116,7 +117,7 @@ class UVAFDB_Parser(BaseParser):
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
         return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
+    def parse_raw_ecg(self, patient_id, lead=1, start=0, end=-1, type='epltd0'):
         record = self._read_rf(self.raw_ecg_path / ('UVA' + patient_id + '.rf'), lead=lead - 1)
         ecg = record
         ann = self.parse_annotation(patient_id, type=type, lead=lead)
