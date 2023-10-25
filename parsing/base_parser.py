@@ -120,7 +120,7 @@ class BaseParser:
         :returns arr: numpy array listing all the patients."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_reference_annotation(self, id, reannotated=False):
+    def parse_reference_annotation(self, id):
         """ This function returns for a given patient the reference annotation, if available.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
@@ -210,7 +210,7 @@ class BaseParser:
         interbeats = np.append(np.insert((start_rr + end_rr) / 2, 0, max(0, start_rr[0] - 1)), end_rr[-1] + 1.0)
 
         # Extracting the reference annotation
-        ref_ann, ref_rhythm = self.parse_reference_annotation(pat, reannotated=reannotated)
+        ref_ann, ref_rhythm = self.parse_reference_annotation(pat)
         ref_rr = np.diff(ref_ann) / self.actual_fs
         start_ref_rr, end_ref_rr = ref_ann[:-1] / self.actual_fs, ref_ann[1:] / self.actual_fs
         ref_rlab = ref_rhythm[1:]   # To have the same dimension as ref_rr

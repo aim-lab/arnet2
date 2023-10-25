@@ -83,24 +83,24 @@ class UVAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([file[3:7] for file in os.listdir(str(self.raw_ecg_path)) if file != "uvfdb_rr"])
 
-    def parse_reference_annotation(self, id, combine=True, reannotated=False):
+    def parse_reference_annotation(self, id, combine=True): #, reannotated=False):
         _, _, _, beats, _, _, rhythm, _ = self.readbea(self.bea_path / ("UVA" + id + '.bea'))
         beats = ((beats / cts.N_MS_IN_S) * self.actual_fs).astype(int)
-        tbeats = beats / self.actual_fs
-        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        if reannotated:
-            rhythm_df = self.parse_reference_rhythm(id)
-            for index, l in rhythm_df.iterrows():
-                l1 = np.abs(tbeats - l.Beginning)
-                l2 = np.abs(tbeats - l.End)
-                begin = np.where(l1 == l1.min())
-                end = np.where(l2 == l2.min())
-                ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
-            rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
-            if combine:
-                rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
-        else:
-            rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
+        # tbeats = beats / self.actual_fs
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        #     rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        #     if combine:
+        #         rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
+        # else:
+        rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return beats, rhythm
 
     def parse_annotation(self, id, type="epltd0", lead=1):
