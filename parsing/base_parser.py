@@ -127,10 +127,11 @@ class BaseParser:
         :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_annotation(self, id, type="epltd0"):
+    def parse_annotation(self, id, type="epltd0", lead=1):
         """ Returns, if exists, for a given ID, the peak annotation.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :param type: Annotation type. Can be epltd0, xqrs, gqrs.
+        :param lead: ECG lead. Can be one of the leads presented in the database.
         :returns ann: A numpy array listing the indices of the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
