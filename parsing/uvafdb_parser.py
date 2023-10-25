@@ -12,7 +12,7 @@ class UVAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
@@ -28,22 +28,18 @@ class UVAFDB_Parser(BaseParser):
         self.n_leads = 3
         self.name = "UVAFDB"
         self.ecg_format = "rf"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J',
-                                 '(PAT', '(AT', '(VTS', '(AIVRS', '(IVRS', '(AIVR'])
-
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.rhythms = cts.rhythms
+        self.rhythms_dict = cts.rhythms_dict
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = pathlib.PurePath('/MLAIM') / 'databases' / "uvfdb"
+        self.raw_ecg_path = cts.DATA_DIR
         self.orig_anns_path = None
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.PREPROCESSED_DATA_DIR / ("UVAFDB" + ("_shifted" if windows_shifted else ""))
+        self.main_path = cts.PREPROCESSED_DATA_DIR / (self.name + ("_shifted" if windows_shifted else ""))
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
-
         self.window_size = window_size
         test_pat = self.parsed_patients()[0]
         self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
@@ -55,15 +51,15 @@ class UVAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the UVAFDB) --------------- #
+        # ---------------- Local variables (relevant only to UVAFDB) -------------------- #
         # ------------------------------------------------------------------------------- #
         """
-
+        # Like the SQI step, the rate of missing annotations below which the patient is excluded.
         self.beats_bea = np.array(['NORMAL', 'PVC', 'APC', 'AESC', 'VESC', 'PACE', 'PFUS',
                                    # The different rhythms present across the dataset.
                                    'UNKNOWN', 'UNCLASS', 'SUBTYPE', 'RHYTHM', 'AUX', 'SUB', 'ARFCT',
                                    'VFON', 'FLWAV', 'VFOFF', 'RONT',
-                                   'FUSION'])  # Like the SQI step, the rate of missing annotations below which the patient is excluded.
+                                   'FUSION'])
         self.bea_path = self.raw_ecg_path / "uvfdb_rr" / "BEA"
         self.excel_sheet_path = self.raw_ecg_path / "uvfdb_rr" / "UVA Holter Info.xlsx"
         self.excel_sheet = pd.read_excel(self.excel_sheet_path)
