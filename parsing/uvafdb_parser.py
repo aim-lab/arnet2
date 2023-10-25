@@ -1,18 +1,7 @@
-# General imports
-import pathlib
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import wfdb
-import warnings
-import pandas as pd
-import sys
-
-# Relative imports
-import utils.consts as cts
-from parsing.base_parser import BaseParser
+from base_parser import *
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 
 class UVAFDB_Parser(BaseParser):
