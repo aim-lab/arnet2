@@ -26,13 +26,13 @@ class BaseParser:
 
     def __init__(self):
         """The purpose of the __init__ function for the BaseParser class
-        is to define the different dictionnaries that will be found among the different parsers.
+        is to define the different dictionaries that will be found among the different parsers.
         Note: Depending on the dataset, some of those dictionnaries may be empty. Data extraction is taken care of
         apart in each dataset with the elementary parsing functions whose signature can be found below. """
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- # """
 
         # Missing records
@@ -189,13 +189,12 @@ class BaseParser:
 
     def parse_elem_data(self, pat):
         """ This function is responsible for extracting the basic raw data for the given id.
-        It fills the following elementary dictionnaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
+        It fills the following elementary dictionaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
         rrt (timestamp of each RR interval), mask RR (which windows we can rely on based on the presence of proper annotations),
         start_windows, end_windows (respectively the timestamps of the beginning and the end of the windows), n_excluded_windows
         (number of windows excluded because their annotations were not reliable), av_prec_windows (for each window,
-        the number of consecutive windows preceeding it after the exclusions.
+        the number of consecutive windows preceding it after the exclusions.
         :param pat: The patient ID. Assumed to be in the list of IDs present in the database.
-        :param reannotated: parse reannotated patient by Mohsin
         """
 
         dicts_to_fill = [self.start_windows_dict, self.end_windows_dict, self.av_prec_windows_dict,
@@ -363,7 +362,7 @@ class BaseParser:
     def parse_raw_data(self, window_sizes=cts.BASE_WINDOWS, gen_ann=False, feats=cts.IMPLEMENTED_FEATURES, patient_list=None, test_anns=None):
         """ This function is responsible of performing all the necessary computations for the dataset, among which:
         all the features according to the input, the sqi, the labels per window, the ahi, the odi, and the demographic features if available.
-        This function has usualy a long running time (at least for the big databases).
+        This function has usually a long running time (at least for the big databases).
         :param window_sizes: The different window sizes along which the windows are derived.
         :param get_ann: If True, calls the function gen_ann in Force mode, and runs all the annotations.
         :param feats: List of the features to compute. The function 'comp_" + feature name must be implemented in the utils.feature_comp module.
@@ -644,7 +643,7 @@ class BaseParser:
 
     def get_available_preeceding_windows(self, pat_list=None, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
         """ Returns for each window and for each patient the number of consecutive windows preceding it, i.e.
-        the number of preeceding windows which were not exluded by the different criterions.
+        the number of preceding windows which were not excluded by the different criteria.
         :param exclude_low_sqi_win: If true, considers the low SQI windows to be removed.
         :param win_thresh: If true, exclude the sqi windows under 'win_thresh' (default 0.8).
         :param pat_list. The list of patients to be considered. If None, returns the result for all the patients.
@@ -833,7 +832,7 @@ class BaseParser:
         return y
 
     def return_preceeding_windows(self, pat_list=None, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
-        """Concatenates all the available preceeding windows for the patient IDs contained in the whole dataset and returns them
+        """Concatenates all the available preceding windows for the patient IDs contained in the whole dataset and returns them
         in the form of a single vector of the size of the number of windows. This function is helpful to leverage the temporality between windows
         in the DL models.
         :param pat_list: The list of patients for whom the features should be returned.
@@ -1002,13 +1001,13 @@ class BaseParser:
 
     def report_low_sqi(self):
         if len(self.low_sqi) > 0:
-            """ Export in an excel table a summary of the excluded patients because of bad quality."""
+            """Export in an excel table a summary of the excluded patients because of bad quality."""
             low_sqi = np.array([[int(i), self.signal_quality_dict[i][self.window_size][self.sqi_test_ann].mean()] for i in self.low_sqi])
             sorted_idx = np.argsort(low_sqi[:, 1])
             low_sqi = low_sqi[sorted_idx]
             np.savetxt(cts.ERROR_ANALYSIS_DIR / (self.name + '_low_sqi_' + str(self.window_size) + '_beats_' + str(self.sqi_test_ann) + '.csv'), low_sqi, fmt="%d,%.2f", header='PatientID,SQI,Manual Review,Comments', comments='')
         else:
-            print("All the patients satisfy the SQI critrion.")
+            print("All the patients satisfy the SQI criteria.")
 
     def print_summary(self, pat_list=None):
         """ Print a summary of the characteristics of the database.
@@ -1016,7 +1015,7 @@ class BaseParser:
         if pat_list is None:
             pat_list = self.parsed_patients()
 
-        print("Informations about " + str(self.window_size) + "-beats windows dataset:")
+        print("Information about " + str(self.window_size) + "-beats windows dataset:")
         print("Total time: " + str(self.total_time(pat_list)))
         print("Total time in AF: " + str(self.total_time_in_af(pat_list)))
         print("Mean time of the recordings: " + str(np.mean([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
