@@ -418,10 +418,11 @@ class BaseParser:
                 func = getattr(fc, 'comp_' + feat)
                 self.features_dict[id][win][feat] = np.array(self.pool.starmap(func, zip(rr,)))
 
-    def _sqi(self, id, win, test_ann='xqrs'):
+    def _sqi(self, id, win, lead=1, test_ann='xqrs'):
         """ Computes the Signal Quality Index (SQI) of each window.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :param win: The window size (in number of beats) along which the raw recording is divided.
+        :param lead: The ECG lead for which the annotations were computed.
         :param test_ann: The test annotation to use for the computation of the bsqi function (in utils.feature_comp module)"""
 
         if id not in self.signal_quality_dict.keys():
@@ -438,7 +439,7 @@ class BaseParser:
         refqrs = (rrt * self.actual_fs).astype(int)
         ecg_win_starts = self.start_windows_dict[id][win] * self.actual_fs
         ecg_win_ends = self.end_windows_dict[id][win] * self.actual_fs
-        testqrs = self.parse_annotation(id, type=test_ann)
+        testqrs = self.parse_annotation(id, type=test_ann, lead=lead)
         testqrs = [testqrs[np.where(
             np.logical_and(testqrs > ecg_win_starts[i], testqrs <= ecg_win_ends[i]))] for i in
                    range(len(ecg_win_starts))]
