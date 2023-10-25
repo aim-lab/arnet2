@@ -141,12 +141,13 @@ class BaseParser:
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=0):
+    def parse_raw_ecg(self, patient_id, start=0, end=-1, lead=1, type='epltd0'):
         """Returns the raw ECG and the corresponding annotation for a given patient. The signal is resampled at 200 [Hz]
         to generate the epltd annotation."
         :param patient_id: The ID of the patient.
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
+        :param lead: The ECG lead.
         :param type: The annotation type.
         :returns raw_ecg: the ECG recording.
         :returns ann: the peaks annotation indices.
@@ -318,6 +319,7 @@ class BaseParser:
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
+            :param lead: ECG lead.
         """
         dest_path = str(self.generated_anns_path / 'wrqrs')
         if not os.path.exists(dest_path):
@@ -327,7 +329,7 @@ class BaseParser:
         for i, id in enumerate(pat_list):
             ann_available = self.annot_available(id, 'wrqrs', lead)
             if not ann_available or force:
-                print("Generating wrqrs annotation for patient ID " + str(id))
+                print(f"Generating rqrs annotation for patient ID {str(id)} for lead {str(lead)}")
                 ecg, ann = self.parse_raw_ecg(id, type='wqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
@@ -342,13 +344,14 @@ class BaseParser:
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
+            :param lead: ECG lead.
         """
         if pat_list is None:
             pat_list = self.parse_available_ids()
         for i, id in enumerate(pat_list):
             ann_available = self.annot_available(id, 'rqrs', lead)
             if not ann_available or force:
-                print("Generating rqrs annotation for patient ID " + str(id))
+                print(f"Generating rqrs annotation for patient ID {str(id)} for lead {str(lead)}")
                 ecg, ann = self.parse_raw_ecg(id, type='gqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
@@ -857,7 +860,7 @@ class BaseParser:
     # ---------------------- Import/Export functions -------------------------- #
     # ------------------------------------------------------------------------- #
 
-    def plot_ecg(self, patient_id, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False, add_peak=None,
+    def plot_ecg(self, patient_id, disp_peaks=True, start=0, end=-1, ann_type='epltd0', lead=1, savefig=False, add_peak=None,
                  correct_peaks=False, format='png'):
         """
         Plots the ECG raw signal with annotation peaks and the RR intervals.
@@ -866,9 +869,10 @@ class BaseParser:
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
         :param ann_type: The type of annotation (can be "epltd", "xqrs", "gqrs")
+        :param lead: ECG lead
         :param savefig: Boolean value to indicate if the figure should be saved under cts.SNAPSHOTS_DIR or not.
         """
-        ecg, annot = self.parse_raw_ecg(patient_id, start, end, type=ann_type)
+        ecg, annot = self.parse_raw_ecg(patient_id, start, end, type=ann_type, lead=lead)
         fig, axes = graph.create_figure(subplots=(2, 1), sharex=True)
         timeline = np.arange(0, len(ecg) / self.actual_fs, 1 / self.actual_fs)
         axes[0][0].plot(timeline[:len(ecg)], ecg, label='Signal')
@@ -878,7 +882,7 @@ class BaseParser:
                 cannot = i_o.qrs_adjust(ecg=ecg, qrs=annot, fs=self.actual_fs, inputsign=1)
                 axes[0][0].scatter(timeline[cannot], ecg[cannot], marker='x', color='orange', label=('c-' + ann_type))
             if add_peak is not None:
-                _, annot2 = self.parse_raw_ecg(patient_id, start, end, type=add_peak)
+                _, annot2 = self.parse_raw_ecg(patient_id, start, end, type=add_peak, lead=lead)
                 axes[0][0].scatter(timeline[annot2], ecg[annot2], marker='x', color='purple', label=add_peak)
 
         rr = np.diff(annot) / self.actual_fs
