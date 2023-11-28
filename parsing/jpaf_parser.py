@@ -37,25 +37,14 @@ class JPAFDB_Parser(BaseParser):
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
-        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
-        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
-
-        self.rhythms = np.array(['NSR', 'AFIB', 'AFL'])
-        self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD':2}
-        self.circadian_dict = {}
-
-
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
-        # test_pat = self.parsed_patients()
-        # self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+        test_pat = self.parsed_patients()
+        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
         if load_on_start:
             if os.path.exists(self.main_path):
                 self.set_window_size(self.window_size)
                 self.load_circardian_from_disk()
-        self.beat_flags = {}
-        # self.load_beat_flags()
-
 
         """
         # ------------------------------------------------------------------------------- #
@@ -65,14 +54,18 @@ class JPAFDB_Parser(BaseParser):
         self.ecg_file_name = 'RR'
         self.file_format = ".csv"
         self.csv_dir = "RRData"
-        # self.beats_shape = {1: 'N', 3:  'N', 4: 'AB', 5: 'I', 6: 'P'}  # The different rhythms present across the dataset. N: NORMAL', AB: 'ABERRANT', I: 'INHIBIT', P: 'PACED'}
+        self.searchPar = ['PAF']
+        self.searchPer = ['PerAF']
+        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
+        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
+        self.rhythms = np.array(['NSR', 'AFIB', 'AFL'])
+        self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD':2}
+        self.circadian_dict = {}
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_AF_latest.xlsx"
         self.get_META()
         self.over_18_patients = np.array(self.excel_sheet[self.excel_sheet["Age"] >= 18]
                                          ["Study ID"]).astype('<U32')
 
-        self.searchPar = ['PAF']
-        self.searchPer = ['PerAF']
         """
         # ------------------------------------------------------------------------- #
         # ----- Parsing functions: have to be overridden by the child classes ----- #
