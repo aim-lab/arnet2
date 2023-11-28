@@ -58,8 +58,6 @@ class JPAFDB_Parser(BaseParser):
         self.searchPer = ['PerAF']
         self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
         self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
-        self.rhythms = np.array(['NSR', 'AFIB', 'AFL'])
-        self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD':2}
         self.circadian_dict = {}
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_AF_latest.xlsx"
         self.get_META()
@@ -77,10 +75,6 @@ class JPAFDB_Parser(BaseParser):
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
     def _win_lab(self, id, win):
-        """ Computes the label of a window. The label is computed based on the most represented label over the window.
-        :param id: The patient ID. Assumed to be in the list of IDs present in the database.
-        :param win: The window size (in number of beats) along which the raw recording is divided.
-        """
         if id not in self.win_lab_dict.keys():
             self.win_lab_dict[id] = {}
         raw_rlab = self.rlab_dict[id]
