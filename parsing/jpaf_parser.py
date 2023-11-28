@@ -79,18 +79,18 @@ class JPAFDB_Parser(BaseParser):
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
+    def record_to_wfdb(self, id, lead):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        re_record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+        re_record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
+                                       signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         re_record = dp.resample_by_interpolation(re_record, self.orig_fs, self.actual_fs)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
         return re_record
 
-    def parse_raw_ecg(self, id, start=0, end=-1, type='epltd0', lead=1):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
+        record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
 
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
@@ -105,33 +105,31 @@ class JPAFDB_Parser(BaseParser):
         ann -= start_sample
         return record, ann
 
-    def parse_reference_annotation(self, id, combine=True, reannotated=True):
+    def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
         record = self.read_ecg(id)
         ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
         beat = np.array([ann.pos.values])
         tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        # else:
         ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        if reannotated:
-            rhythm_df = self.parse_reference_rhythm(id)
-            for index, l in rhythm_df.iterrows():
-                l1 = np.abs(tbeats - l.Beginning)
-                l2 = np.abs(tbeats - l.End)
-                begin = np.where(l1 == l1.min())
-                end = np.where(l2 == l2.min())
-                ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
-        else:
-            ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-            # rhythm = np.array([ann.ann.values])
-            # rhythm = rhythm[0]
-        rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
         if combine:
-            rhythm[rhythm==cts.rhythms_dict['AFL']]= cts.rhythms_dict['AFIB']
-        return (tbeats*self.actual_fs).astype(int), rhythm
+            rhythm[rhythm == self.rhythms_dict['AFL']] = self.rhythms_dict['AFIB']
+        return (tbeats * self.actual_fs).astype(int), rhythm
 
     def parse_demographic_features(self, id):
-        age = float(self.excel_sheet.loc[self.excel_sheet["Study ID"]==id, 'Age'])
+        age = float(self.excel_sheet.loc[self.excel_sheet["Study ID"] == id, 'Age'])
         sex = float(
-            self.excel_sheet.loc[self.excel_sheet["Study ID"]==id, "Sex"] == 'F')  # True (1): Female, False (0): Male
+            self.excel_sheet.loc[self.excel_sheet["Study ID"] == id, "Sex"] == 'F')  # True (1): Female, False (0): Male
         for win in self.loaded_window_sizes:
             self.features_dict[id][win]['Age'] = age
             self.features_dict[id][win]['Sex'] = sex
@@ -144,6 +142,7 @@ class JPAFDB_Parser(BaseParser):
 
     def parse_patient_id(self, recording_id):
         return self.excel_sheet[self.excel_sheet["Study ID"] == recording_id]["ID"].values[0]
+
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
@@ -155,7 +154,7 @@ class JPAFDB_Parser(BaseParser):
         CSV Columns
         '''
         # load and convert annotation data
-        self.excel_sheet = pd.read_excel(self.excel_sheet_path,  engine='openpyxl')
+        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
         self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
 
     def get_dir(self, id):
@@ -193,15 +192,17 @@ class JPAFDB_Parser(BaseParser):
 
     def record_diagnosis(self, patient_id, win):
         afl_cases = np.array(self.excel_sheet["Study ID"][
-                     self.excel_sheet['AFL?'].str.contains('yes', na=False)].values)
+                                 self.excel_sheet['AFL?'].str.contains('yes', na=False)].values)
         per_af = np.array(self.excel_sheet["Study ID"][
-                     self.excel_sheet['Dx'].str.contains('|'.join(self.searchPer), na=False)].values)
+                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPer), na=False)].values)
         par_af = np.array(self.excel_sheet["Study ID"][
-                     self.excel_sheet['Dx'].str.contains('|'.join(self.searchPar), na=False)].values)
+                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPar), na=False)].values)
         if patient_id in per_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE #persistent AF is equivalent to severe AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
         elif patient_id in par_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
         elif patient_id in afl_cases:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
         else:
@@ -220,7 +221,8 @@ class JPAFDB_Parser(BaseParser):
             patient_list = self.parsed_patients()
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
-                self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'), allow_pickle=True).item()
+                self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
+                                                               allow_pickle=True).item()
 
     def read_ann(self, id, start_time=None, end_time=None):
         id_dir = self.get_dir(str(id))[0]
@@ -234,7 +236,7 @@ class JPAFDB_Parser(BaseParser):
                                  header=None, dtype={"NA": 'string', "ann": 'string', 'pos': 'string'})
             df2 = pd.concat(chunks, ignore_index=True)
             if len(df2[df2['pos'].str.contains("RR", na=False)]) > 0:
-                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0]+1:]
+                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0] + 1:]
             RR_df = RR_df.append(df2)
         RR_df.reset_index(inplace=True, drop=True)
         RR_df['pos'] = RR_df['pos'].astype(int)
@@ -245,7 +247,7 @@ class JPAFDB_Parser(BaseParser):
         real_start = time.strftime('%-H:%M', time.gmtime(start_time))
         time_ann_start = time_df[time_df == real_start].index[0]
         real_end = time.strftime('%-H:%M', time.gmtime(end_time))
-        temp_time_df = time_df[time_ann_start+1:]
+        temp_time_df = time_df[time_ann_start + 1:]
         if len(temp_time_df[temp_time_df == real_end]) == 0:
             time_ann_end = time_df.index[-1]
         else:
@@ -258,7 +260,7 @@ class JPAFDB_Parser(BaseParser):
         #     time_ann_end = len(time_df)
         ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
 
-        return ann_dict.iloc[time_ann_start:time_ann_end+1]
+        return ann_dict.iloc[time_ann_start:time_ann_end + 1]
 
     def return_data(self, ids, feats_to_use, fillna=True, normalize=False):
         final = tuple()
@@ -270,6 +272,7 @@ class JPAFDB_Parser(BaseParser):
         data = np.concatenate((rr, prec.reshape(-1, 1), ids_rr.reshape(-1, 1)), axis=1)
 
         return data, rrt
+
 
 if __name__ == '__main__':
     windows = [60]
@@ -305,13 +308,13 @@ if __name__ == '__main__':
     #     print(pat)
     #     ecg, ann = db.parse_raw_ecg(pat)
     #     db.recording_time[pat] = len(ecg) / db.actual_fs
-        # directory = pathlib.PurePath("/MLAIM/AIMLab/Shany/medAIM/GS") / db.name / str(pat)
-        # directory2 = pathlib.PurePath("/home/shanybiton/repos/Generalization/temp/") / str(pat)
-        #
-        # if not os.path.exists(directory2):
-        #     os.makedirs(directory2)
-        #
-        # db.export_to_physiozoo(pat, directory=directory2, export_rhythms=False, force=True, n_leads=db.n_leads)
+    # directory = pathlib.PurePath("/MLAIM/AIMLab/Shany/medAIM/GS") / db.name / str(pat)
+    # directory2 = pathlib.PurePath("/home/shanybiton/repos/Generalization/temp/") / str(pat)
+    #
+    # if not os.path.exists(directory2):
+    #     os.makedirs(directory2)
+    #
+    # db.export_to_physiozoo(pat, directory=directory2, export_rhythms=False, force=True, n_leads=db.n_leads)
 
     # db.generate_annotations(pat_list=['130', '131', '132', '133'], force=False, lead=2)
     # ids = np.setdiff1d(db.parse_available_ids(), db.parsed_patients())
@@ -368,28 +371,28 @@ if __name__ == '__main__':
     #     annot = []
     #     for i in range(1, 3):
     #         ecg, annot = db.parse_raw_ecg(r.id, r.start_time, r.end_time, type='epltd0')
-            # record = db.read_ecg(r.id).iloc[:, i].astype(float).values
-            # re_record = dp.resample_by_interpolation(record, db.orig_fs, db.actual_fs)
-            # re_record = re_record[int(r.start_time * db.actual_fs) - point:int(r.end_time * db.actual_fs) + point]
-            # re_record = bandpass_filter(data=re_record, id=af_df.id.unique()[0], lead='x', lowcut=0.67, highcut=90,
-            #                            signal_freq=db.actual_fs, filter_order=75, notch_freq=50, debug=False)
-            # wfdb.wrsamp(id, fs=db.actual_fs, units=['mV'],
-            #             sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
-            # detector = getattr(i_o,
-            #                    ann_type + '_detector')  # Calling the correct wrapper in the feature comp module.
-            # detector(id)  # Running the wrapper
-            # shutil.move(id + '.' + ann_type, db.generated_anns_path / 'wins' / ann_type / (
-            #         id + '.' + ann_type))
-            # ann = wfdb.rdann(str(db.generated_anns_path / 'wins' / ann_type / id), ann_type).sample
-            # cann = i_o.qrs_adjust(ecg=ecg,qrs=annot,fs=db.actual_fs,inputsign=1, debug=1)
-            #
-            # timeline = np.arange(0, len(ecg) / db.actual_fs, 1 / db.actual_fs)
-            # plt.plot(timeline, ecg, label='Signal', zorder=0)
-            # rr = np.diff(annot) / db.actual_fs
-            # plt.scatter(timeline[cann], ecg[cann], label='RR Interval', c='k', zorder=1)
-            # plt.xlim(10,30)
-            # plt.show()
-            # plt.close()
+    # record = db.read_ecg(r.id).iloc[:, i].astype(float).values
+    # re_record = dp.resample_by_interpolation(record, db.orig_fs, db.actual_fs)
+    # re_record = re_record[int(r.start_time * db.actual_fs) - point:int(r.end_time * db.actual_fs) + point]
+    # re_record = bandpass_filter(data=re_record, id=af_df.id.unique()[0], lead='x', lowcut=0.67, highcut=90,
+    #                            signal_freq=db.actual_fs, filter_order=75, notch_freq=50, debug=False)
+    # wfdb.wrsamp(id, fs=db.actual_fs, units=['mV'],
+    #             sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
+    # detector = getattr(i_o,
+    #                    ann_type + '_detector')  # Calling the correct wrapper in the feature comp module.
+    # detector(id)  # Running the wrapper
+    # shutil.move(id + '.' + ann_type, db.generated_anns_path / 'wins' / ann_type / (
+    #         id + '.' + ann_type))
+    # ann = wfdb.rdann(str(db.generated_anns_path / 'wins' / ann_type / id), ann_type).sample
+    # cann = i_o.qrs_adjust(ecg=ecg,qrs=annot,fs=db.actual_fs,inputsign=1, debug=1)
+    #
+    # timeline = np.arange(0, len(ecg) / db.actual_fs, 1 / db.actual_fs)
+    # plt.plot(timeline, ecg, label='Signal', zorder=0)
+    # rr = np.diff(annot) / db.actual_fs
+    # plt.scatter(timeline[cann], ecg[cann], label='RR Interval', c='k', zorder=1)
+    # plt.xlim(10,30)
+    # plt.show()
+    # plt.close()
     #
     # # db.generate_annotations(pat_list=[temp_df.id.unique()[0]], force=True)
     # for i, r in temp_df.iloc[:3].iterrows():
@@ -427,7 +430,7 @@ if __name__ == '__main__':
 
     # db.generate_annotations(pat_list=ids[600:], types=['wqrs', 'gqrs'])
     # db.parse_raw_data(patient_list=ids[600:])
-    #for id_ in ids:
+    # for id_ in ids:
     #    db.parse_circadian_features(patient_id=id_)
     #    db.load_patient_from_disk(pat=id_)
     '''
