@@ -146,7 +146,7 @@ class UVAFDB_Parser(BaseParser):
         return self.excel_sheet[self.excel_sheet["Holter ID"] == "UVA" + recording_id]["Patient ID"]
 
     def _af_pat_clinical_lab(self, patient_id, win):
-       raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
+        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
             self.mask_rr_dict[patient_id][win]].reshape(-1)
         raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
             self.mask_rr_dict[patient_id][win]].reshape(-1)
