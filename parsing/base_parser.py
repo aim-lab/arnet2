@@ -176,7 +176,7 @@ class BaseParser:
         raise NotImplementedError("Needs to be called by a child class.")
 
     def _af_pat_clinical_lab(self, patient_id, win):
-        """ This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistant
+        """This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistent
         or non-AF used in the clinical practice. The different categories of patients are: Non-AF (Time in AF
         does not exceed 30 [sec], Persistent AF (AFB above 99%), Paroxysmal AF (AFB between 4% and
          99% and Time in AF exceed 30 [sec]). If the burden of a given pathology for a patient is
