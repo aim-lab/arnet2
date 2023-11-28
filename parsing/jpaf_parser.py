@@ -6,13 +6,13 @@ random.seed(cts.SEED)
 
 class JPAFDB_Parser(BaseParser):
 
-    def __init__(self, window_size=60, load_on_start=True, load_beat_flags=True):
+    def __init__(self, window_size=60, load_on_start=True):
 
         super(JPAFDB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -26,8 +26,16 @@ class JPAFDB_Parser(BaseParser):
         self.orig_fs = 125
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "JPAFDB"
         self.ecg_format = ".csv"
+
+        """Variables relative to the different paths"""
+        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
+        self.orig_anns_path = None
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
+        self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
         self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
@@ -36,12 +44,6 @@ class JPAFDB_Parser(BaseParser):
         self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD':2}
         self.circadian_dict = {}
 
-        """Variables relative to the different paths"""
-        cts.DATA_DIR = cts.BASE_DIR / "Shany" / "databases"
-        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
-        self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
