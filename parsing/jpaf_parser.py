@@ -74,7 +74,7 @@ class JPAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
