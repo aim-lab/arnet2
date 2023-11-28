@@ -145,6 +145,23 @@ class UVAFDB_Parser(BaseParser):
     def parse_patient_id(self, recording_id):
         return self.excel_sheet[self.excel_sheet["Holter ID"] == "UVA" + recording_id]["Patient ID"]
 
+    def _af_pat_clinical_lab(self, patient_id, win):
+       raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
+        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
+        time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
+        if self.af_burden_dict[patient_id] > cts.AF_PERSISTENT_THRESHOLD:
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
+        elif self.af_burden_dict[patient_id] > cts.AF_MODERATE_THRESHOLD or time_in_af > cts.AF_MILD_THRESHOLD:
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
+        elif self.other_cvd_burden_dict[patient_id] > 0.5:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
+        else:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
+
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
@@ -162,33 +179,6 @@ class UVAFDB_Parser(BaseParser):
             self.n_ectopics[pat] = {}
             for win in wins:
                 self.n_ectopics[pat][win] = np.load(self.main_path / pat / "n_ectopics" / (str(win) + ".npy"))
-
-    def _af_pat_clinical_lab(self, patient_id, win, AF_PERSISTENT_THRESHOLD=0.99):
-        """ This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistant
-        or non-AF used in the clinical practice. The different categories of patients are: Non-AF (Time in AF
-        does not exceed 30 [sec], Persistent AF (AFB above AF_PERSISTENT_THRESHOLD), Paroxysmal AF (AFB between 4% and
-         AF_PERSISTENT_THRESHOLD and Time in AF exceed 30 [sec]). If the burden of a given pathology for a patient is
-         over 50%, we flage him as a patient suffering from another CVD (label cts.PATIENT_LABEL_OTHER_CVD). As a
-         convention, for windows, 0 is the label for NSR, 1 for AF, and above 2 for other rhythms.
-        :param patient_id: The patient ID. Assumed to be in the list of IDs present in the database.
-        :param win: The windows for which the feature should be computed.
-        :param AF_PERSISTENT_THRESHOLD: threshold for cutoff.
-        """
-        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
-            self.mask_rr_dict[patient_id][win]].reshape(-1)
-        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
-            self.mask_rr_dict[patient_id][win]].reshape(-1)
-        time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
-        if self.af_burden_dict[patient_id] > AF_PERSISTENT_THRESHOLD:
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
-        elif self.af_burden_dict[patient_id] > cts.AF_MODERATE_THRESHOLD or time_in_af > cts.AF_MILD_THRESHOLD:
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
-        elif self.other_cvd_burden_dict[patient_id] > 0.5:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
-        else:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
     # TODO: move to a new script
     def generate_beats_hist(self, figsize=(15, 15), remove_N=True):
