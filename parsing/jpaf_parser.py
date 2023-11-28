@@ -143,6 +143,24 @@ class JPAFDB_Parser(BaseParser):
     def parse_patient_id(self, recording_id):
         return self.excel_sheet[self.excel_sheet["Study ID"] == recording_id]["ID"].values[0]
 
+    def _af_pat_clinical_lab(self, patient_id, win):
+        afl_cases = np.array(self.excel_sheet["Study ID"][
+                                 self.excel_sheet['AFL?'].str.contains('yes', na=False)].values)
+        per_af = np.array(self.excel_sheet["Study ID"][
+                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPer), na=False)].values)
+        par_af = np.array(self.excel_sheet["Study ID"][
+                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPar), na=False)].values)
+        if patient_id in per_af:  # Assessing the class according to the guidelines
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
+        elif patient_id in par_af:  # Assessing the class according to the guidelines
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
+        elif patient_id in afl_cases:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
+        else:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
+
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
@@ -187,24 +205,6 @@ class JPAFDB_Parser(BaseParser):
         ecg = pd.DataFrame({'time': timestamp, 'data_ch1': ch1, 'data_ch2': ch2, 'date': date})
         ecg.reset_index(drop=True, inplace=True)
         return ecg
-
-    def _af_pat_clinical_lab(self, patient_id, win):
-        afl_cases = np.array(self.excel_sheet["Study ID"][
-                                 self.excel_sheet['AFL?'].str.contains('yes', na=False)].values)
-        per_af = np.array(self.excel_sheet["Study ID"][
-                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPer), na=False)].values)
-        par_af = np.array(self.excel_sheet["Study ID"][
-                              self.excel_sheet['Dx'].str.contains('|'.join(self.searchPar), na=False)].values)
-        if patient_id in per_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
-        elif patient_id in par_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
-        elif patient_id in afl_cases:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
-        else:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
     def parse_circadian_features(self, id):
         if id not in self.circadian_dict.keys():
