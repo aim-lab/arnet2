@@ -214,6 +214,7 @@ class JPAFDB_Parser(BaseParser):
             self.read_ecg(id).time.iloc[0], self.read_ecg(id).time.iloc[-1]
         np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
+    # TODO: improve function
     def load_circardian_from_disk(self, patient_list=None):
         if patient_list is None:
             patient_list = self.parsed_patients()
