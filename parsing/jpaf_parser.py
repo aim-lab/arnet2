@@ -1,16 +1,9 @@
-import sys
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-
 from base_parser import *
+
 warnings.filterwarnings('ignore')
-warnings.filterwarnings('ignore')
-import csv_reader as cr
-import time
-import re
-import datetime as dt
-import pathlib
-import pickle
+random.seed(cts.SEED)
+
+
 class JPAFDB_Parser(BaseParser):
 
     def __init__(self, window_size=60, load_on_start=True, load_beat_flags=True):
