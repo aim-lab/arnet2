@@ -1,18 +1,7 @@
-# General imports
-import pathlib
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import wfdb
-import warnings
-import pandas as pd
-import sys
-
-# Relative imports
-import utils.consts as cts
-from parsing.base_parser import BaseParser
+from base_parser import *
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 
 class UVAFDB_Parser(BaseParser):
@@ -23,7 +12,7 @@ class UVAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
@@ -37,24 +26,19 @@ class UVAFDB_Parser(BaseParser):
         self.orig_fs = cts.EPLTD_FS
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 3
+        self.ref_lead = 1
         self.name = "UVAFDB"
         self.ecg_format = "rf"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J',
-                                 '(PAT', '(AT', '(VTS', '(AIVRS', '(IVRS', '(AIVR'])
-
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = pathlib.PurePath('/MLAIM') / 'databases' / "uvfdb"
+        self.raw_ecg_path = cts.DATA_DIR
         self.orig_anns_path = None
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.PREPROCESSED_DATA_DIR / ("UVAFDB" + ("_shifted" if windows_shifted else ""))
+        self.main_path = cts.PREPROCESSED_DATA_DIR / (self.name + ("_shifted" if windows_shifted else ""))
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
-
         self.window_size = window_size
         test_pat = self.parsed_patients()[0]
         self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
@@ -66,15 +50,15 @@ class UVAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the UVAFDB) --------------- #
+        # ---------------- Local variables (relevant only to UVAFDB) -------------------- #
         # ------------------------------------------------------------------------------- #
         """
-
+        # Like the SQI step, the rate of missing annotations below which the patient is excluded.
         self.beats_bea = np.array(['NORMAL', 'PVC', 'APC', 'AESC', 'VESC', 'PACE', 'PFUS',
                                    # The different rhythms present across the dataset.
                                    'UNKNOWN', 'UNCLASS', 'SUBTYPE', 'RHYTHM', 'AUX', 'SUB', 'ARFCT',
                                    'VFON', 'FLWAV', 'VFOFF', 'RONT',
-                                   'FUSION'])  # Like the SQI step, the rate of missing annotations below which the patient is excluded.
+                                   'FUSION'])
         self.bea_path = self.raw_ecg_path / "uvfdb_rr" / "BEA"
         self.excel_sheet_path = self.raw_ecg_path / "uvfdb_rr" / "UVA Holter Info.xlsx"
         self.excel_sheet = pd.read_excel(self.excel_sheet_path)
@@ -98,43 +82,42 @@ class UVAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([file[3:7] for file in os.listdir(str(self.raw_ecg_path)) if file != "uvfdb_rr"])
 
-    def parse_reference_annotation(self, id, combine=True, reannotated=False):
+    # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
+    def parse_reference_annotation(self, id, combine=True): #, reannotated=False):
         _, _, _, beats, _, _, rhythm, _ = self.readbea(self.bea_path / ("UVA" + id + '.bea'))
         beats = ((beats / cts.N_MS_IN_S) * self.actual_fs).astype(int)
-        tbeats = beats / self.actual_fs
-        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        if reannotated:
-            rhythm_df = self.parse_reference_rhythm(id)
-            for index, l in rhythm_df.iterrows():
-                l1 = np.abs(tbeats - l.Beginning)
-                l2 = np.abs(tbeats - l.End)
-                begin = np.where(l1 == l1.min())
-                end = np.where(l2 == l2.min())
-                ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
-            rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
-            if combine:
-                rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
-        else:
-            rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
+        # tbeats = beats / self.actual_fs
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        #     rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        #     if combine:
+        #         rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
+        # else:
+        rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return beats, rhythm
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
+    def record_to_wfdb(self, id, lead):
         file = self.raw_ecg_path / ("UVA" + id + ".rf")
         record = self._read_rf(file, lead=lead - 1)
-        # ecg_raw = record[:, 0]
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
         return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
-        record = self._read_rf(self.raw_ecg_path / ('UVA' + patient_id + '.rf'), lead=lead - 1)
-        ecg = record
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
+        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + '.rf'), lead=lead - 1)
+        ann = self.parse_annotation(id, type=type, lead=lead)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
@@ -163,6 +146,24 @@ class UVAFDB_Parser(BaseParser):
     def parse_patient_id(self, recording_id):
         return self.excel_sheet[self.excel_sheet["Holter ID"] == "UVA" + recording_id]["Patient ID"]
 
+    # TODO: create clinical_lab dict
+    def _af_pat_clinical_lab(self, patient_id, win):
+        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
+        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
+        time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
+        if self.af_burden_dict[patient_id] > cts.AF_PERSISTENT_THRESHOLD:
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
+        elif self.af_burden_dict[patient_id] > cts.AF_MODERATE_THRESHOLD or time_in_af > cts.AF_MILD_THRESHOLD:
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
+        elif self.other_cvd_burden_dict[patient_id] > 0.5:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
+        else:
+            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
+
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
@@ -181,23 +182,7 @@ class UVAFDB_Parser(BaseParser):
             for win in wins:
                 self.n_ectopics[pat][win] = np.load(self.main_path / pat / "n_ectopics" / (str(win) + ".npy"))
 
-    def record_diagnosis(self, patient_id, win, AF_PERSISTENT_THRESHOLD=0.99):
-        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
-            self.mask_rr_dict[patient_id][win]].reshape(-1)
-        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
-            self.mask_rr_dict[patient_id][win]].reshape(-1)
-        time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
-        if self.af_burden_dict[patient_id] > AF_PERSISTENT_THRESHOLD:
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
-        elif self.af_burden_dict[patient_id] > cts.AF_MODERATE_THRESHOLD or time_in_af > cts.AF_MILD_THRESHOLD:
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
-        elif self.other_cvd_burden_dict[patient_id] > 0.5:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
-        else:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
-
+    # TODO: move to a new script
     def generate_beats_hist(self, figsize=(15, 15), remove_N=True):
         """ This function generates a bar plot with the number of beats for the most represented rhythms in the dataset."""
         max_y = 0.5 * 1e8
@@ -279,6 +264,7 @@ class UVAFDB_Parser(BaseParser):
         graph.complete_figure(fig, axes, savefig=True, x_titles=[['Rhythm types']], y_titles=[['Count']],
                               y_lim=[[[0, max_y]]], main_title='UVAFDB_beats_distribution')
 
+    # TODO: move to a new script
     def generate_events_hist(self):
         """ This function generates a histogram of events lengths per patient label category across the dataset."""
         AF_events_lengths = [[], [], [], []]
@@ -321,6 +307,7 @@ class UVAFDB_Parser(BaseParser):
                               x_titles=[['Events lengths (in number of beats)'] * 2], xlabel_fontsize=20,
                               y_titles=[['Count', '']], savefig=True, main_title='UVAFDB_Events_lengths')
 
+    # TODO: move to a new script
     def generate_af_burden_hist(self, figsize=(15, 10)):
         """ This function generates a histogram of the AF burden per patient label category across the dataset."""
         AF_Burdens = [[], [], [], []]
@@ -345,6 +332,7 @@ class UVAFDB_Parser(BaseParser):
                               xlim=[[[0, 1]]],
                               savefig=True, main_title='UVAFDB_AF_Burden_hist', x_lim=[[[0, 100]]])
 
+    # TODO: move to a new script
     def generate_features_hist(self, feats_names=cts.SELECTED_FEATURES):
         """ This function generates a histogram of features per patient label category across the dataset.
         :param feats_names: The list of features to include in the histograms subplot."""
@@ -393,7 +381,8 @@ class UVAFDB_Parser(BaseParser):
                                   savefig=True, put_legend=put_legend, xticks_fontsize=16, yticks_fontsize=16)
 
     def extract_reann_pat(self):
-        """ This function looks into the Excel report present in the directory of the .BEA files to report which patients have been reannotated."""
+        """ This function looks into the Excel report present in the directory of the .BEA files to report which
+        patients have been reannotated. """
         # First extracting reannotated patients from UVA Info file
         res = pd.read_excel(self.excel_sheet_path)
         self.reann_pat = np.setdiff1d(np.array(res[res['Comments'].notnull()]['Holter ID'].apply(lambda x: x[-4:])),
@@ -403,9 +392,10 @@ class UVAFDB_Parser(BaseParser):
         self.reann_pat = np.intersect1d(self.reann_pat, self.parsed_ecgs)
         self.not_reann_pat = np.intersect1d(self.not_reann_pat, self.parsed_ecgs)
 
-    def _read_rf(self, file, lead=1):
+    def _read_rf(self, file, lead):
         """ This function reads the raw ECG files, which are given in an encoded (.rf) format.
-        :param file: The path to the .rf file."""
+        :param file: The path to the .rf file.
+        :param lead: ECG lead."""
         n_chans = 3
         n_bits_per_chan = 10
         f = open(self.raw_ecg_path / file, "rb")

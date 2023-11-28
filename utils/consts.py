@@ -40,10 +40,6 @@ BINARY_TITLES = np.array(['$Non-Prominent-AF$', '$Prominent-AF$'])
 WINDOW_LAB_TITLES = np.array(['$N$', '$AF$', '$O$', '$Unknown$'])
 
 # rhythm dict for physiozoo
-rhythms = np.array(['NSR', 'AFIB', 'AB', 'AFL', 'B', 'BII', 'IVR', 'NOD',
-                         'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
-                         'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
-rhythms_dict = {rhythms[i]: i for i in range(len(rhythms))}
 
 # Constants definitions (time related)
 N_S_IN_HOUR = 3600
@@ -59,6 +55,7 @@ RR_FILE_THRESHOLD = 3 * N_S_IN_HOUR     # Criterion for exclusion of a whole rec
 AF_MILD_THRESHOLD = 30                  # Threshold on AF Burden to define a patient as Mild AF patient. CAREFUL ! TIME IN SECONDS HERE
 AF_MODERATE_THRESHOLD = 0.04            # Threshold on AF Burden to define a patient as Moderate AF patient
 AF_SEVERE_THRESHOLD = 0.8               # Threshold on AF Burden to define a patient as Severe AF patient
+AF_PERSISTENT_THRESHOLD = 0.99          # Threshold on AF burden to define patient as Persistent AF patient
 SQI_FILE_THRESHOLD = 0.75               # Threshold on the number of corrupted windows (based on bsqi criterion) to exclude a file
 SQI_WINDOW_THRESHOLD = 0.8              # Threshold on the bsqi criterion to exclude a window
 MISSING_ANN_THRESHOLD = 0.75            # Threshold on the percentage of missing annotations to exclude a file.
@@ -81,7 +78,7 @@ elif os.name == 'posix':
 
 
 # Paths definition
-DATA_DIR = BASE_DIR / "Shany" / "databases"
+DATA_DIR = BASE_DIR / "databases"
 CLASSIFIERS_DIR = BASE_DIR /"Shany" / "Classifiers"
 SNAPSHOTS_DIR = BASE_DIR / "Shany" / "Snapshots"
 MATLAB_TEST_VECTORS_DIR = BASE_DIR / "Shany" / "Matlab_test_vectors"
@@ -90,6 +87,7 @@ WQRS_PROG_DIR = pathlib.PurePath('/usr/local/bin/wqrs')
 PARSING_PROJECT_DIR = REPO_DIR_POSIX / "parsing"
 ERROR_ANALYSIS_DIR = BASE_DIR / "Shany" / "ErrorAnalysis"
 PREPROCESSED_DATA_DIR = BASE_DIR / "Shany" / "PreprocessedDatabases"
+GEN_ANN_DIR = BASE_DIR / "Shany" / "Annotations"
 REANNOTATION_DIR = BASE_DIR / 'Shany' / 'medAIM'
 MODEL_DIR = REPO_DIR / "saved_models"
 

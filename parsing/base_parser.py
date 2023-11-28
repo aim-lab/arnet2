@@ -10,10 +10,6 @@ from scipy.io import savemat
 
 
 # TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
-# TODO: Run corrected recording time for all the datasets.(This has been done on UVAF)
-# TODO: Run SQI new policy on all datasets and on all windows. (This has been done on UVAF)
-# TODO: Find solution to regularize ectopics loading for UVAF.
-#TODO: AFDB PROBLEM FOR PARSING.
 
 
 class BaseParser:
@@ -26,13 +22,13 @@ class BaseParser:
 
     def __init__(self):
         """The purpose of the __init__ function for the BaseParser class
-        is to define the different dictionnaries that will be found among the different parsers.
+        is to define the different dictionaries that will be found among the different parsers.
         Note: Depending on the dataset, some of those dictionnaries may be empty. Data extraction is taken care of
         apart in each dataset with the elementary parsing functions whose signature can be found below. """
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- # """
 
         # Missing records
@@ -41,17 +37,20 @@ class BaseParser:
         # Helper variables
         self.curr_ecg = None
         self.curr_id = None
-        self.dem_feats = np.array([])
-
 
         """ Variables relative to the ECG signals. """
         self.orig_fs = None                                 # Sampling frequency of the original files
         self.actual_fs = None                               # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
         self.n_leads = 1                                    # Number of ECG leads in the database
+        self.ref_lead = 1                                   # The lead according to which all the elementary dictionnaries are computed
         self.name = None                                    # Name of the Dataset
         self.ecg_format = None                              # The format of the ECG files. Should be "wfdb", "edf", "rf"
-        self.rhythms = None                                 # The rhythms defined in the dataset
-        self.rhythms_dict = None                            # Mapping between rhythms and unique ids
+        self.rhythms = np.array(['NSR', 'AFIB', 'AB', 'AFL', 'B', 'BII', 'IVR', 'NOD',
+                            'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
+                            'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
+                                                            # The rhythms defined in the dataset
+        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+                                                            # Mapping between rhythms and unique ids
 
         """ Variables relative to the different paths. """
         self.raw_ecg_path = None                            # Path of the raw ECG files
@@ -65,7 +64,7 @@ class BaseParser:
 
         """
         # ------------------------------------------------------------------------------- #
-        # ------------------------- Overriden variables end here ------------------------ #
+        # ------------------------- Overridden variables end here ------------------------ #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -120,30 +119,33 @@ class BaseParser:
         :returns arr: numpy array listing all the patients."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_reference_annotation(self, id, reannotated=False):
+    def parse_reference_annotation(self, id):
         """ This function returns for a given patient the reference annotation, if available.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
         :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_annotation(self, id, type="epltd0"):
+    def parse_annotation(self, id, lead, type="epltd0"):
         """ Returns, if exists, for a given ID, the peak annotation.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :param type: Annotation type. Can be epltd0, xqrs, gqrs.
+        :param lead: ECG lead. Can be one of the leads presented in the database.
         :returns ann: A numpy array listing the indices of the peaks in the raw ECG."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def record_to_wfdb(self, id):
+    def record_to_wfdb(self, id, lead):
         """ This functions converts a raw ECG signal to the wfdb format under the code directory.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param lead: ECG lead.
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=0):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
         """Returns the raw ECG and the corresponding annotation for a given patient. The signal is resampled at 200 [Hz]
         to generate the epltd annotation."
-        :param patient_id: The ID of the patient.
+        :param id: The ID of the patient.
+        :param lead: The ECG lead.
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
         :param type: The annotation type.
@@ -173,6 +175,17 @@ class BaseParser:
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
+    def _af_pat_clinical_lab(self, patient_id, win):
+        """This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistent
+        or non-AF used in the clinical practice. The different categories of patients are: Non-AF (Time in AF
+        does not exceed 30 [sec], Persistent AF (AFB above 99%), Paroxysmal AF (AFB between 4% and
+         99% and Time in AF exceed 30 [sec]). If the burden of a given pathology for a patient is
+         over 50%, we flag him as a patient suffering from another CVD (label cts.PATIENT_LABEL_OTHER_CVD). As a
+         convention, for windows, 0 is the label for NSR, 1 for AF, and above 2 for other rhythms.
+        :param patient_id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param win: The windows for which the feature should be computed.
+        """
+
     # ------------------------------------------------------------------------- #
     # ------------------------ Computational functions ------------------------ #
     # ------------------------------------------------------------------------- #
@@ -184,15 +197,14 @@ class BaseParser:
         """
         return os.path.exists(self.generated_anns_path / type / str(lead) / (id + '.' + type))
 
-    def parse_elem_data(self, pat, reannotated=False):
+    def parse_elem_data(self, pat):
         """ This function is responsible for extracting the basic raw data for the given id.
-        It fills the following elementary dictionnaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
+        It fills the following elementary dictionaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
         rrt (timestamp of each RR interval), mask RR (which windows we can rely on based on the presence of proper annotations),
         start_windows, end_windows (respectively the timestamps of the beginning and the end of the windows), n_excluded_windows
         (number of windows excluded because their annotations were not reliable), av_prec_windows (for each window,
-        the number of consecutive windows preceeding it after the exclusions.
+        the number of consecutive windows preceding it after the exclusions.
         :param pat: The patient ID. Assumed to be in the list of IDs present in the database.
-        :param reannotated: parse reannotated patient by Mohsin
         """
 
         dicts_to_fill = [self.start_windows_dict, self.end_windows_dict, self.av_prec_windows_dict,
@@ -203,14 +215,14 @@ class BaseParser:
         sec_int = 0  # Security interval for RR exclusion (number of beats to exclude around a problematic RR
 
         # Extracting data based on Automatic annotation (default EPLTD)
-        ecg, ann = self.parse_raw_ecg(pat, type=self.sqi_ref_ann)
+        ecg, ann = self.parse_raw_ecg(pat, type=self.sqi_ref_ann, lead=self.ref_lead)
         self.recording_time[pat] = len(ecg) / self.actual_fs
         rr = np.diff(ann) / self.actual_fs
         start_rr, end_rr = ann[:-1] / self.actual_fs, ann[1:] / self.actual_fs
         interbeats = np.append(np.insert((start_rr + end_rr) / 2, 0, max(0, start_rr[0] - 1)), end_rr[-1] + 1.0)
 
         # Extracting the reference annotation
-        ref_ann, ref_rhythm = self.parse_reference_annotation(pat, reannotated=reannotated)
+        ref_ann, ref_rhythm = self.parse_reference_annotation(pat)
         ref_rr = np.diff(ref_ann) / self.actual_fs
         start_ref_rr, end_ref_rr = ref_ann[:-1] / self.actual_fs, ref_ann[1:] / self.actual_fs
         ref_rlab = ref_rhythm[1:]   # To have the same dimension as ref_rr
@@ -310,10 +322,11 @@ class BaseParser:
 
         self.destroy_pool()
 
-    def generate_wrqrs_annotations(self, pat_list=None, force=False, tol=0.05, lead=1):
+    def generate_wrqrs_annotations(self, lead, pat_list=None, force=False, tol=0.05):
         """ This function performs a correction on the wqrs annotation. The gqrs annotation locates the Q onset rather than the
             R-Peak. To correct the behaviour, this function generates the rqrs annotation, which looks for the local maximum
             absolute value over the ECG with a given tolerance window.
+            :param lead: ECG lead.
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
@@ -326,7 +339,7 @@ class BaseParser:
         for i, id in enumerate(pat_list):
             ann_available = self.annot_available(id, 'wrqrs', lead)
             if not ann_available or force:
-                print("Generating wrqrs annotation for patient ID " + str(id))
+                print(f"Generating rqrs annotation for patient ID {str(id)} for lead {str(lead)}")
                 ecg, ann = self.parse_raw_ecg(id, type='wqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
@@ -334,10 +347,11 @@ class BaseParser:
                 wfdb.wrann(id, 'wrqrs', rqrs_ann, symbol=['q'] * len(rqrs_ann))
                 shutil.move(id + '.wrqrs', self.generated_anns_path / 'wrqrs' / str(lead) / (id + '.wrqrs'))
 
-    def generate_rqrs_annotations(self, pat_list=None, force=False, tol=0.05, lead=1):
+    def generate_rqrs_annotations(self, lead, pat_list=None, force=False, tol=0.05):
         """ This function performs a correction on the gqrs annotation. The gqrs annotation locates the Q onset rather than the
             R-Peak. To correct the behaviour, this function generates the rqrs annotation, which looks for the local maximum
             absolute value over the ECG with a given tolerance window.
+            :param lead: ECG lead.
             :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
             :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
             :param tol: The tolerance window on which a local maximum should be searched.
@@ -347,7 +361,7 @@ class BaseParser:
         for i, id in enumerate(pat_list):
             ann_available = self.annot_available(id, 'rqrs', lead)
             if not ann_available or force:
-                print("Generating rqrs annotation for patient ID " + str(id))
+                print(f"Generating rqrs annotation for patient ID {str(id)} for lead {str(lead)}")
                 ecg, ann = self.parse_raw_ecg(id, type='gqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
@@ -358,7 +372,7 @@ class BaseParser:
     def parse_raw_data(self, window_sizes=cts.BASE_WINDOWS, gen_ann=False, feats=cts.IMPLEMENTED_FEATURES, patient_list=None, test_anns=None):
         """ This function is responsible of performing all the necessary computations for the dataset, among which:
         all the features according to the input, the sqi, the labels per window, the ahi, the odi, and the demographic features if available.
-        This function has usualy a long running time (at least for the big databases).
+        This function has usually a long running time (at least for the big databases).
         :param window_sizes: The different window sizes along which the windows are derived.
         :param get_ann: If True, calls the function gen_ann in Force mode, and runs all the annotations.
         :param feats: List of the features to compute. The function 'comp_" + feature name must be implemented in the utils.feature_comp module.
@@ -374,7 +388,7 @@ class BaseParser:
         self.create_pool()
         for i, id in enumerate(patient_list):
             print("Parsing patient number " + id)
-            ecg, ann = self.parse_raw_ecg(id, type=self.sqi_ref_ann)
+            ecg, ann = self.parse_raw_ecg(id, lead=self.ref_lead, type=self.sqi_ref_ann)
             self.curr_ecg, self.curr_id = ecg, id
             if len(ann) > self.min_annotation_len:
                 self.parse_elem_data(id)        # First deriving rr, rlab, rrt dictionnaries and other basic elements.
@@ -417,10 +431,11 @@ class BaseParser:
                 func = getattr(fc, 'comp_' + feat)
                 self.features_dict[id][win][feat] = np.array(self.pool.starmap(func, zip(rr,)))
 
-    def _sqi(self, id, win, test_ann='xqrs'):
+    def _sqi(self, id, win, lead=1, test_ann='xqrs'):
         """ Computes the Signal Quality Index (SQI) of each window.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :param win: The window size (in number of beats) along which the raw recording is divided.
+        :param lead: The ECG lead for which the annotations were computed.
         :param test_ann: The test annotation to use for the computation of the bsqi function (in utils.feature_comp module)"""
 
         if id not in self.signal_quality_dict.keys():
@@ -437,7 +452,7 @@ class BaseParser:
         refqrs = (rrt * self.actual_fs).astype(int)
         ecg_win_starts = self.start_windows_dict[id][win] * self.actual_fs
         ecg_win_ends = self.end_windows_dict[id][win] * self.actual_fs
-        testqrs = self.parse_annotation(id, type=test_ann)
+        testqrs = self.parse_annotation(id, lead=lead, type=test_ann)
         testqrs = [testqrs[np.where(
             np.logical_and(testqrs > ecg_win_starts[i], testqrs <= ecg_win_ends[i]))] for i in
                    range(len(ecg_win_starts))]
@@ -638,7 +653,7 @@ class BaseParser:
 
     def get_available_preeceding_windows(self, pat_list=None, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
         """ Returns for each window and for each patient the number of consecutive windows preceding it, i.e.
-        the number of preeceding windows which were not exluded by the different criterions.
+        the number of preceding windows which were not excluded by the different criteria.
         :param exclude_low_sqi_win: If true, considers the low SQI windows to be removed.
         :param win_thresh: If true, exclude the sqi windows under 'win_thresh' (default 0.8).
         :param pat_list. The list of patients to be considered. If None, returns the result for all the patients.
@@ -827,7 +842,7 @@ class BaseParser:
         return y
 
     def return_preceeding_windows(self, pat_list=None, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
-        """Concatenates all the available preceeding windows for the patient IDs contained in the whole dataset and returns them
+        """Concatenates all the available preceding windows for the patient IDs contained in the whole dataset and returns them
         in the form of a single vector of the size of the number of windows. This function is helpful to leverage the temporality between windows
         in the DL models.
         :param pat_list: The list of patients for whom the features should be returned.
@@ -855,18 +870,19 @@ class BaseParser:
     # ---------------------- Import/Export functions -------------------------- #
     # ------------------------------------------------------------------------- #
 
-    def plot_ecg(self, patient_id, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False, add_peak=None,
+    def plot_ecg(self, patient_id, lead, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False, add_peak=None,
                  correct_peaks=False, format='png'):
         """
         Plots the ECG raw signal with annotation peaks and the RR intervals.
         :param patient_id: The ID of the patient.
+        :param lead: ECG lead
         :param disp_peaks: Display or not the R Peaks
         :param start: The beginning of the ECG.
         :param end: The end of the ECG.
         :param ann_type: The type of annotation (can be "epltd", "xqrs", "gqrs")
         :param savefig: Boolean value to indicate if the figure should be saved under cts.SNAPSHOTS_DIR or not.
         """
-        ecg, annot = self.parse_raw_ecg(patient_id, start, end, type=ann_type)
+        ecg, annot = self.parse_raw_ecg(patient_id, lead, start, end, type=ann_type)
         fig, axes = graph.create_figure(subplots=(2, 1), sharex=True)
         timeline = np.arange(0, len(ecg) / self.actual_fs, 1 / self.actual_fs)
         axes[0][0].plot(timeline[:len(ecg)], ecg, label='Signal')
@@ -876,7 +892,7 @@ class BaseParser:
                 cannot = i_o.qrs_adjust(ecg=ecg, qrs=annot, fs=self.actual_fs, inputsign=1)
                 axes[0][0].scatter(timeline[cannot], ecg[cannot], marker='x', color='orange', label=('c-' + ann_type))
             if add_peak is not None:
-                _, annot2 = self.parse_raw_ecg(patient_id, start, end, type=add_peak)
+                _, annot2 = self.parse_raw_ecg(patient_id, lead, start, end, type=add_peak)
                 axes[0][0].scatter(timeline[annot2], ecg[annot2], marker='x', color='purple', label=add_peak)
 
         rr = np.diff(annot) / self.actual_fs
@@ -950,7 +966,7 @@ class BaseParser:
 
 
         ecgs = np.concatenate(tuple([self.parse_raw_ecg(pat, start=start, end=end, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in range(1, n_leads+1)]), axis=1)
-        ann = self.parse_raw_ecg(pat, start=start, end=end, type=ann_type)[1]
+        ann = self.parse_raw_ecg(pat, lead=self.ref_lead, start=start, end=end, type=ann_type)[1]
         if end == -1:
             end = self.recording_time[pat]
 
@@ -995,13 +1011,13 @@ class BaseParser:
 
     def report_low_sqi(self):
         if len(self.low_sqi) > 0:
-            """ Export in an excel table a summary of the excluded patients because of bad quality."""
+            """Export in an excel table a summary of the excluded patients because of bad quality."""
             low_sqi = np.array([[int(i), self.signal_quality_dict[i][self.window_size][self.sqi_test_ann].mean()] for i in self.low_sqi])
             sorted_idx = np.argsort(low_sqi[:, 1])
             low_sqi = low_sqi[sorted_idx]
             np.savetxt(cts.ERROR_ANALYSIS_DIR / (self.name + '_low_sqi_' + str(self.window_size) + '_beats_' + str(self.sqi_test_ann) + '.csv'), low_sqi, fmt="%d,%.2f", header='PatientID,SQI,Manual Review,Comments', comments='')
         else:
-            print("All the patients satisfy the SQI critrion.")
+            print("All the patients satisfy the SQI criteria.")
 
     def print_summary(self, pat_list=None):
         """ Print a summary of the characteristics of the database.
@@ -1009,7 +1025,7 @@ class BaseParser:
         if pat_list is None:
             pat_list = self.parsed_patients()
 
-        print("Informations about " + str(self.window_size) + "-beats windows dataset:")
+        print("Information about " + str(self.window_size) + "-beats windows dataset:")
         print("Total time: " + str(self.total_time(pat_list)))
         print("Total time in AF: " + str(self.total_time_in_af(pat_list)))
         print("Mean time of the recordings: " + str(np.mean([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
@@ -1262,7 +1278,7 @@ class BaseParser:
             ecg = []
             annot = []
             for j in range(1, n_lead+1):
-                ecg_j, ann_j = self.parse_raw_ecg(r.id, r.start_time, r.end_time, type=self.sqi_ref_ann, lead=j)
+                ecg_j, ann_j = self.parse_raw_ecg(r.id, j, r.start_time, r.end_time, type=self.sqi_ref_ann)
                 cann_j = i_o.qrs_adjust(ecg=ecg_j,qrs=ann_j,fs=self.actual_fs,inputsign=1, debug=0)
                 annot.append(cann_j)
                 ecg.append(ecg_j)
