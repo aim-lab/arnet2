@@ -163,7 +163,7 @@ class UVAFDB_Parser(BaseParser):
             for win in wins:
                 self.n_ectopics[pat][win] = np.load(self.main_path / pat / "n_ectopics" / (str(win) + ".npy"))
 
-    def record_diagnosis(self, patient_id, win, AF_PERSISTENT_THRESHOLD=0.99):
+    def _af_pat_clinical_lab(self, patient_id, win, AF_PERSISTENT_THRESHOLD=0.99):
         """ This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistant
         or non-AF used in the clinical practice. The different categories of patients are: Non-AF (Time in AF
         does not exceed 30 [sec], Persistent AF (AFB above AF_PERSISTENT_THRESHOLD), Paroxysmal AF (AFB between 4% and

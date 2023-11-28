@@ -175,6 +175,17 @@ class BaseParser:
         """
         raise NotImplementedError("Needs to be called by a child class.")
 
+    def _af_pat_clinical_lab(self, patient_id, win):
+        """ This function creates a feature diagnosis. This diagnosis follows the convention of paroxysmal, persistant
+        or non-AF used in the clinical practice. The different categories of patients are: Non-AF (Time in AF
+        does not exceed 30 [sec], Persistent AF (AFB above 99%), Paroxysmal AF (AFB between 4% and
+         99% and Time in AF exceed 30 [sec]). If the burden of a given pathology for a patient is
+         over 50%, we flag him as a patient suffering from another CVD (label cts.PATIENT_LABEL_OTHER_CVD). As a
+         convention, for windows, 0 is the label for NSR, 1 for AF, and above 2 for other rhythms.
+        :param patient_id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param win: The windows for which the feature should be computed.
+        """
+
     # ------------------------------------------------------------------------- #
     # ------------------------ Computational functions ------------------------ #
     # ------------------------------------------------------------------------- #
