@@ -177,7 +177,6 @@ class JPAFDB_Parser(BaseParser):
         temp_time = re.split('\s+', temp_time)
 
         date = dt.datetime.strptime(temp_date[0], '%Y/%m/%d')
-        df = pd.DataFrame()
         length = np.size(ch2)
         fs = 1 / self.orig_fs
         [hours, minutes, seconds] = [int(x) for x in temp_time[1].split(':')]
@@ -187,7 +186,6 @@ class JPAFDB_Parser(BaseParser):
 
         ecg = pd.DataFrame({'time': timestamp, 'data_ch1': ch1, 'data_ch2': ch2, 'date': date})
         ecg.reset_index(drop=True, inplace=True)
-        # dt = np.asarray(ecg['data_ch2'].iloc[2:], dtype=float)
         return ecg
 
     def record_diagnosis(self, patient_id, win):
