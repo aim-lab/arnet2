@@ -81,7 +81,7 @@ class JPAFDB_Parser(BaseParser):
 
     def record_to_wfdb(self, id, lead=1):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        re_record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
+        re_record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         re_record = dp.resample_by_interpolation(re_record, self.orig_fs, self.actual_fs)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
