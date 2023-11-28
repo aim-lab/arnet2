@@ -74,17 +74,6 @@ class JPAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
-    def _win_lab(self, id, win):
-        if id not in self.win_lab_dict.keys():
-            self.win_lab_dict[id] = {}
-        raw_rlab = self.rlab_dict[id]
-        rlab = raw_rlab[:(len(raw_rlab) // win) * win].reshape(-1, win)
-        counts = np.array([np.sum((rlab == i), axis=1) for i in range(len(cts.rhythms))]).astype(float)
-        count_nan = np.sum(np.isnan(rlab), axis=1).astype(float)
-        max_lab_count = np.max(counts, axis=0).astype(float)
-        self.win_lab_dict[id][win] = np.argmax(counts, axis=0).astype(float)
-        self.win_lab_dict[id][win][count_nan > max_lab_count] = np.nan
-
     def parse_annotation(self, id, type="epltd0", lead=1):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
