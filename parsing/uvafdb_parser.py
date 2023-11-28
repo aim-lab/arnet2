@@ -180,6 +180,7 @@ class UVAFDB_Parser(BaseParser):
         else:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
+    # TODO: move to a new script
     def generate_beats_hist(self, figsize=(15, 15), remove_N=True):
         """ This function generates a bar plot with the number of beats for the most represented rhythms in the dataset."""
         max_y = 0.5 * 1e8
@@ -261,6 +262,7 @@ class UVAFDB_Parser(BaseParser):
         graph.complete_figure(fig, axes, savefig=True, x_titles=[['Rhythm types']], y_titles=[['Count']],
                               y_lim=[[[0, max_y]]], main_title='UVAFDB_beats_distribution')
 
+    # TODO: move to a new script
     def generate_events_hist(self):
         """ This function generates a histogram of events lengths per patient label category across the dataset."""
         AF_events_lengths = [[], [], [], []]
@@ -303,6 +305,7 @@ class UVAFDB_Parser(BaseParser):
                               x_titles=[['Events lengths (in number of beats)'] * 2], xlabel_fontsize=20,
                               y_titles=[['Count', '']], savefig=True, main_title='UVAFDB_Events_lengths')
 
+    # TODO: move to a new script
     def generate_af_burden_hist(self, figsize=(15, 10)):
         """ This function generates a histogram of the AF burden per patient label category across the dataset."""
         AF_Burdens = [[], [], [], []]
@@ -327,6 +330,7 @@ class UVAFDB_Parser(BaseParser):
                               xlim=[[[0, 1]]],
                               savefig=True, main_title='UVAFDB_AF_Burden_hist', x_lim=[[[0, 100]]])
 
+    # TODO: move to a new script
     def generate_features_hist(self, feats_names=cts.SELECTED_FEATURES):
         """ This function generates a histogram of features per patient label category across the dataset.
         :param feats_names: The list of features to include in the histograms subplot."""
@@ -375,7 +379,8 @@ class UVAFDB_Parser(BaseParser):
                                   savefig=True, put_legend=put_legend, xticks_fontsize=16, yticks_fontsize=16)
 
     def extract_reann_pat(self):
-        """ This function looks into the Excel report present in the directory of the .BEA files to report which patients have been reannotated."""
+        """ This function looks into the Excel report present in the directory of the .BEA files to report which
+        patients have been reannotated. """
         # First extracting reannotated patients from UVA Info file
         res = pd.read_excel(self.excel_sheet_path)
         self.reann_pat = np.setdiff1d(np.array(res[res['Comments'].notnull()]['Holter ID'].apply(lambda x: x[-4:])),
