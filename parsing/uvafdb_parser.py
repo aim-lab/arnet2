@@ -82,6 +82,7 @@ class UVAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([file[3:7] for file in os.listdir(str(self.raw_ecg_path)) if file != "uvfdb_rr"])
 
+    # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
     def parse_reference_annotation(self, id, combine=True): #, reannotated=False):
         _, _, _, beats, _, _, rhythm, _ = self.readbea(self.bea_path / ("UVA" + id + '.bea'))
         beats = ((beats / cts.N_MS_IN_S) * self.actual_fs).astype(int)
