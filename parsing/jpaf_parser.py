@@ -188,7 +188,7 @@ class JPAFDB_Parser(BaseParser):
         ecg.reset_index(drop=True, inplace=True)
         return ecg
 
-    def record_diagnosis(self, patient_id, win):
+    def _af_pat_clinical_lab(self, patient_id, win):
         afl_cases = np.array(self.excel_sheet["Study ID"][
                                  self.excel_sheet['AFL?'].str.contains('yes', na=False)].values)
         per_af = np.array(self.excel_sheet["Study ID"][
