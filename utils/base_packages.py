@@ -39,6 +39,9 @@ import random
 import pickle
 import re
 import matplotlib.ticker as tick
+from scipy.signal import savgol_filter, butter, sosfreqz, sosfiltfilt
+import mne
+import scipy
 
 sys.path.append('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization\\parsing\\')
 sys.path.append('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization\\utils\\')
