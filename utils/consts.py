@@ -55,6 +55,7 @@ RR_FILE_THRESHOLD = 3 * N_S_IN_HOUR     # Criterion for exclusion of a whole rec
 AF_MILD_THRESHOLD = 30                  # Threshold on AF Burden to define a patient as Mild AF patient. CAREFUL ! TIME IN SECONDS HERE
 AF_MODERATE_THRESHOLD = 0.04            # Threshold on AF Burden to define a patient as Moderate AF patient
 AF_SEVERE_THRESHOLD = 0.8               # Threshold on AF Burden to define a patient as Severe AF patient
+AF_PERSISTENT_THRESHOLD = 0.99          # Threshold on AF burden to define patient as Persistent AF patient
 SQI_FILE_THRESHOLD = 0.75               # Threshold on the number of corrupted windows (based on bsqi criterion) to exclude a file
 SQI_WINDOW_THRESHOLD = 0.8              # Threshold on the bsqi criterion to exclude a window
 MISSING_ANN_THRESHOLD = 0.75            # Threshold on the percentage of missing annotations to exclude a file.
