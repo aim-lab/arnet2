@@ -74,6 +74,28 @@ class JPAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
+    # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
+    def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
+        record = self.read_ecg(id)
+        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
+        # beat = np.array([ann.pos.values])
+        tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        # else:
+        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
+        if combine:
+            rhythm[rhythm == self.rhythms_dict['AFL']] = self.rhythms_dict['AFIB']
+        return (tbeats * self.actual_fs).astype(int), rhythm
+
     def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
@@ -104,27 +126,6 @@ class JPAFDB_Parser(BaseParser):
         ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
         ann -= start_sample
         return record, ann
-
-    def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
-        record = self.read_ecg(id)
-        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
-        beat = np.array([ann.pos.values])
-        tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
-        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        # if reannotated:
-        #     rhythm_df = self.parse_reference_rhythm(id)
-        #     for index, l in rhythm_df.iterrows():
-        #         l1 = np.abs(tbeats - l.Beginning)
-        #         l2 = np.abs(tbeats - l.End)
-        #         begin = np.where(l1 == l1.min())
-        #         end = np.where(l2 == l2.min())
-        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
-        # else:
-        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
-        if combine:
-            rhythm[rhythm == self.rhythms_dict['AFL']] = self.rhythms_dict['AFIB']
-        return (tbeats * self.actual_fs).astype(int), rhythm
 
     def parse_demographic_features(self, id):
         age = float(self.excel_sheet.loc[self.excel_sheet["Study ID"] == id, 'Age'])
