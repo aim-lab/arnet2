@@ -3,7 +3,6 @@ import utils.consts as cts
 import utils.graphics as graph
 import utils.feature_comp as fc
 import utils.data_processing as dp
-from preprocessing.Feature_extractor import bandpass_filter
 import utils.in_out as i_o
 import scipy.interpolate as interp
 from scipy.io import savemat
@@ -276,7 +275,6 @@ class BaseParser:
             df = pd.read_csv(directory / rhythm_f[0], sep="\s+|;|,", error_bad_lines=False, skiprows=6, engine='python')
             return df
 
-
     def generate_annotations(self, types=None, pat_list=None, force=False, lead=1):
         """ This function generates the peak annotations for all the patients in the database.
         :param types: Tuple containing the names of the annotations to be generated.
@@ -463,7 +461,6 @@ class BaseParser:
                                                                      len(testqrs)),
                                                                  self.actual_fs * np.ones(
                                                                      len(testqrs)))))
-
     def _win_lab(self, id, win):
         """ Computes the label of a window. The label is computed based on the most represented label over the window.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
@@ -478,7 +475,6 @@ class BaseParser:
         max_lab_count = np.max(counts, axis=0).astype(float)
         self.win_lab_dict[id][win] = np.argmax(counts, axis=0).astype(float)
         self.win_lab_dict[id][win][count_nan > max_lab_count] = np.nan
-
 
     def _af_win_lab(self, id, win):
         """ Computes the binary AF label of a window. The label is computed based on the most represented label over the window.

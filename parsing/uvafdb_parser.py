@@ -28,7 +28,7 @@ class UVAFDB_Parser(BaseParser):
         self.n_leads = 3
         self.ref_lead = 1
         self.name = "UVAFDB"
-        self.ecg_format = "rf"
+        self.ecg_format = ".rf"
 
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR
@@ -109,25 +109,27 @@ class UVAFDB_Parser(BaseParser):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead):
-        file = self.raw_ecg_path / ("UVA" + id + ".rf")
-        record = self._read_rf(file, lead=lead - 1)
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
         return record
 
-    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
-        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + '.rf'), lead=lead - 1)
-        ann = self.parse_annotation(id, type=type, lead=lead)
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
+        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + self.ecg_format), lead=lead - 1)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        if self.windows_shifted:
-            ann = ann[self.window_size // 2:]
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(id, type=type, lead=lead)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            if self.windows_shifted:
+                    ann = ann[self.window_size // 2:]
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_demographic_features(self, id):
         age = float(self.excel_sheet[self.excel_sheet["Holter ID"] == "UVA" + id]["age_at_recording"])
@@ -184,7 +186,8 @@ class UVAFDB_Parser(BaseParser):
 
     # TODO: move to a new script
     def generate_beats_hist(self, figsize=(15, 15), remove_N=True):
-        """ This function generates a bar plot with the number of beats for the most represented rhythms in the dataset."""
+        """ This function generates a bar plot with the number of beats for the most represented rhythms in the
+        dataset. """
         max_y = 0.5 * 1e8
         jump = 2
         beats_threshold = 1e6

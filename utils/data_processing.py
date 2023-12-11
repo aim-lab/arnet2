@@ -132,3 +132,89 @@ def check_stratification(X_train, X_test, y_train, y_test, plot=False, feats_nam
                     graph.complete_figure(fig, axes, suptitle=feats_name[index])
                 else:
                     graph.complete_figure(fig, axes)
+
+
+def bandpass_filter(data, id, lead, lowcut, highcut, signal_freq, filter_order,  notch_freq=50, debug=False):
+    """This function uses a Butterworth filter. The coefficoents are computed automatically. Lowcut and highcut are in Hz"""
+    nyquist_freq = 0.5 * signal_freq
+    low = lowcut / nyquist_freq
+    high = highcut / nyquist_freq
+    sos = butter(filter_order, [low, high], btype="band", output='sos', analog=False)
+    y = sosfiltfilt(sos, data)
+    y = mne.filter.notch_filter(y.astype(np.float), signal_freq, freqs=notch_freq, verbose=debug)
+    if debug:
+        filename_freq = "exam_" + str(id) + "_lead_" + str(lead) + ".png"
+        filename_spect = "exam_" + str(id) + "_lead_" + str(lead) + "_spect.png"
+
+        # get_freq_plot(data, y, sos, filter_order, signal_freq, filename_freq)
+        get_spect_plot(data, y, signal_freq, filename_spect, dpi=400)
+    return y
+
+def get_freq_plot(y_orig, y_filt, coefs, order, fs, filename):
+    w, h = sosfreqz(coefs, worN=2000)
+    plt.subplot(2, 1, 1)
+    plt.plot(0.5 * fs * w / np.pi, np.abs(h), '#3465a4')
+    plt.title("Bandpass Filter Frequency Response, order=" + str(order))
+    plt.xlabel('Frequency [Hz]')
+    plt.grid()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(0.5 * fs * w / np.pi, np.abs(h), '#3465a4')
+    plt.xlim(0, 3)
+    plt.title("Bandpass Filter Frequency Response, order=" + str(order))
+    plt.xlabel('Frequency [Hz]')
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(cts.REPO_DIR / "AIMLab_report" / "MOR" / "Filtering" / filename, dpi=400)
+    plt.close()
+    return
+
+
+def get_spect_plot(y_orig, y_filt, fs, filename, dpi=400):
+    labels = ["(a)", "(b)"]
+    # get the FFT of the signals
+    ps_orig = np.abs(np.fft.fft(y_orig)) ** 2
+    ps_filt = np.abs(np.fft.fft(y_filt)) ** 2
+    t = np.linspace(0, len(y_orig) / fs, len(y_orig))
+    time_step = 1 / fs
+    freqs_orig = np.fft.fftfreq(ps_orig.size, time_step)
+    idx_orig = np.argsort(freqs_orig)
+    freqs_filt = np.fft.fftfreq(ps_filt.size, time_step)
+    idx_filt = np.argsort(freqs_filt)
+    ps_orig_log = 10 * np.log10(ps_orig)
+    ps_filt_log = 10 * np.log10(ps_filt)
+
+    # Get the PSD of the signals using welch method
+    fx, Pxx = scipy.signal.welch(y_orig, fs, nperseg=len(y_orig))
+    fy, Pyy = scipy.signal.welch(y_filt, fs, nperseg=len(y_filt))
+    ps_orig_log = 10 * np.log10(Pxx)
+    ps_filt_log = 10 * np.log10(Pyy)
+    fig = plt.figure(dpi=400)
+    ax0 = plt.subplot(2, 1, 1)
+    ax0.semilogy(fx, Pxx, color='r', linewidth=1, label='Raw ECG', )
+    ax0.semilogy(fy, Pyy, color='#3465a4', linewidth=0.5, label='Filtered ECG', )
+
+    ax0.set_title('Power spectrum density')
+    ax0.set_xlabel('Frequency [Hz]')
+    ax0.set_ylabel("PSD (V^2/Hz)")
+    ax0.grid(True, which='both')
+    ax0.legend(loc=1)
+
+    ax1 = plt.subplot(2, 1, 2)
+    ax1.plot(t, y_orig * 10, color='r', linewidth=1)
+    ax1.plot(t, y_filt * 10, color='#3465a4', linewidth=0.8)
+    ax1.set_xlabel('Time [sec]')
+    ax1.set_ylabel('V [mv]')
+    ax1.grid(True, which='both')
+
+    Y1 = ax0.get_tightbbox(fig.canvas.get_renderer())
+    for a, label in zip([ax0, ax1], labels):
+        bbox = a.get_tightbbox(fig.canvas.get_renderer())
+        fig.text(Y1.x0 - 50, bbox.y1 + 100, label, fontsize=14, va="top", ha="left",
+                 transform=None)
+    ax1.set_xlim(1,5)
+    plt.tight_layout()
+    plt.savefig(cts.REPO_DIR / "AIMLab_report" / "MOR" / "Filtering" / filename, dpi=dpi)
+    print(cts.REPO_DIR / "AIMLab_report" / "MOR" / "Filtering" / filename)
+    plt.close()
+    return
