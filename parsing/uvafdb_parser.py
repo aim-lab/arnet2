@@ -116,7 +116,7 @@ class UVAFDB_Parser(BaseParser):
         return record
 
     def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
-        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + '.rf'), lead=lead - 1)
+        ecg = self._read_rf(self.raw_ecg_path / ('UVA' + id + self.ecg_format), lead=lead - 1)
         ann = self.parse_annotation(id, type=type, lead=lead)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
