@@ -35,7 +35,7 @@ class RBAFDB_Parser(BaseParser):
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "dataset"
         self.orig_anns_path = None
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
