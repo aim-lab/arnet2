@@ -102,7 +102,7 @@ class JPAFDB_Parser(BaseParser):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead, filter_signal=True):
-        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False, filter_signal=filter_signal)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
         return record
