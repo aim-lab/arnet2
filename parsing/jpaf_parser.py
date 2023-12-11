@@ -101,31 +101,31 @@ class JPAFDB_Parser(BaseParser):
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead):
-        record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        re_record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                       signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
-        re_record = dp.resample_by_interpolation(re_record, self.orig_fs, self.actual_fs)
+    def record_to_wfdb(self, id, lead, filter_signal=True):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
-        return re_record
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
+        return record
 
-    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0'):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
-
+        if filter_signal:
+            record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
+                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(id, type=type, lead=lead)
-        ann = i_o.qrs_adjust(ecg=record, qrs=ann, fs=self.actual_fs, inputsign=1)
         if end == -1:
             end = int(len(record) / self.actual_fs)
         start_sample = int(start * self.actual_fs)
         end_sample = int(end * self.actual_fs)
         record = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return record, ann
+        if read_ann:
+            ann = self.parse_annotation(id, type=type, lead=lead)
+            ann = i_o.qrs_adjust(ecg=record, qrs=ann, fs=self.actual_fs, inputsign=1)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return record, ann
+        else:
+            return record
 
     def parse_demographic_features(self, id):
         age = float(self.excel_sheet.loc[self.excel_sheet["Study ID"] == id, 'Age'])
