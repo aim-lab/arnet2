@@ -109,7 +109,7 @@ class UVAFDB_Parser(BaseParser):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead):
-        file = self.raw_ecg_path / ("UVA" + id + ".rf")
+        file = self.raw_ecg_path / ("UVA" + id + self.ecg_format)
         record = self._read_rf(file, lead=lead - 1)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
