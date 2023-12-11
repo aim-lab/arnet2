@@ -78,7 +78,6 @@ class RBAFDB_Parser(BaseParser):
         self.searchPer = ['ACUTE', 'CHRONIC']
         self.searchPar = ['PAROXYSMAL', 'FIBRILLATION']
         self.searchFlutter = ['FLUTTER']
-        # TODO: check Hebrew chars in the excel sheet reading
         self.excel_sheet_path_prometheus = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info_prometheus.xlsx"
         self.excel_sheet_path_mdclone = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info_mdclone.xlsx"
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info.xlsx"
@@ -94,59 +93,6 @@ class RBAFDB_Parser(BaseParser):
         # ------------------------------------------------------------------------- #
         """
         """ These functions are documented in the base parser."""
-
-    # def _af_win_lab(self, id, win):
-    #     """ Computes the binary AF label of a window. The label is computed based on the most represented label over the window.
-    #     :param id: The patient ID. Assumed to be in the list of IDs present in the database.
-    #     :param win: The window size (in number of beats) along which the raw recording is divided.
-    #     """
-    #     if id not in self.af_win_lab_dict.keys():
-    #         self.af_win_lab_dict[id] = {}
-    #     self.af_win_lab_dict[id][win] = np.logical_or(
-    #         self.win_lab_dict[id][win] == cts.WINDOW_LABEL_AF_RB[0],
-    #         self.win_lab_dict[id][win] == cts.WINDOW_LABEL_AF_RB[1])
-
-    # def _af_pat_lab(self, id):
-    #     """ Computes the AF Burden and the global label for a given patient. The AF Burden is computed as the time
-    #     spent on AF divided by the total time of the recording. The different categories of patients are: Non-AF (Time in AF
-    #     does not exceed 30 [sec], Mild AF (Time in AF above 30 [sec] and AFB under 4%), Moderate AF (AFB between 4 and 80%),
-    #     and Severe AF (AFB between 80 and 100%). If the burden of a given pathology for a patient is over 50%, we flag him as a patient
-    #     suffering from another CVD (label cts.PATIENT_LABEL_OTHER_CVD). As a convention, for windows, 0 is the label for NSR, 1 for AF, and above
-    #     2 for other rhythms.
-    #     :param id: The patient ID. Assumed to be in the list of IDs present in the database.
-    #     """
-    #     # Using minimal window size to have the higher granularity
-    #     win = min(self.loaded_window_sizes)
-    #     raw_rr = self.rr_dict[id][:(len(self.rr_dict[id]) // win) * win].reshape(-1, win)[
-    #         self.mask_rr_dict[id][win]].reshape(-1)
-    #     raw_rlab = self.rlab_dict[id][:(len(self.rlab_dict[id]) // win) * win].reshape(-1, win)[
-    #         self.mask_rr_dict[id][win]].reshape(-1)
-    #     if np.all(np.isnan(raw_rlab)):  # Case where the labels are not available (like in SHHS)
-    #         self.af_burden_dict[id] = np.nan
-    #         self.af_pat_lab_dict[id] = np.nan
-    #         self.other_cvd_burden_dict[id] = np.nan
-    #         self.missing_af_label = np.append(self.missing_af_label, id)
-    #     else:
-    #         time_in_af = raw_rr[np.logical_or(
-    #             raw_rlab == cts.WINDOW_LABEL_AF_RB[0],
-    #             raw_rlab == cts.WINDOW_LABEL_AF_RB[1])].sum()  # Deriving time in AF.
-    #         self.af_burden_dict[id] = time_in_af / self.recording_time[id]  # Computing AF Burden.
-    #
-    #         np.logical_or(np.isnan(raw_rlab), raw_rlab == cts.WINDOW_LABEL_NON_AF_RB)
-    #
-    #         self.other_cvd_burden_dict[id] = np.sum(~np.logical_or(np.isnan(raw_rlab),
-    #                                                                raw_rlab == cts.WINDOW_LABEL_NON_AF_RB)) / \
-    #                                          self.recording_time[id]  # Computing Other CVD Burden.
-    #         if self.af_burden_dict[id] > cts.AF_SEVERE_THRESHOLD:  # Assessing the class according to the guidelines
-    #             self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_AF_SEVERE
-    #         elif self.af_burden_dict[id] > cts.AF_MODERATE_THRESHOLD:
-    #             self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_AF_MODERATE
-    #         elif time_in_af > cts.AF_MILD_THRESHOLD:
-    #             self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_AF_MILD
-    #         elif self.other_cvd_burden_dict[id] > 0.5:
-    #             self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_OTHER_CVD
-    #         else:
-    #             self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_NON_AF
 
     def parse_available_ids(self):
         return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
