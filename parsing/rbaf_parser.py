@@ -21,6 +21,7 @@ class RBAFDB_Parser(BaseParser):
             ['M020D42a', 'N919K291', '1021B555', '1021Ccb6', '1220A159', '1021Cd9d', '1319B64e', '1520979c', 'V420Fb4c',
              '7A21B043', 'C92183cc', 'D921E33b', 'G320C992', '4B19C4cc', 'M020D7d1', 'M020D8bd', 'M020Da15', 'M020Dc24', 'N919Gd30',
              'R720B607', 'R720B6bc', 'E020F4e1', '4B19C4cc', '9A21C58a'])
+
         """Helper variables"""
         self.window_size = window_size
 
