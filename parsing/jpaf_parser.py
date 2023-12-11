@@ -169,12 +169,6 @@ class JPAFDB_Parser(BaseParser):
     # ------------------------------------------------------------------------- #
     """
 
-    def get_META(self):
-        '''
-        CSV Columns
-        '''
-        # load and convert annotation data
-
     def get_dir(self, id):
         return [i for i in os.listdir(self.raw_ecg_path) if i.startswith(id)]
 
