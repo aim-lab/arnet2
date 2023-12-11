@@ -1,26 +1,18 @@
-import sys
-
-import numpy as np
-
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/src')
 from base_parser import *
-warnings.filterwarnings('ignore')
-import utils.dat_reader as dr
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 
 class RBAFDB_Parser(BaseParser):
 
-    def __init__(self, window_size=60, load_on_start=True, load_beat_flags=True):
+    def __init__(self, window_size=60, load_on_start=True):
 
         super(RBAFDB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
