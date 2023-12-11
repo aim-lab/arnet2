@@ -170,9 +170,12 @@ class JPAFDB_Parser(BaseParser):
     """
 
     def get_dir(self, id):
+        """ This function returns all directories starting with same id"""
         return [i for i in os.listdir(self.raw_ecg_path) if i.startswith(id)]
 
     def read_ecg(self, id):
+        """ This function reads and returns the ecg signal belonging to id.
+        The ecg is stored in a csv file with two columns: ch1 and ch2 storing two ecg channels."""
         id_dir = self.get_dir(str(id))[0]
         example_path = self.raw_ecg_path / id_dir / (str(id) + self.ecg_format)
         chunks = pd.read_csv(example_path, iterator=True, chunksize=1000000, encoding='unicode_escape',
@@ -200,7 +203,11 @@ class JPAFDB_Parser(BaseParser):
         ecg.reset_index(drop=True, inplace=True)
         return ecg
 
+    #TODO: rename circadian dict
     def parse_circadian_features(self, id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording.
+        start_recording: the relative time of the day for when the recording started."""
         if id not in self.circadian_dict.keys():
             self.circadian_dict[id] = {}
         self.circadian_dict[id]['recording_date'] = self.read_ecg(id).date[0].date()
@@ -210,61 +217,13 @@ class JPAFDB_Parser(BaseParser):
 
     # TODO: improve function
     def load_circardian_from_disk(self, patient_list=None):
+        """ This functions loads circadian_dict that was created by parse_circadian_features."""
         if patient_list is None:
             patient_list = self.parsed_patients()
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
                                                                allow_pickle=True).item()
-
-    def read_ann(self, id, start_time=None, end_time=None):
-        id_dir = self.get_dir(str(id))[0]
-        example_path = self.raw_ecg_path / id_dir / self.csv_dir
-        RR_df = pd.DataFrame([])
-        ann_files = os.listdir(example_path)
-        ann_files.sort()
-        for f in ann_files:
-            chunks = pd.read_csv(example_path / f, iterator=True, chunksize=1000000, encoding='unicode_escape',
-                                 usecols=[0, 1, 2], names=['time', 'ann', 'pos'],
-                                 header=None, dtype={"NA": 'string', "ann": 'string', 'pos': 'string'})
-            df2 = pd.concat(chunks, ignore_index=True)
-            if len(df2[df2['pos'].str.contains("RR", na=False)]) > 0:
-                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0] + 1:]
-            RR_df = RR_df.append(df2)
-        RR_df.reset_index(inplace=True, drop=True)
-        RR_df['pos'] = RR_df['pos'].astype(int)
-        # df2 = df2.sort_values(by ='loc', ascending=True, na_position='last')
-        ann = RR_df['ann']
-        loc = RR_df['pos']
-        time_df = RR_df['time']
-        real_start = time.strftime('%-H:%M', time.gmtime(start_time))
-        time_ann_start = time_df[time_df == real_start].index[0]
-        real_end = time.strftime('%-H:%M', time.gmtime(end_time))
-        temp_time_df = time_df[time_ann_start + 1:]
-        if len(temp_time_df[temp_time_df == real_end]) == 0:
-            time_ann_end = time_df.index[-1]
-        else:
-            if time_df[time_df == real_end].index[-1] < 4000:
-                time_ann_end = time_df.index[-1]
-            else:
-                time_ann_end = time_df[time_df == real_end].index[-1]
-        # else:
-        #     time_ann_start=0
-        #     time_ann_end = len(time_df)
-        ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
-
-        return ann_dict.iloc[time_ann_start:time_ann_end + 1]
-
-    def return_data(self, ids, feats_to_use, fillna=True, normalize=False):
-        final = tuple()
-        # X, y, glob_lab = db.return_features(pat_list=ids, feats_list=feats_to_use,
-        #                                                       return_global_label=True)
-        ids_rr = db.return_patient_ids(pat_list=ids)
-        rr, rrt, _ = db.return_rr(pat_list=ids)
-        prec = db.return_preceeding_windows(pat_list=ids)
-        data = np.concatenate((rr, prec.reshape(-1, 1), ids_rr.reshape(-1, 1)), axis=1)
-
-        return data, rrt
 
 
 if __name__ == '__main__':
