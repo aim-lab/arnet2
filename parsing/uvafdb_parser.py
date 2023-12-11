@@ -186,7 +186,8 @@ class UVAFDB_Parser(BaseParser):
 
     # TODO: move to a new script
     def generate_beats_hist(self, figsize=(15, 15), remove_N=True):
-        """ This function generates a bar plot with the number of beats for the most represented rhythms in the dataset."""
+        """ This function generates a bar plot with the number of beats for the most represented rhythms in the
+        dataset. """
         max_y = 0.5 * 1e8
         jump = 2
         beats_threshold = 1e6
