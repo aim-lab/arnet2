@@ -31,15 +31,6 @@ class RBAFDB_Parser(BaseParser):
         self.n_leads = 3
         self.name = "RBAFDB"
         self.ecg_format = ".dat"
-        self.rhythms = np.array(['DB', 'P', 'VT', 'SVT', 'PREA', 'SALVO', 'BR', 'TRI',
-                                 'TRI', 'B', 'T', 'C', 'RoT', 'ISOL', 'PREN', 'COMPP',
-                                 'MAHR', 'MIHR', 'ALB', 'N', 'ABER', 'S', 'INH', 'PAT', 'F', 'AFIB',
-                                 'AFIB', 'INH', 'CAL', 'AT'])
-        self.rhythms_dict = {0: 'DB', 1: 'P', 2: 'VT', 3: 'SVT', 4: 'PREA', 5: 'SALVO', 6: 'BR',
-                             7: 'TRI', 8: 'TRI', 9: 'B', 10: 'T', 11: 'C', 12: 'RoT', 13: 'ISOL',
-                             14: 'PREN', 15: 'COMPP', 16: 'MAHR', 17: 'MIHR', 18: 'ALB', 19: '(N',
-                             20: 'ABER', 21: 'S', 22: 'INH', 23: 'PAT', 133: 'F', 147: 'AFIB', 148: 'AFIB',
-                             149: 'INH', 150: 'CAL', 151: 'AT'}
 
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "dataset"
@@ -75,6 +66,15 @@ class RBAFDB_Parser(BaseParser):
         self.file_format = ".dat"
         self.beats_shape = {1: 'N', 3: 'N', 4: 'AB', 5: 'I',
                             6: 'P'}  # The different rhythms present across the dataset. N: NORMAL', AB: 'ABERRANT', I: 'INHIBIT', P: 'PACED'}
+        self.file_rhythms = np.array(['DB', 'P', 'VT', 'SVT', 'PREA', 'SALVO', 'BR', 'TRI',
+                                      'TRI', 'B', 'T', 'C', 'RoT', 'ISOL', 'PREN', 'COMPP',
+                                      'MAHR', 'MIHR', 'ALB', 'N', 'ABER', 'S', 'INH', 'PAT', 'F', 'AFIB',
+                                      'AFIB', 'INH', 'CAL', 'AT'])
+        self.file_rhythms_dict = {0: 'DB', 1: 'P', 2: 'VT', 3: 'SVT', 4: 'PREA', 5: 'SALVO', 6: 'BR',
+                                  7: 'TRI', 8: 'TRI', 9: 'B', 10: 'T', 11: 'C', 12: 'RoT', 13: 'ISOL',
+                                  14: 'PREN', 15: 'COMPP', 16: 'MAHR', 17: 'MIHR', 18: 'ALB', 19: '(N',
+                                  20: 'ABER', 21: 'S', 22: 'INH', 23: 'PAT', 133: 'F', 147: 'AFIB', 148: 'AFIB',
+                                  149: 'INH', 150: 'CAL', 151: 'AT'}
         self.searchPer = ['ACUTE', 'CHRONIC']
         self.searchPar = ['PAROXYSMAL', 'FIBRILLATION']
         self.searchFlutter = ['FLUTTER']
