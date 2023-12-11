@@ -97,24 +97,24 @@ class RBAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_reference_annotation(self, id, combine=True, export_to_physiozoo=False, reannotated=False):
+    def parse_reference_annotation(self, id, combine=True): # , export_to_physiozoo=False, reannotated=False):
         orig_beats = dr.combtime_file_reader(self.raw_ecg_path / (id + '.FUL') / (
                     self.beat_time_file_name + '.dat'))  # , self.recording_time_stamp[id]['start_recording'])
         beats = np.round(orig_beats * (self.actual_fs / self.orig_fs)).astype(int) # with respect to time 0
-        tbeats = beats/ self.actual_fs
-        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-        if reannotated:
-            rhythm_df = self.parse_reference_rhythm(id)
-            for index, l in rhythm_df.iterrows():
-                l1 = np.abs(tbeats - l.Beginning)
-                l2 = np.abs(tbeats - l.End)
-                begin = np.where(l1 == l1.min())
-                end = np.where(l2 == l2.min())
-                ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
-            rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
-            if combine:
-                rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
-        else:
+        # tbeats = beats/ self.actual_fs
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        #     rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        #     if combine:
+        #         rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
+        # else:
             arrhevent_data = dr.read_arrhevnt_file(
                 self.raw_ecg_path / (id + self.dir_format) / (self.event_file_name + self.file_format))
             arrhevent_data_sorted = arrhevent_data.sort_values(by=['beginning'])
