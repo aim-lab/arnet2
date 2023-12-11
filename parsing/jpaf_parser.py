@@ -60,7 +60,8 @@ class JPAFDB_Parser(BaseParser):
         self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
         self.circadian_dict = {}
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_AF_latest.xlsx"
-        self.get_META()
+        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
+        self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
         self.over_18_patients = np.array(self.excel_sheet[self.excel_sheet["Age"] >= 18]
                                          ["Study ID"]).astype('<U32')
 
@@ -173,8 +174,6 @@ class JPAFDB_Parser(BaseParser):
         CSV Columns
         '''
         # load and convert annotation data
-        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
-        self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
 
     def get_dir(self, id):
         return [i for i in os.listdir(self.raw_ecg_path) if i.startswith(id)]
