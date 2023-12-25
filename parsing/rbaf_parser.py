@@ -91,12 +91,12 @@ class RBAFDB_Parser(BaseParser):
         self.over_18_patients = np.array(self.excel_sheet[self.excel_sheet["age_at_recording"] >= 18]
                                          ["db_id"]).astype('<U32')
 
-        """
-        # ------------------------------------------------------------------------- #
-        # ----- Parsing functions: have to be overridden by the child classes ----- #
-        # ------------------------------------------------------------------------- #
-        """
-        """ These functions are documented in the base parser."""
+    """
+    # ------------------------------------------------------------------------- #
+    # ----- Parsing functions: have to be overridden by the child classes ----- #
+    # ------------------------------------------------------------------------- #
+    """
+    """ These functions are documented in the base parser."""
 
     def parse_available_ids(self):
         return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
