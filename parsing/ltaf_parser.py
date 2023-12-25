@@ -78,9 +78,9 @@ class LTAFDB_Parser(BaseParser):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead):
-        ecg = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg.reshape(-1, 1), fmt=['16'])
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
 
     def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
         record = wfdb.rdrecord(str(self.raw_ecg_path / patient_id))
