@@ -298,37 +298,6 @@ class RBAFDB_Parser(BaseParser):
         files_id = np.array([f.split('.')[0] for f in os.listdir(self.raw_ecg_path / (patient_id + '.FUL'))])
         return len(files_id[np.isin(files_id, self.ecg_files_name)])
 
-    #
-    # def export_mat(self, id, df_af, n_lead, ann_type='epltd0'):
-    #     point = 5 * db.actual_fs  # taking 5 sec before and after each segment
-    #
-    #     # ecg, annot = db.parse_raw_ecg(id)
-    #     for i, r in df_af.iterrows():
-    #         ecg = []
-    #         annot = []
-    #         for i in range(1, n_lead+1):
-    #             record = dr.read_ecg_file(
-    #                 self.raw_ecg_path / (id + '.FUL') / (self.ecg_file_name + str(i) + '.dat'))
-    #             re_record = dp.resample_by_interpolation(record, self.orig_fs, cts.EPLTD_FS)
-    #             re_record = re_record[int(r.start_time * self.actual_fs) - point:int(r.end_time * self.actual_fs) + point]
-    #             wfdb.wrsamp(id, fs=cts.EPLTD_FS, units=['mV'],
-    #                         sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
-    #             detector = getattr(i_o,
-    #                                ann_type + '_detector')  # Calling the correct wrapper in the feature comp module.
-    #             detector(id)  # Running the wrapper
-    #             shutil.move(id + '.' + ann_type, self.generated_anns_path / 'wins' / ann_type / (
-    #                     id + '.' + ann_type))
-    #             ann = wfdb.rdann(str(self.generated_anns_path / 'wins' / ann_type / id), ann_type).sample
-    #             ecg.append(re_record)
-    #             annot.append(ann)
-    #         data = np.array(ecg)
-    #         rqrs = np.array(annot)
-    #         mdic = {"data": data, "rqrs": rqrs, "fs": db.actual_fs, "start_": r.start_time, "end_": r.end_time,
-    #                 "recording_hour": db.circadian_dict[id]['start_recording']}
-    #         savemat(
-    #             "/home/shanybiton/repos/Lund/wins/" + str(id) + "_af_win_start_" + str(r.start_time) + "_end_" + str(
-    #                 r.end_time) + ".mat", mdic)
-
 
 if __name__ == '__main__':
     import pathlib
