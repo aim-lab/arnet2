@@ -115,23 +115,23 @@ class RBAFDB_Parser(BaseParser):
         #     if combine:
         #         rhythm[rhythm == cts.rhythms_dict['AFL']] = cts.rhythms_dict['AFIB']
         # else:
-            arrhevent_data = dr.read_arrhevnt_file(
-                self.raw_ecg_path / (id + self.dir_format) / (self.event_file_name + self.file_format))
-            arrhevent_data_sorted = arrhevent_data.sort_values(by=['beginning'])
-            start_rhythm = [(x / 128) for x in arrhevent_data_sorted['beginning']]
-            end_rhythm = [(x / 128) for x in arrhevent_data_sorted['end']]
-            event_data = np.array(arrhevent_data['class']).astype(int)
-            rhythm_time_intervals = np.append(np.array(start_rhythm).reshape(-1, 1), np.array(end_rhythm).reshape(-1, 1), 1)
-            rhythm_intervals = np.round(rhythm_time_intervals * self.actual_fs).astype(int)
-            rhythms = np.concatenate((rhythm_intervals, np.array(event_data.astype(int)).reshape(-1, 1)), axis=1)
-            rhythm = np.full(len(beats), np.nan)
-            for i, r in enumerate(rhythms):
-                rhythm[np.logical_and(
-                    beats >= rhythms[i][0],
-                    beats <= rhythms[i][1]
-                )] = rhythms[i][2]
-        if export_to_physiozoo:
-            return beats, rhythm, arrhevent_data_sorted, event_data
+        arrhevent_data = dr.read_arrhevnt_file(
+            self.raw_ecg_path / (id + self.dir_format) / (self.event_file_name + self.file_format))
+        arrhevent_data_sorted = arrhevent_data.sort_values(by=['beginning'])
+        start_rhythm = [(x / self.orig_fs) for x in arrhevent_data_sorted['beginning']]
+        end_rhythm = [(x / self.orig_fs) for x in arrhevent_data_sorted['end']]
+        event_data = np.array(arrhevent_data['class']).astype(int)
+        rhythm_time_intervals = np.append(np.array(start_rhythm).reshape(-1, 1), np.array(end_rhythm).reshape(-1, 1), 1)
+        rhythm_intervals = np.round(rhythm_time_intervals * self.actual_fs).astype(int)
+        rhythms = np.concatenate((rhythm_intervals, np.array(event_data.astype(int)).reshape(-1, 1)), axis=1)
+        rhythm = np.full(len(beats), np.nan)
+        for i, r in enumerate(rhythms):
+            rhythm[np.logical_and(
+                beats >= rhythms[i][0],
+                beats <= rhythms[i][1]
+            )] = rhythms[i][2]
+        # if export_to_physiozoo:
+        #     return beats, rhythm, arrhevent_data_sorted, event_data
         return beats, rhythm
 
     def _win_lab(self, id, win):
