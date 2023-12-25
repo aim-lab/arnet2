@@ -65,6 +65,8 @@ class RBAFDB_Parser(BaseParser):
         self.beat_flag_file_name = 'combflag'
         self.dir_format = ".FUL"
         self.file_format = ".dat"
+        self.circadian_dict = {}
+        self.beat_flags = {}
         self.beats_shape = {1: 'N', 3: 'N', 4: 'AB', 5: 'I',
                             6: 'P'}  # The different rhythms present across the dataset. N: NORMAL', AB: 'ABERRANT', I: 'INHIBIT', P: 'PACED'}
         self.file_rhythms = np.array(['DB', 'P', 'VT', 'SVT', 'PREA', 'SALVO', 'BR', 'TRI',
@@ -217,7 +219,7 @@ class RBAFDB_Parser(BaseParser):
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
     def load_beat_flags(self, wins=None, pat_list=None):
-        """ This function loads the number of ectopic beats per window for the UVAF dataset.
+        """ This function loads the number of ectopic beats per window for the RBAF dataset.
             :param wins: The windows for which the number of ectopics should be loaded.
         """
         print("Loading beat flags")
