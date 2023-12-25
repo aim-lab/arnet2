@@ -50,6 +50,7 @@ class LTAFDB_Parser(BaseParser):
         # ---------------- Local variables (relevant only to LTAFDB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
+        self.circadian_dict = {}
         self.over_18_patients = self.parse_available_ids()
 
     """
@@ -108,14 +109,26 @@ class LTAFDB_Parser(BaseParser):
     def parse_demographic_features(self, id):
         pass  # This data is not available for this dataset.
 
+    """
+    # ------------------------------------------------------------------------- #
+    # ---------------- Functions relative to this dataset only ---------------- #
+    # ------------------------------------------------------------------------- #
+    """
+
     def parse_circadian_features(self, id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording."""
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / id))
         if id not in self.circadian_dict.keys():
             self.circadian_dict[id] = {}
-        self.circadian_dict[id]['recording_date'] =  fields['base_date']
-        # np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
+        self.circadian_dict[id]['recording_date'] = fields['base_date']
+        np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
     def record_diagnosis(self, patient_id, win):
+        """
+        This function records the AF diagnosis extracted from holter free text OR tabular diagnosis (diagnosis_merged).
+        The different classes are paroxysmal AF (AF severe) and persistent AF (AF mild)
+        """
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / patient_id))
         sample_descrip = fields['comments']
         if 'non atrial fibrillation' in sample_descrip:
