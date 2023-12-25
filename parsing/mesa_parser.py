@@ -99,14 +99,14 @@ class MESA_Parser(BaseParser):
         else:
             return ecg
 
-    # rlab is not relevant here. Same for af burden. Will have rlab all ones and zeros, and af burden 0 or 100%. They should not be considered.
+    # rlab is not relevant here. Same for af burden. Will have rlab all ones and zeros, and af burden 0 or 100%. They
+    # should not be considered.
+    # TODO: replace this function with parse_reference_annotation
     def parse_elem_data(self, pat):
-
         dicts_to_fill = [self.start_windows_dict, self.end_windows_dict, self.av_prec_windows_dict, self.n_excluded_windows_dict, self.mask_rr_dict]
         for dic in dicts_to_fill:
             if pat not in dic.keys():
                 dic[pat] = {}
-
         ann = self.parse_annotation(pat)
         keyword = 'unuhrou5'
         label = int((float(self.afib_tab.loc[self.afib_tab['mesaid'] == int(pat), keyword]) == 2))
@@ -147,7 +147,8 @@ class MESA_Parser(BaseParser):
         self.odi_dict[id] = len(table_desat_aa) / total_recording_time  # Definition of ODI: Number of desaturations per hour
 
     def parse_demographic_features(self, id):
-        # Age (age_s1), Hypertension (HTNDerv_s + visit), metabolic syndrome (??), BMI (bmi_s+visit), gender (gender, 0 female, 1 male), necksize (neck20, only in shhs1)
+        # Age (age_s1), Hypertension (HTNDerv_s + visit), metabolic syndrome (??), BMI (bmi_s+visit), gender (gender,
+        # 0 female, 1 male), necksize (neck20, only in shhs1)
         age = float(self.afib_tab[self.afib_tab["mesaid"] == int(id)]["sleepage5c"])
         gender = float(self.afib_tab[self.afib_tab["mesaid"] == int(id)]["gender1"])
 
@@ -159,10 +160,10 @@ class MESA_Parser(BaseParser):
 
 if __name__ == '__main__':
     db = MESA_Parser(load_on_start=True)
-    pat_list = db.parse_available_ids()
-    db.parse_raw_data(patient_list=pat_list)
+    # pat_list = db.parse_available_ids()
+    # db.parse_raw_data(patient_list=pat_list)
     # db.save_to_disk()
-    print('exporting input variables')
+    # print('exporting input variables')
     # ids = db.return_patient_ids(pat_list=pat_list, exclude_low_sqi_win=False)
     # rr, rrt, y, win_start, win_end, win_lab = db.return_rr(pat_list=pat_list, return_binary=True, exclude_low_sqi_win=False)
     # prec = db.return_preceeding_windows(pat_list=pat_list, exclude_low_sqi_win=False)
