@@ -1,12 +1,6 @@
-import sys
-#relative paths
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
-
 from base_parser import *
 
+warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
 
 
@@ -18,7 +12,7 @@ class LTAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -32,6 +26,7 @@ class LTAFDB_Parser(BaseParser):
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "LTAFDB"
         self.ecg_format = "wfdb"
         self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',

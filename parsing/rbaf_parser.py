@@ -30,6 +30,7 @@ class RBAFDB_Parser(BaseParser):
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 3
+        self.ref_lead = 1
         self.name = "RBAFDB"
         self.ecg_format = ".dat"
 
