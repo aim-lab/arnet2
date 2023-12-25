@@ -68,7 +68,7 @@ class CFS_Parser(BaseParser):
         return np.array([f.group(1) for file in os.listdir(str(self.raw_ecg_path)) for f in
                          [re.search('cfs-visit5-(.*).edf', file)] if f])
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead=1):
