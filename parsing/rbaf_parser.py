@@ -236,6 +236,9 @@ class RBAFDB_Parser(BaseParser):
                 self.beat_flags[pat][win] = beat_flags[:(len(beat_flags) // win) * win].reshape(-1, win)
 
     def parse_circadian_features(self, patient_id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording.
+        start_recording: the relative time of the day for when the recording started."""
         if patient_id not in self.circadian_dict.keys():
             self.circadian_dict[patient_id] = {}
         self.circadian_dict[patient_id]['recording_date'], self.circadian_dict[patient_id]['analysis_date'], \
@@ -244,6 +247,7 @@ class RBAFDB_Parser(BaseParser):
         np.save(self.main_path / patient_id / 'circadian_dict.npy', self.__dict__['circadian_dict'][patient_id])
 
     def load_circardian_from_disk(self, pat_list=None):
+        """ This functions loads circadian_dict that was created by parse_circadian_features."""
         self.__dict__['circadian_dict'] = {}
         if pat_list is None:
             pat_list = self.parsed_ecgs
