@@ -1,6 +1,4 @@
 from base_parser import *
-import re
-import pyedflib
 
 warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
@@ -14,9 +12,11 @@ class CFS_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
+        """Missing records"""
+        self.missing_ecg = np.array([])
 
         """Helper variables"""
         self.window_size = window_size
@@ -25,34 +25,29 @@ class CFS_Parser(BaseParser):
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 1
+        self.ref_lead = 1
         self.name = "CFS"
-        self.ecg_format = "edf"
-        self.rhythms = np.array(['(N', '(AFIB'])
-
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.ecg_format = ".edf"
 
         """Variables relative to the different paths"""
-        cts.DATA_DIR = pathlib.PurePath('/MLAIM') / "databases"
-        self.raw_ecg_path = cts.DATA_DIR / 'cfs' / 'polysomnography' / 'edfs'
+        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / 'polysomnography' / 'edfs'
         self.orig_anns_path = None
-        self.generated_anns_path =  cts.BASE_DIR / "Shany" / "Annotations" / self.name
-        self.annotation_types = cts.ANNOTATION_TYPES
-        # self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
+        self.generated_anns_path =  cts.GEN_ANN_DIR / self.name
+        self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
-        self.window_size = window_size
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
+
+        test_pat = self.parsed_patients()[0]
+        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
         if load_on_start:
             if os.path.exists(self.main_path):
-                parsed_patients = self.parsed_patients()
-                test_pat = parsed_patients[0]
-                self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
-            self.set_window_size(self.window_size)
+                self.set_window_size(self.window_size)
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the CFS) ----------------- #
+        # ---------------- Local variables (relevant only to CFS) ----------------- #
         # ------------------------------------------------------------------------------- #
         """
 
