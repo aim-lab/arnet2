@@ -28,6 +28,8 @@ class SPANISH_Parser(BaseParser):
         """Variables relative to the ECG signals."""
         self.orig_fs = 512  # Warning ! Some files present a different sample frequency !
         self.actual_fs = cts.EPLTD_FS
+        self.n_leads = 3
+        self.ref_lead = 1
         self.name = "SHHS"
         self.ecg_format = ".edf"
 
