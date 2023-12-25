@@ -86,27 +86,28 @@ class AFDB_Parser(BaseParser):
         else:
             return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
-        record = wfdb.rdrecord(str(self.raw_ecg_path / id))
-        ecg = record.p_signal[:, lead-1]
-        ecg_resampled = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
+    def record_to_wfdb(self, id, lead):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
-        return ecg
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
+        return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type="epltd0", lead=1):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type="epltd0", read_ann=True, ):
         record = wfdb.rdrecord(str(self.raw_ecg_path / patient_id))
         ecg = record.p_signal[:, lead-1]
         ecg = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
-        ann = self.parse_annotation(patient_id, type=type)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = np.nan  # This data is not available for this dataset.
@@ -123,22 +124,25 @@ class AFDB_Parser(BaseParser):
     # ------------------------------------------------------------------------- #
     """
 
-    def record_diagnosis(self, patient_id, win, AF_PERSISTENT_THRESHOLD=0.99):
-        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[self.mask_rr_dict[patient_id][win]].reshape(-1)
-        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[self.mask_rr_dict[patient_id][win]].reshape(-1)
+    def _af_pat_clinical_lab(self, patient_id, win):
+        raw_rr = self.rr_dict[patient_id][:(len(self.rr_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
+        raw_rlab = self.rlab_dict[patient_id][:(len(self.rlab_dict[patient_id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[patient_id][win]].reshape(-1)
         time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
-        if self.af_burden_dict[patient_id] > AF_PERSISTENT_THRESHOLD:
+        if self.af_burden_dict[patient_id] > cts.AF_PERSISTENT_THRESHOLD:
             self.features_dict[patient_id][win][
                 'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
         elif self.af_burden_dict[patient_id] > cts.AF_MODERATE_THRESHOLD or time_in_af > cts.AF_MILD_THRESHOLD:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
         elif self.other_cvd_burden_dict[patient_id] > 0.5:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_OTHER_CVD
         else:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
 if __name__ == '__main__':
-    db = AFDB_Parser(load_on_start=False)
+    db = AFDB_Parser(load_on_start=True)
     # db.generate_annotations(lead=2, force=True)
     # db.generate_annotations(lead=1, force=True)
     # for pat in db.parse_available_ids():
@@ -147,6 +151,6 @@ if __name__ == '__main__':
     #     db.features_dict[pat][60] = {}
     #     db.record_diagnosis(pat, win=60)
     # db.export_to_physiozoo('04015', export_rhythms=True, n_leads=db.n_leads)
-    db.parse_raw_data()
-    db.save_to_disk()
+    # db.parse_raw_data()
+    # db.save_to_disk()
     # a = 5
