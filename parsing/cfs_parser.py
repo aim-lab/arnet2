@@ -71,19 +71,11 @@ class CFS_Parser(BaseParser):
     def parse_annotation(self, id, lead, type="epltd0"):
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
-        file = self.raw_ecg_path / ('cfs-visit5-' + id + '.edf')
-        edf = pyedflib.EdfReader(str(self.raw_ecg_path / file))
-        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0][0]
-        ecg_raw = edf.readSignal(ecg_idx)
-        fs = edf.getSampleFrequencies()[ecg_idx]
-        ecg_resampled = signal.resample(ecg_raw, int(len(ecg_raw) * self.actual_fs / fs))
+    def record_to_wfdb(self, id, lead):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
-        self.curr_edf = edf
-        edf._close()
-        del edf
-        return ecg_resampled
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
+        return record
 
     def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
         edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('cfs-visit5-' + patient_id + self.ecg_format)))
