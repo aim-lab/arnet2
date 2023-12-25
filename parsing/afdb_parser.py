@@ -1,15 +1,7 @@
-import sys
-
-# relative paths
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
-
 from base_parser import *
 
+warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
-np.random.seed(cts.SEED)
 
 
 class AFDB_Parser(BaseParser):
@@ -20,7 +12,7 @@ class AFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -34,30 +26,30 @@ class AFDB_Parser(BaseParser):
         self.orig_fs = 250
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "AFDB"
-        self.ecg_format = "wfdb"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J'])
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.ecg_format = ".wfdb"
 
         """Variables relative to the different paths."""
         self.raw_ecg_path = cts.DATA_DIR / "afdb"
         self.orig_anns_path = cts.DATA_DIR / "afdb"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.BASE_DIR / "Shany" / "PreprocessedDatabases" / self.name
-        if os.path.exists(self.main_path):
-            parsed_patients = self.parsed_patients()
-            test_pat = parsed_patients[0]
-            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
+
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
+
+        self.window_size = window_size
+        test_pat = self.parsed_patients()[0]
+        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
         if load_on_start:
-            self.set_window_size(self.window_size)
+            if os.path.exists(self.main_path):
+                self.set_window_size(self.window_size)
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the AFDB) __--------------- #
+        # ---------------- Local variables (relevant only to AFDB) ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.over_18_patients = self.parse_available_ids()
@@ -72,15 +64,7 @@ class AFDB_Parser(BaseParser):
             records = np.array([x[:-1] for x in f.readlines()])
         return records
 
-    def parse_annotation(self, id, type='epltd0', lead=1):
-        if type == 'manual':
-            return wfdb.rdann(str(self.raw_ecg_path / id), 'qrs').sample
-        if type not in self.annotation_types:
-            raise IOError("The requested annotation does not exist.")
-        else:
-            return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
-
-    def parse_reference_annotation(self, id, reannotated=False):
+    def parse_reference_annotation(self, id):
         ann = self.parse_annotation(id, type='manual')
         ann_rhythm = wfdb.rdann(str(self.raw_ecg_path / id), 'atr')
         rhythm_samp = ann_rhythm.sample
@@ -93,6 +77,14 @@ class AFDB_Parser(BaseParser):
                 rhythm[np.where(ann > rhythm_samp[j])[0]] = rhythm_names[j]
         rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return ann, rhythm
+
+    def parse_annotation(self, id, lead, type='epltd0'):
+        if type == 'manual':
+            return wfdb.rdann(str(self.raw_ecg_path / id), 'qrs').sample
+        if type not in self.annotation_types:
+            raise IOError("The requested annotation does not exist.")
+        else:
+            return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead=1):
         record = wfdb.rdrecord(str(self.raw_ecg_path / id))
