@@ -106,7 +106,7 @@ class LTAFDB_Parser(BaseParser):
         self.odi_dict[id] = None  # This data is not available for this dataset.
 
     def parse_demographic_features(self, id):
-        pass
+        pass  # This data is not available for this dataset.
 
     def parse_circadian_features(self, id):
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / id))
