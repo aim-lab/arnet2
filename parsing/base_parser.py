@@ -165,9 +165,10 @@ class BaseParser:
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         """
         raise NotImplementedError("Needs to be called by a child class.")
+
     def parse_patient_id(self, recording_id):
         """Computes/Extracts from raw data the ID for each patient.
-        :param id: The recording ID. Assumed to be in the list of IDs present in the database.
+        :param recording_id: The recording ID. Assumed to be in the list of IDs present in the database.
         """
     def parse_demographic_features(self, id):
         """Computes/Extracts from raw data the demographic features for each patient.
