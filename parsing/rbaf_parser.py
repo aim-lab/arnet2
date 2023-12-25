@@ -134,26 +134,24 @@ class RBAFDB_Parser(BaseParser):
         #     return beats, rhythm, arrhevent_data_sorted, event_data
         return beats, rhythm
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
         return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def record_to_wfdb(self, id, lead=1):
-        record = dr.read_ecg_file(
-            self.raw_ecg_path / (id + '.FUL') / (self.ecg_file_name + str(lead) + '.dat'))
-        re_record = dp.resample_by_interpolation(record, self.orig_fs, cts.EPLTD_FS)
-        wfdb.wrsamp(id, fs=cts.EPLTD_FS, units=['mV'],
-                    sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
+    def record_to_wfdb(self, id, lead):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
         return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True):
         record = dr.read_ecg_file(self.raw_ecg_path / (patient_id + '.FUL') / (self.ecg_files_name[lead-1] + '.dat'))
         record = bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
 
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
+        ann = self.parse_annotation(patient_id, lead=lead, type=type)
         if end == -1:
             end = int(len(record) / self.actual_fs)
         start_sample = int(start * self.actual_fs)
