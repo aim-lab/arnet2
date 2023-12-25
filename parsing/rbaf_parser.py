@@ -256,40 +256,45 @@ class RBAFDB_Parser(BaseParser):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
                                                                allow_pickle=True).item()
 
-    def load_af_prob(self, rbaf_features, rbaf_pred_proba, rbaf_pred, pat_list=None, exclude_low_sqi_win=True,
-                     win_thresh=cts.SQI_WINDOW_THRESHOLD):
-        if pat_list is None:
-            correct_pat_list = self.non_corrupted_ecg_patients()
-        else:
-            correct_pat_list = np.array([elem for elem in pat_list])
-            if len(correct_pat_list) == 0:
-                return np.array([[]]), np.array([])  # Returning empty arrays in case of empty lists.
+    # def load_af_prob(self, rbaf_features, rbaf_pred_proba, rbaf_pred, pat_list=None, exclude_low_sqi_win=True,
+    #                  win_thresh=cts.SQI_WINDOW_THRESHOLD):
+    #     if pat_list is None:
+    #         correct_pat_list = self.non_corrupted_ecg_patients()
+    #     else:
+    #         correct_pat_list = np.array([elem for elem in pat_list])
+    #         if len(correct_pat_list) == 0:
+    #             return np.array([[]]), np.array([])  # Returning empty arrays in case of empty lists.
+    #
+    #     if exclude_low_sqi_win:
+    #         masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
+    #                                      self.signal_quality_dict[pat][self.window_size][
+    #                                          self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
+    #     else:
+    #         masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_pat_list}
+    #     X_rrt = np.concatenate(tuple(
+    #         self.rrt_dict[elem][:(len(self.rrt_dict[elem]) // self.window_size) * self.window_size].reshape(-1,
+    #                                                                                                         self.window_size)[
+    #             masks[elem]] for elem in correct_pat_list), axis=0)
+    #     num_duplicates = {pat: np.sum(masks[pat]) for pat in masks.keys()}
+    #
+    #     rec_time = np.concatenate(tuple(
+    #         self.circadian_dict[elem]['start_recording'] * np.ones(num_duplicates[elem], dtype=object) for elem in
+    #         correct_pat_list), axis=0)
+    #     df = pd.DataFrame([])
+    #     df['patient_id'] = rbaf_features[:, 61]
+    #     df['window'] = rbaf_pred
+    #     df['prob'] = rbaf_pred_proba
+    #     df['start'] = X_rrt[:, 0] + rec_time
+    #     df['end'] = X_rrt[:, -1] + rec_time
 
-        if exclude_low_sqi_win:
-            masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
-                                         self.signal_quality_dict[pat][self.window_size][
-                                             self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
-        else:
-            masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_pat_list}
-        X_rrt = np.concatenate(tuple(
-            self.rrt_dict[elem][:(len(self.rrt_dict[elem]) // self.window_size) * self.window_size].reshape(-1,
-                                                                                                            self.window_size)[
-                masks[elem]] for elem in correct_pat_list), axis=0)
-        num_duplicates = {pat: np.sum(masks[pat]) for pat in masks.keys()}
-
-        rec_time = np.concatenate(tuple(
-            self.circadian_dict[elem]['start_recording'] * np.ones(num_duplicates[elem], dtype=object) for elem in
-            correct_pat_list), axis=0)
-        df = pd.DataFrame([])
-        df['patient_id'] = rbaf_features[:, 61]
-        df['window'] = rbaf_pred
-        df['prob'] = rbaf_pred_proba
-        df['start'] = X_rrt[:, 0] + rec_time
-        df['end'] = X_rrt[:, -1] + rec_time
-
-        return df
+        # return df
 
     def get_num_leads(self, patient_id):
+        """
+        Returns the number of lead per recordings. In RBAF, number of leads differ between different ecg files.
+        :param patient_id: id for which to extract.
+        :return: Number of leads (int)
+        """
         files_id = np.array([f.split('.')[0] for f in os.listdir(self.raw_ecg_path / (patient_id + '.FUL'))])
         return len(files_id[np.isin(files_id, self.ecg_files_name)])
 
