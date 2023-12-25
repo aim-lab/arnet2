@@ -255,7 +255,7 @@ class RBAFDB_Parser(BaseParser):
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
                                                                allow_pickle=True).item()
-
+    # TODO: remove?
     # def load_af_prob(self, rbaf_features, rbaf_pred_proba, rbaf_pred, pat_list=None, exclude_low_sqi_win=True,
     #                  win_thresh=cts.SQI_WINDOW_THRESHOLD):
     #     if pat_list is None:
@@ -300,8 +300,6 @@ class RBAFDB_Parser(BaseParser):
 
 
 if __name__ == '__main__':
-    import pathlib
-
     windows = [60]
     db = RBAFDB_Parser(load_on_start=True)
     # ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
@@ -453,12 +451,3 @@ if __name__ == '__main__':
     # for id_ in ids:
     #    db.parse_circadian_features(patient_id=id_)
     #    db.load_patient_from_disk(pat=id_)
-    '''
-    db.circadian_dict[id_] = {}
-    db.circadian_dict[id_]['start_recording'] = {}
-    db.circadian_dict[id_]['end_recording'] = {}
-    db.features_dict[id_] = {}
-    db.features_dict[id_][windows[0]] = {}
-    db.parse_demographic_features(id_)
-    db.parse_raw_data(patient_list = [id_])
-    '''
