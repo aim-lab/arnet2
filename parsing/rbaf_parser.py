@@ -19,7 +19,8 @@ class RBAFDB_Parser(BaseParser):
         """Missing records"""
         self.missing_ecg = np.array(
             ['M020D42a', 'N919K291', '1021B555', '1021Ccb6', '1220A159', '1021Cd9d', '1319B64e', '1520979c', 'V420Fb4c',
-             '7A21B043', 'C92183cc', 'D921E33b', 'G320C992', '4B19C4cc', 'M020D7d1', 'M020D8bd', 'M020Da15', 'M020Dc24', 'N919Gd30',
+             '7A21B043', 'C92183cc', 'D921E33b', 'G320C992', '4B19C4cc', 'M020D7d1', 'M020D8bd', 'M020Da15', 'M020Dc24',
+             'N919Gd30',
              'R720B607', 'R720B6bc', 'E020F4e1', '4B19C4cc', '9A21C58a'])
 
         """Helper variables"""
@@ -97,10 +98,10 @@ class RBAFDB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_reference_annotation(self, id, combine=True): # , export_to_physiozoo=False, reannotated=False):
+    def parse_reference_annotation(self, id, combine=True):  # , export_to_physiozoo=False, reannotated=False):
         orig_beats = dr.combtime_file_reader(self.raw_ecg_path / (id + '.FUL') / (
-                    self.beat_time_file_name + '.dat'))  # , self.recording_time_stamp[id]['start_recording'])
-        beats = np.round(orig_beats * (self.actual_fs / self.orig_fs)).astype(int) # with respect to time 0
+                self.beat_time_file_name + '.dat'))  # , self.recording_time_stamp[id]['start_recording'])
+        beats = np.round(orig_beats * (self.actual_fs / self.orig_fs)).astype(int)  # with respect to time 0
         # tbeats = beats/ self.actual_fs
         # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
         # if reannotated:
@@ -146,10 +147,10 @@ class RBAFDB_Parser(BaseParser):
         return record
 
     def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
-        ecg = dr.read_ecg_file(self.raw_ecg_path / (patient_id + '.FUL') / (self.ecg_files_name[lead-1] + '.dat'))
+        ecg = dr.read_ecg_file(self.raw_ecg_path / (patient_id + '.FUL') / (self.ecg_files_name[lead - 1] + '.dat'))
         if filter_signal:
-            ecg = dp.bandpass_filter(data=ecg, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+            ecg = dp.bandpass_filter(data=ecg, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
+                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
 
         ecg = dp.resample_by_interpolation(ecg, self.orig_fs, self.actual_fs)
         if end == -1:
@@ -170,15 +171,14 @@ class RBAFDB_Parser(BaseParser):
         for win in self.loaded_window_sizes:
             sex = self.excel_sheet.loc[self.excel_sheet['db_id'] == db_id, 'sex'].values
             age = self.excel_sheet.loc[self.excel_sheet['db_id'] == db_id, 'age_at_recording'].values
-            if len(age)==0:
+            if len(age) == 0:
                 self.features_dict[patient_id][win]['Age'] = np.nan
             else:
                 self.features_dict[patient_id][win]['Age'] = age[0]
-            if len(sex)==0:
+            if len(sex) == 0:
                 self.features_dict[patient_id][win]['Sex'] = np.nan
             else:
                 self.features_dict[patient_id][win]['Sex'] = sex[0]
-
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = np.nan  # This data is not available for this dataset.
@@ -188,6 +188,7 @@ class RBAFDB_Parser(BaseParser):
 
     def parse_patient_id(self, recording_id):
         return self.excel_sheet[self.excel_sheet["holter_id"].astype(str) == recording_id]["db_id"].values[0]
+
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
@@ -199,15 +200,17 @@ class RBAFDB_Parser(BaseParser):
             lambda x: self.excel_sheet['diagnosis_merged'].astype(str).str.contains(
                 'ATRIAL FIBRILLATION', flags=re.I)).any(axis=1)].values).astype(str)
         per_af = np.array(self.excel_sheet["holter_id"][
-                     self.excel_sheet['diagnosis_merged'].str.contains('|'.join(self.searchPer), na=False)].values).astype(str)
+                              self.excel_sheet['diagnosis_merged'].str.contains('|'.join(self.searchPer),
+                                                                                na=False)].values).astype(str)
         par_af = np.setdiff1d(af_cases, per_af)
         if patient_id in per_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE #persistent AF is equivalent to severe AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
         elif patient_id in par_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
         else:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
-
 
     def load_beat_flags(self, wins=None, pat_list=None):
         """ This function loads the number of ectopic beats per window for the UVAF dataset.
