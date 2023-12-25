@@ -39,7 +39,6 @@ class UVAFDB_Parser(BaseParser):
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
-        self.window_size = window_size
         test_pat = self.parsed_patients()[0]
         self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
         if load_on_start:

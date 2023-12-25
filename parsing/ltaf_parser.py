@@ -28,37 +28,26 @@ class LTAFDB_Parser(BaseParser):
         self.n_leads = 2
         self.ref_lead = 1
         self.name = "LTAFDB"
-        self.ecg_format = "wfdb"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J', 'MISSB',
-                                 'PSE', 'MB', 'M'])
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.ecg_format = ".wfdb"
 
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR / "af_long_term" / "afltdb"
         self.orig_anns_path = cts.DATA_DIR / "af_long_term" / "afltdb"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.filename = "LTAF.pkl"
-        self.main_path = cts.BASE_DIR / "Shany" / "PreprocessedDatabases" / self.name[:4]
-        self.window_size = window_size
-
-        if os.path.exists(self.main_path):
-            parsed_patients = self.parsed_patients()
-            test_pat = parsed_patients[0]
-            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name[:4]
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
-
+        test_pat = self.parsed_patients()[0]
+        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
         if load_on_start:
-            self.set_window_size(self.window_size)
-
-        self.anns_path = cts.BASE_DIR / "databases" / "af_long_term"
+            if os.path.exists(self.main_path):
+                self.set_window_size(self.window_size)
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the RBAFDB) --------------- #
+        # ---------------- Local variables (relevant only to LTAFDB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.over_18_patients = self.parse_available_ids()
