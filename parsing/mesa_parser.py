@@ -85,24 +85,27 @@ class MESA_Parser(BaseParser):
         del edf
         return ecg_resampled
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=0):
-        edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('mesa-sleep-' + patient_id + '.edf')))
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
+        edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('mesa-sleep-' + patient_id + self.ecg_format)))
         self.curr_edf = edf
-        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'EKG')[0][0]
+        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'EKG')[0][lead]
         ecg_raw = edf.readSignal(ecg_idx)
         Fs = np.round(edf.samplefrequency(ecg_idx))
         ecg = signal.resample(ecg_raw, int(len(ecg_raw) * cts.EPLTD_FS / Fs))
-        ann = self.parse_annotation(patient_id, type=type)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
         edf._close()
         del edf
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     # rlab is not relevant here. Same for af burden. Will have rlab all ones and zeros, and af burden 0 or 100%. They should not be considered.
     def parse_elem_data(self, pat):
