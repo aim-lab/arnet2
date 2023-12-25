@@ -145,21 +145,25 @@ class RBAFDB_Parser(BaseParser):
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
         return record
 
-    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True):
-        record = dr.read_ecg_file(self.raw_ecg_path / (patient_id + '.FUL') / (self.ecg_files_name[lead-1] + '.dat'))
-        record = bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
+        ecg = dr.read_ecg_file(self.raw_ecg_path / (patient_id + '.FUL') / (self.ecg_files_name[lead-1] + '.dat'))
+        if filter_signal:
+            ecg = dp.bandpass_filter(data=ecg, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
+                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
 
-        record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(patient_id, lead=lead, type=type)
+        ecg = dp.resample_by_interpolation(ecg, self.orig_fs, self.actual_fs)
         if end == -1:
-            end = int(len(record) / self.actual_fs)
+            end = int(len(ecg) / self.actual_fs)
         start_sample = int(start * self.actual_fs)
         end_sample = int(end * self.actual_fs)
-        record = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return record, ann
+        ecg = ecg[start_sample:end_sample]
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type, lead=lead)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_demographic_features(self, patient_id):
         db_id = self.parse_patient_id(patient_id)
