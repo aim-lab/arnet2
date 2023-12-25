@@ -196,6 +196,10 @@ class RBAFDB_Parser(BaseParser):
     """
 
     def record_diagnosis(self, patient_id, win):
+        """
+        This function records the AF diagnosis extracted from holter free text OR tabular diagnosis (diagnosis_merged).
+        The different classes are paroxysmal AF (AF severe) and persistent AF (AF mild)
+        """
         af_cases = np.array(self.excel_sheet["holter_id"][self.excel_sheet.apply(
             lambda x: self.excel_sheet['diagnosis_merged'].astype(str).str.contains(
                 'ATRIAL FIBRILLATION', flags=re.I)).any(axis=1)].values).astype(str)
