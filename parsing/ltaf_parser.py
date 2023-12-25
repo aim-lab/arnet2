@@ -140,6 +140,7 @@ class LTAFDB_Parser(BaseParser):
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
         return
 
+
 if __name__ == '__main__':
     db = LTAFDB_Parser(load_on_start=True)
     # db.generate_annotations(types=cts.ANNOTATION_TYPES, pat_list=db.parse_available_ids(), lead=1)
