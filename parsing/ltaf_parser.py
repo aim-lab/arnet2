@@ -52,23 +52,30 @@ class LTAFDB_Parser(BaseParser):
         """
         self.over_18_patients = self.parse_available_ids()
 
+    """
+    # ------------------------------------------------------------------------- #
+    # ----- Parsing functions: have to be overridden by the child classes ----- #
+    # ------------------------------------------------------------------------- #
+    """
+    """ These functions are documented in the base parser."""
+
     def parse_available_ids(self):
         with open(self.raw_ecg_path / 'RECORDS', 'r') as f:
             records = np.array([x[:-1] for x in f.readlines()])
         return records
 
-    def parse_annotation(self, id, type='epltd0', lead=1):
-        if type not in self.annotation_types:
-            raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
-
-    def parse_reference_annotation(self, id, reannotated=False):
+    def parse_reference_annotation(self, id):
         ann = wfdb.rdann(str(self.raw_ecg_path / id), 'atr')
         if id == 64:  # ID 64 notes did not present the label AFIB at the beginning.
             ann.aux_note[0] = '(AFIB'
         rhythm = i_o.pad_rhythm(np.array(ann.aux_note), missing=['', '\x01 Aux'])
         rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return ann.sample, rhythm
+
+    def parse_annotation(self, id, lead, type='epltd0'):
+        if type not in self.annotation_types:
+            raise IOError("The requested annotation does not exist.")
+        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id, lead=1):
         record = wfdb.rdrecord(str(self.raw_ecg_path / id))
