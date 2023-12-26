@@ -50,7 +50,7 @@ class JPAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the JPAFDB) --------------- #
+        # ---------------- Local variables (relevant only to JPAFDB) -------------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.ecg_file_name = 'RR'
@@ -219,7 +219,9 @@ class JPAFDB_Parser(BaseParser):
 
     # TODO: improve function
     def load_circardian_from_disk(self, patient_list=None):
-        """ This functions loads circadian_dict that was created by parse_circadian_features."""
+        """
+        This functions loads circadian_dict that was created by parse_circadian_features.
+        """
         if patient_list is None:
             patient_list = self.parsed_patients()
         for pat in patient_list:

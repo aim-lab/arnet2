@@ -1,22 +1,7 @@
-import sys
-
-import numpy as np
-
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/CircadianAF')
-
 from base_parser import *
 
 warnings.filterwarnings('ignore')
-warnings.filterwarnings('ignore')
-import csv_reader as cr
-import time
-import re
-import datetime as dt
-import pathlib
-import pickle
-import glob
+random.seed(cts.SEED)
 
 
 class SHDB_2wk_Parser(BaseParser):
@@ -27,7 +12,7 @@ class SHDB_2wk_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -41,23 +26,18 @@ class SHDB_2wk_Parser(BaseParser):
         self.orig_fs = 125
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "SHDB_2wk"
         self.ecg_format = ".csv"
 
-        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
-        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
+        """ General variables for signal processing/Filtering """
         self.sqi_test_ann = 'epltd0'          # The annotation type used to compute and load the SQI variables.
         self.sqi_ref_ann = 'xqrs'
-        self.rhythms = np.array(['NSR', 'AFIB', 'AFL'])
-        self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD': 2}
-        self.circadian_dict = {}
 
         """Variables relative to the different paths"""
-        cts.DATA_DIR = pathlib.PurePath('/home/shanybiton/repos/CircadianAF/')
         self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
-        # self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.annotation_types = cts.ANNOTATION_TYPES
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
+        self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
@@ -70,23 +50,24 @@ class SHDB_2wk_Parser(BaseParser):
             if load_on_start:
                 self.set_window_size(self.window_size)
                 self.load_circardian_from_disk()
-        self.beat_flags = {}
-        # self.load_beat_flags()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the SHDB_2wk) --------------- #
+        # ---------------- Local variables (relevant only to SHDB_2wk) --------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.ecg_file_name = 'RR'
         self.file_format = ".csv"
         self.csv_dir = "RR_ready"
-        # self.beats_shape = {1: 'N', 3:  'N', 4: 'AB', 5: 'I', 6: 'P'}  # The different rhythms present across the dataset. N: NORMAL', AB: 'ABERRANT', I: 'INHIBIT', P: 'PACED'}
-        self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_SHDB_AF2wk.xlsx"
-        self.get_META()
-
         self.searchPar = ['PAF']
         self.searchPer = ['PerAF']
+        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
+        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
+        self.circadian_dict = {}
+        self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_SHDB_AF2wk.xlsx"
+        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
+        self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
+
         """
         # ------------------------------------------------------------------------- #
         # ----- Parsing functions: have to be overridden by the child classes ----- #
@@ -188,14 +169,6 @@ class SHDB_2wk_Parser(BaseParser):
     # ---------------- Functions relative to this dataset only ---------------- #
     # ------------------------------------------------------------------------- #
     """
-
-    def get_META(self):
-        '''
-        CSV Columns
-        '''
-        # load and convert annotation data
-        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
-        self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
 
     def get_dir(self, id):
         return [i for i in glob.glob(str(self.raw_ecg_path / '*/*')) if
