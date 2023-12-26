@@ -384,7 +384,7 @@ class BaseParser:
         :param test_anns: All the test annotations upon which SQI needs to run. If None, uses all the available annotations.
         """
         self.window_sizes = window_sizes
-        self.generate_annotations(pat_list=patient_list, force=gen_ann, types=test_anns)
+        # self.generate_annotations(pat_list=patient_list, force=gen_ann, types=test_anns)
         # self.parsed_ecgs = self.parsed_patients()
         if patient_list is None:
             patient_list = self.parse_available_ids()
