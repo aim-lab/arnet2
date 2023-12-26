@@ -183,6 +183,9 @@ class SPAFDB_Parser(BaseParser):
         np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
     def load_circardian_from_disk(self, patient_list=None):
+        """
+        This functions loads circadian_dict that was created by parse_circadian_features.
+        """
         if patient_list is None:
             patient_list = self.parsed_patients()
         for pat in patient_list:
@@ -193,7 +196,6 @@ class SPAFDB_Parser(BaseParser):
 if __name__ == '__main__':
     windows = [60]
     db = SPAFDB_Parser(load_on_start=False)
-    db.get_dir(db.parse_available_ids()[0])
     # ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
     # ids = np.setdiff1d(ids, db.parsed_patients())
     # savedir = pathlib.PurePath('/home/shanybiton/repos/CircadianAF/output') / db.name.lower()
