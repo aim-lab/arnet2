@@ -23,24 +23,19 @@ class CPSCDB_Parser(BaseParser):
         """ Helper variables"""
         self.window_size = window_size
 
-        """ General variables for signal processing/Filtering """
-        self.min_annotation_len = 60  # Below this number of peaks, the recording is removed.
-
         """Variables relative to the ECG signals."""
         self.orig_fs = cts.EPLTD_FS
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "CPSCDB"
-        self.ecg_format = "wfdb"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J', 'MISSB',
-                                 'PSE', 'MB', 'M'])
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.ecg_format = ".wfdb"
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "cpsc2021" / "1.0.0"
-        self.orig_anns_path = cts.DATA_DIR / self.name.lower() / "cpsc2021" / "1.0.0"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        # TODO: move database to MLAIM/databases (?)
+        self.raw_ecg_path = cts.BASE_DIR / "AIMLab" / "Shany" / 'databases' / self.name.lower() / "cpsc2021" / "1.0.0"
+        self.orig_anns_path = self.raw_ecg_path
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.BASE_DIR / "Shany" / "PreprocessedDatabases" / self.name
 
@@ -56,11 +51,14 @@ class CPSCDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the CPSCDB) --------------- #
+        # ---------------- Local variables (relevant only to CPSCDB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
-        self.excel_sheet_path_I = cts.DATA_DIR / self.name.lower() / "cpsc2021" / "1.0.0" / "PatientInfo_training_I.csv"
-        self.excel_sheet_path_II = cts.DATA_DIR / self.name.lower() / "cpsc2021" / "1.0.0" / "PatientInfo_training_II.csv"
+        """ General variables for signal processing/Filtering """
+        self.min_annotation_len = 60  # Below this number of peaks, the recording is removed.
+
+        self.excel_sheet_path_I = self.raw_ecg_path / "PatientInfo_training_I.csv"
+        self.excel_sheet_path_II = self.raw_ecg_path / "PatientInfo_training_II.csv"
         self.get_META()
         self.over_18_patients = np.array(self.excel_sheet[self.excel_sheet["Age"] >= 18]["Patient"].astype(str))
 
@@ -77,14 +75,15 @@ class CPSCDB_Parser(BaseParser):
         return records
 
     def parse_reference_annotation(self, id, reannotated=False):
-        ann = wfdb.rdann(str(self.raw_ecg_path / self.get_recording_dir(id)), 'atr')
+        ann = wfdb.rdann(str(self.orig_anns_path / self.get_recording_dir(id)), 'atr')
         rhythm = i_o.pad_rhythm(np.array(ann.aux_note), missing=['', 'None', '\x01 Aux'])
         rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return ann.sample, rhythm
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
+        # check if peaks file exist. Sometimes, the detector fails to work
         dest_path = str(self.generated_anns_path / type / str(lead) / id)
         if os.path.exists(dest_path + '.' + type):
             return wfdb.rdann(dest_path, type).sample
