@@ -36,7 +36,7 @@ class SPAFDB_Parser(BaseParser):
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
         self.orig_anns_path = cts.DATA_DIR / self.name.lower() / "peaks"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
@@ -163,16 +163,23 @@ class SPAFDB_Parser(BaseParser):
     # ------------------------------------------------------------------------- #
     """
 
-    def get_dir(self, id):
-        return [i for i in glob.glob(str(self.raw_ecg_path / '*/*')) if
-                i.split('/')[-1].startswith(id)]
-
+    # TODO: imrove function. the "end_recording" is weird as in contains AN hours without any reference to number of
+    #  passed from start of recording. consider just use inddate instead of end_recording or drop this variable
+    #  completely.
     def parse_circadian_features(self, id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording.
+        start_recording: the relative time of the day for when the recording started."""
         if id not in self.circadian_dict.keys():
             self.circadian_dict[id] = {}
-        self.circadian_dict[id]['recording_date'] = self.read_ecg(id).date[0].date()
-        self.circadian_dict[id]['start_recording'], self.circadian_dict[id]['end_recording'] = \
-            self.read_ecg(id).time.iloc[0], self.read_ecg(id).time.iloc[-1]
+        self.circadian_dict[id]['recording_date'] = np.nan
+        self.circadian_dict[id]['start_recording'] = self.excel_sheet_AF_analysis.loc[
+            self.excel_sheet_AF_analysis["REC"].eq(id), 'Holter start time'].values[0]
+        self.circadian_dict[id]['end_recording'] = (dt.datetime.combine(
+            dt.date(1,1,1), self.circadian_dict[id]['start_recording']) +
+                                                    dt.timedelta(seconds=self.excel_sheet_AF_analysis.loc[
+                                                        self.excel_sheet_AF_analysis["REC"].eq(id), 'Unnamed: 3']
+                                                                 .values[0])).time()
         np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
     def load_circardian_from_disk(self, patient_list=None):
@@ -183,62 +190,13 @@ class SPAFDB_Parser(BaseParser):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
                                                                allow_pickle=True).item()
 
-    def read_ann(self, id, start_time=None, end_time=None):
-        id_dir = self.get_dir(str(id))[0]
-        example_path = self.raw_ecg_path / id_dir / self.csv_dir
-        RR_df = pd.DataFrame([])
-        ann_files = os.listdir(example_path)
-        ann_files.sort()
-        for f in ann_files:
-            chunks = pd.read_csv(example_path / f, iterator=True, chunksize=1000000, encoding='unicode_escape',
-                                 usecols=[0, 1, 2], names=['time', 'ann', 'pos'],
-                                 header=None, dtype={"NA": 'string', "ann": 'string', 'pos': 'string'})
-            df2 = pd.concat(chunks, ignore_index=True)
-            if len(df2[df2['pos'].str.contains("RR", na=False)]) > 0:
-                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0] + 1:]
-            RR_df = RR_df.append(df2)
-        RR_df.reset_index(inplace=True, drop=True)
-        RR_df['pos'] = RR_df['pos'].astype(int)
-        # df2 = df2.sort_values(by ='loc', ascending=True, na_position='last')
-        ann = RR_df['ann']
-        loc = RR_df['pos']
-        time_df = RR_df['time']
-        real_start = time.strftime('%-H:%M', time.gmtime(start_time))
-        time_ann_start = time_df[time_df == real_start].index[0]
-        real_end = time.strftime('%-H:%M', time.gmtime(end_time))
-        temp_time_df = time_df[time_ann_start + 1:]
-        if len(temp_time_df[temp_time_df == real_end]) == 0:
-            time_ann_end = time_df.index[-1]
-        else:
-            if time_df[time_df == real_end].index[-1] < 4000:
-                time_ann_end = time_df.index[-1]
-            else:
-                time_ann_end = time_df[time_df == real_end].index[-1]
-        # else:
-        #     time_ann_start=0
-        #     time_ann_end = len(time_df)
-        ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
-
-        return ann_dict.iloc[time_ann_start:time_ann_end + 1]
-
-    def return_data(self, ids, feats_to_use, fillna=True, normalize=False):
-        final = tuple()
-        # X, y, glob_lab = db.return_features(pat_list=ids, feats_list=feats_to_use,
-        #                                                       return_global_label=True)
-        ids_rr = db.return_patient_ids(pat_list=ids)
-        rr, rrt, _ = db.return_rr(pat_list=ids)
-        prec = db.return_preceeding_windows(pat_list=ids)
-        data = np.concatenate((rr, prec.reshape(-1, 1), ids_rr.reshape(-1, 1)), axis=1)
-
-        return data, rrt
-
-
 if __name__ == '__main__':
     windows = [60]
-    db = SPAFDB_Parser(load_on_start=True)
-    ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
-    ids = np.setdiff1d(ids, db.parsed_patients())
-    savedir = pathlib.PurePath('/home/shanybiton/repos/CircadianAF/output') / db.name.lower()
+    db = SPAFDB_Parser(load_on_start=False)
+    db.get_dir(db.parse_available_ids()[0])
+    # ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
+    # ids = np.setdiff1d(ids, db.parsed_patients())
+    # savedir = pathlib.PurePath('/home/shanybiton/repos/CircadianAF/output') / db.name.lower()
 
     # beats, rhythms = db.parse_reference_annotation(ids[0], combine=True, reannotated=False)
     # db.generate_annotations(types=db.sqi_ref_ann, pat_list=ids, lead=2)
@@ -246,6 +204,6 @@ if __name__ == '__main__':
     # ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
     # pat_list = ann_ids[~np.isin(ann_ids, db.parsed_patients())]
 
-    db.parse_raw_data(patient_list=ids)
-    for patient_id in ids:
-        beats, rhythm = db.parse_reference_annotation(patient_id, combine=True, reannotated=True)
+    # db.parse_raw_data(patient_list=ids)
+    # for patient_id in ids:
+    #     beats, rhythm = db.parse_reference_annotation(patient_id, combine=True, reannotated=True)
