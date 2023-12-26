@@ -6,13 +6,13 @@ random.seed(cts.SEED)
 
 class SPAFDB_Parser(BaseParser):
 
-    def __init__(self, window_size=60, load_on_start=True, windows_shifted=False):
+    def __init__(self, window_size=60, load_on_start=True):
 
         super(SPAFDB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -21,7 +21,6 @@ class SPAFDB_Parser(BaseParser):
 
         """Helper variables"""
         self.window_size = window_size
-        self.windows_shifted = windows_shifted
 
         """Variables relative to the ECG signals."""
         self.orig_fs = [250, 256]
@@ -30,17 +29,13 @@ class SPAFDB_Parser(BaseParser):
         self.name = "SPAFDB"
         self.ecg_format = ".mat"
 
-        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
-        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
+        """ General variables for signal processing/Filtering """
         self.sqi_test_ann = 'epltd0'          # The annotation type used to compute and load the SQI variables.
         self.sqi_ref_ann = 'xqrs'
-        self.rhythms = np.array(['NSR', 'AFIB', 'AFL'])
-        self.rhythms_dict = {'NSR': 0, 'AFIB': 1, 'AFL': 1, 'NOD': 2}
-        self.circadian_dict = {}
 
         """Variables relative to the different paths"""
-        cts.DATA_DIR = pathlib.PurePath('/MLAIM/databases/')
         self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
+        self.orig_anns_path = cts.DATA_DIR / self.name.lower() / "peaks"
         self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
@@ -63,11 +58,13 @@ class SPAFDB_Parser(BaseParser):
         # ---------------- Local variables (relevant only for the SPAFDB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
+        self.circadian_dict = {}
+        self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
+        self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
         self.ref_ann_path = cts.DATA_DIR / self.name.lower() / "AF_annotations"
-        self.ref_peaks_path = cts.DATA_DIR / self.name.lower() / "peaks"
-
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "SPAFBD_description.xlsx"
         self.get_META()
+
         """
         # ------------------------------------------------------------------------- #
         # ----- Parsing functions: have to be overridden by the child classes ----- #
