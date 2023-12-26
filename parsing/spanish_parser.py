@@ -71,35 +71,32 @@ class SPANISH_Parser(BaseParser):
         return wfdb.rdann(str(self.generated_anns_path / type / pat), type).sample
 
     def record_to_wfdb(self, id, lead):
-        file = self.raw_ecg_path / (id + self.ecg_format)
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
+        return record
+
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
+        file = self.raw_ecg_path / (patient_id + self.ecg_format)
         edf = pyedflib.EdfReader(str(self.raw_ecg_path / file))
         self.curr_edf = edf
-        ecg1_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG' + str(lead))[0][0]
-        ecg_raw = edf.readSignal(ecg1_idx)
-        fs = edf.getSampleFrequencies()[ecg1_idx]
-        ecg_resampled = signal.resample(ecg_raw, int(len(ecg_raw) * self.actual_fs / fs))
-        wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'], )
-        edf.close()
-        return ecg_resampled
-
-    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0'):
-        edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('shhs' + str(self.visit) + '-' + patient_id + self.ecg_format)))
-        self.curr_edf = edf
-        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG')[0][lead-1]
+        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG' + str(lead))[0][0]
         ecg_raw = edf.readSignal(ecg_idx)
-        Fs = np.round(edf.samplefrequency(ecg_idx))
-        ecg = signal.resample(ecg_raw, int(len(ecg_raw) * cts.EPLTD_FS / Fs))
+        fs = edf.getSampleFrequencies()[ecg_idx]
+        ecg = signal.resample(ecg_raw, int(len(ecg_raw) * cts.EPLTD_FS / fs))
         edf.close()
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = self.parse_annotation(patient_id, type=type)
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     # rlab is not relevant here. Same for af burden. Will have rlab all ones and zeros, and af burden 0 or 100%. They
     # should not be considered.
@@ -209,6 +206,7 @@ if __name__ == '__main__':
     db = SPANISH_Parser(load_on_start=False)
     # db.parse_raw_ecg(db.parsed_patients()[0])
     pat_list = db.parse_available_ids()
+    db.parse_raw_data()
     # pat_list = pat_list[~np.isin(pat_list, db.missing_ecg)]
     # for id_ in pat_list:
     #     file = db.raw_ecg_path / (id_ + ".edf")
@@ -216,7 +214,8 @@ if __name__ == '__main__':
     #     if len(np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0]) == 0:
     #         db.missing_ecg = np.append(db.missing_ecg, id_)
 
-    db.generate_annotations(pat_list=pat_list, force=False)
+    # db.generate_annotations(pat_list=pat_list, force=False)
+    # db.generate_annotations(pat_list=pat_list, force=False, lead=2)
 
     #
     # for pat in to_load:
