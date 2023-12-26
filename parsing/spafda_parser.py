@@ -154,7 +154,6 @@ class SPAFDB_Parser(BaseParser):
         self.odi_dict[id] = np.nan  # This data is not available for this dataset.
 
     def parse_patient_id(self, recording_id):
-        # return self.excel_sheet[self.excel_sheet["Study ID"] == recording_id]["ID"].values[0]
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
     """
