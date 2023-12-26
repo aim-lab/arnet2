@@ -116,7 +116,7 @@ class SHDB_2wk_Parser(BaseParser):
             ann -= start_sample
             return record, ann
         else:
-            return ecg
+            return record
 
     def parse_reference_annotation(self, id, combine=True, reannotated=True):
         record = self.read_ecg(id)
