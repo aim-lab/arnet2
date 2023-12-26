@@ -1,23 +1,7 @@
-import sys
-import mat73
-
-import numpy as np
-
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/CircadianAF')
-
 from base_parser import *
 
 warnings.filterwarnings('ignore')
-warnings.filterwarnings('ignore')
-import csv_reader as cr
-import time
-import re
-import datetime as dt
-import pathlib
-import pickle
-import glob
+random.seed(cts.SEED)
 
 
 class SPAFDB_Parser(BaseParser):
