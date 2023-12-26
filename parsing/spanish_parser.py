@@ -28,7 +28,7 @@ class SPANISH_Parser(BaseParser):
         """Variables relative to the ECG signals."""
         self.orig_fs = 512  # Warning ! Some files present a different sample frequency !
         self.actual_fs = cts.EPLTD_FS
-        self.n_leads = 2
+        self.n_leads = 1
         self.ref_lead = 1
         self.name = "SHHS"
         self.ecg_format = ".edf"
@@ -64,7 +64,6 @@ class SPANISH_Parser(BaseParser):
     """
 
     def parse_available_ids(self):
-        # return np.array([file[6:12] for file in os.listdir(str(self.raw_ecg_path))])
         return np.array([file.split('.')[0] for _, _, files in os.walk(self.raw_ecg_path) for file in files if
                          file.endswith('.edf')])
 
@@ -89,12 +88,12 @@ class SPANISH_Parser(BaseParser):
         return record
 
     def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
-        file = self.raw_ecg_path / (patient_id + self.ecg_format)
-        edf = pyedflib.EdfReader(str(self.raw_ecg_path / file))
+        file = patient_id + self.ecg_format
+        edf = pyedflib.EdfReader(str(self.raw_ecg_path / patient_id[:5] / file))
         self.curr_edf = edf
-        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG' + str(lead))[0][0]
-        ecg_raw = edf.readSignal(ecg_idx)
-        fs = edf.getSampleFrequencies()[ecg_idx]
+        ecg_idx = np.where(np.array(self.curr_edf.getSignalLabels()) == 'ECG')[0][0]
+        ecg_raw = self.curr_edf.readSignal(ecg_idx)
+        fs = self.curr_edf.getSampleFrequencies()[ecg_idx]
         ecg = signal.resample(ecg_raw, int(len(ecg_raw) * cts.EPLTD_FS / fs))
         edf.close()
         if end == -1:
@@ -222,7 +221,7 @@ if __name__ == '__main__':
     db = SPANISH_Parser(load_on_start=False)
     # db.parse_raw_ecg(db.parsed_patients()[0])
     pat_list = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
-    db.parse_raw_data()
+    # db.parse_raw_data()
     # pat_list = pat_list[~np.isin(pat_list, db.missing_ecg)]
     # for id_ in pat_list:
     #     file = db.raw_ecg_path / (id_ + ".edf")
@@ -230,9 +229,7 @@ if __name__ == '__main__':
     #     if len(np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0]) == 0:
     #         db.missing_ecg = np.append(db.missing_ecg, id_)
 
-    # db.generate_annotations(pat_list=pat_list, force=False)
-    # db.generate_annotations(pat_list=pat_list, force=False, lead=2)
-
+    db.generate_annotations(pat_list=pat_list, force=True)
     #
     # for pat in to_load:
     #     for win in cts.BASE_WINDOWS:
