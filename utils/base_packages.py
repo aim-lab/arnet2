@@ -14,6 +14,7 @@ import warnings
 
 # Data Processing
 import numpy as np
+import wfdb.processing as processing
 import pandas as pd
 import scipy.signal as signal
 import multiprocessing
@@ -43,12 +44,9 @@ from scipy.signal import savgol_filter, butter, sosfreqz, sosfiltfilt
 import mne
 import scipy
 import datetime as dt
-sys.path.append('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization\\parsing\\')
-sys.path.append('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization\\utils\\')
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
+from sklearn.linear_model import LinearRegression
+from scipy.spatial import cKDTree
+
 np.random.seed(cts.SEED)
 random.seed(cts.SEED)
 warnings.filterwarnings('ignore')
