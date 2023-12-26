@@ -1,13 +1,7 @@
-import sys
-#relative paths
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
-
 from base_parser import *
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 
 class CPSCDB_Parser(BaseParser):
@@ -18,19 +12,19 @@ class CPSCDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
         self.missing_ecg = np.array(['data_51_7', 'data_51_6', 'data_51_1', 'data_51_2', 'data_51_4',
-       'data_51_5', 'data_51_3', 'data_51_8', 'data_50_11', 'data_51_9',
-       'data_50_12'])
+                                     'data_51_5', 'data_51_3', 'data_51_8', 'data_50_11', 'data_51_9',
+                                     'data_50_12'])
 
         """ Helper variables"""
         self.window_size = window_size
 
         """ General variables for signal processing/Filtering """
-        self.min_annotation_len = 60      # Below this number of peaks, the recording is removed.
+        self.min_annotation_len = 60  # Below this number of peaks, the recording is removed.
 
         """Variables relative to the ECG signals."""
         self.orig_fs = cts.EPLTD_FS
@@ -39,7 +33,7 @@ class CPSCDB_Parser(BaseParser):
         self.name = "CPSCDB"
         self.ecg_format = "wfdb"
         self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J', 'MISSB',
+                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J', 'MISSB',
                                  'PSE', 'MB', 'M'])
         self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
 
@@ -98,14 +92,14 @@ class CPSCDB_Parser(BaseParser):
 
     def record_to_wfdb(self, id, lead=1):
         record = wfdb.rdrecord(str(self.raw_ecg_path / self.get_recording_dir(id)))
-        ecg = record.p_signal[:, lead-1]
+        ecg = record.p_signal[:, lead - 1]
         ecg_resampled = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
 
     def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
         record = wfdb.rdrecord(str(self.raw_ecg_path / self.get_recording_dir(patient_id)))
-        ecg = record.p_signal[:, lead-1]
+        ecg = record.p_signal[:, lead - 1]
         ecg = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
         ann = self.parse_annotation(patient_id, type=type)
         if end == -1:
@@ -126,7 +120,8 @@ class CPSCDB_Parser(BaseParser):
     def parse_demographic_features(self, id):
         age = float(self.excel_sheet.loc[self.excel_sheet["Patient"] == self.parse_patient_id(id), "Age"])
         sex = float(
-            self.excel_sheet.loc[self.excel_sheet["Patient"] == self.parse_patient_id(id)]["Sex"] == 'F')  # True: Female, False: Male
+            self.excel_sheet.loc[self.excel_sheet["Patient"] == self.parse_patient_id(id)][
+                "Sex"] == 'F')  # True: Female, False: Male
         for win in self.loaded_window_sizes:
             self.features_dict[id][win]['Age'] = age
             self.features_dict[id][win]['Sex'] = sex
@@ -139,6 +134,7 @@ class CPSCDB_Parser(BaseParser):
     # ---------------- Functions relative to this dataset only ---------------- #
     # ------------------------------------------------------------------------- #
     """
+
     def get_META(self):
         '''
         CSV Columns
@@ -168,8 +164,10 @@ class CPSCDB_Parser(BaseParser):
             self.features_dict[patient_id][win][
                 'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
         elif 'paroxysmal atrial fibrillation' in sample_descrip:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
+            self.features_dict[patient_id][win][
+                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
         return
+
 
 if __name__ == "__main__":
     db = CPSCDB_Parser(window_size=60, load_on_start=True)
