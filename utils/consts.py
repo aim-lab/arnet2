@@ -67,12 +67,12 @@ HIGH_AGE=75
 # Paths definition. 'nt' refers to Windows, 'posix' as Linux (triton01 GPU cluster)
 if os.name == 'nt':
     BASE_DIR = pathlib.PurePath('V:\\AIMLab')
-    REPO_DIR = pathlib.PurePath('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization')
+    REPO_DIR = pathlib.PurePath('C:\\Users\\ShanyBiton\\Documents\\repos\\Shany_Repo')
     REPO_DIR_POSIX = pathlib.PurePath(str(REPO_DIR).replace('\\', '/').replace('C:','/mnt/c'))
     N_PROCESSES = 8
 elif os.name == 'posix':
     BASE_DIR = pathlib.PurePath('/MLAIM')
-    REPO_DIR = pathlib.PurePath('/home/shanybiton/repos/Generalization')
+    REPO_DIR = pathlib.PurePath('/home/shanybiton/repos/Shany_Repo')
     REPO_DIR_POSIX = REPO_DIR
     N_PROCESSES = 15
 
