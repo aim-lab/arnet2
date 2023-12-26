@@ -108,6 +108,7 @@ class FAH7DB_Parser(BaseParser):
             return record
 
     def parse_demographic_features(self, id):
+        #  Demographic features are not available for this database
         for win in self.loaded_window_sizes:
             self.features_dict[id][win]['Age'] = np.nan
             self.features_dict[id][win]['Sex'] = np.nan
