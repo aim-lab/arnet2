@@ -28,7 +28,7 @@ class SPANISH_Parser(BaseParser):
         """Variables relative to the ECG signals."""
         self.orig_fs = 512  # Warning ! Some files present a different sample frequency !
         self.actual_fs = cts.EPLTD_FS
-        self.n_leads = 3
+        self.n_leads = 2
         self.ref_lead = 1
         self.name = "SHHS"
         self.ecg_format = ".edf"
@@ -37,14 +37,15 @@ class SPANISH_Parser(BaseParser):
         self.raw_ecg_path = cts.DATA_DIR / 'copdosadb' / 'polysomnography' / 'edfs'
         self.orig_anns_path = None
         self.generated_anns_path = cts.PREPROCESSED_DATA_DIR / self.name
-        self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
+        self.annotation_types = cts.ANNOTATION_TYPES
+        # self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
 
-        test_pat = self.parsed_patients()[0]
-        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
+        # test_pat = self.parsed_patients()[0]
+        # self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
         if load_on_start:
             if os.path.exists(self.main_path):
                 self.set_window_size(self.window_size)
@@ -72,13 +73,14 @@ class SPANISH_Parser(BaseParser):
     def record_to_wfdb(self, id, lead):
         file = self.raw_ecg_path / (id + self.ecg_format)
         edf = pyedflib.EdfReader(str(self.raw_ecg_path / file))
-        ecg1_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0][0]
+        self.curr_edf = edf
+        ecg1_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG' + str(lead))[0][0]
         ecg_raw = edf.readSignal(ecg1_idx)
         fs = edf.getSampleFrequencies()[ecg1_idx]
         ecg_resampled = signal.resample(ecg_raw, int(len(ecg_raw) * self.actual_fs / fs))
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'], )
-        self.curr_edf = edf
+        edf.close()
         return ecg_resampled
 
     def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0'):
@@ -205,7 +207,8 @@ class SPANISH_Parser(BaseParser):
 
 if __name__ == '__main__':
     db = SPANISH_Parser(load_on_start=False)
-    # pat_list = db.parse_available_ids()
+    # db.parse_raw_ecg(db.parsed_patients()[0])
+    pat_list = db.parse_available_ids()
     # pat_list = pat_list[~np.isin(pat_list, db.missing_ecg)]
     # for id_ in pat_list:
     #     file = db.raw_ecg_path / (id_ + ".edf")
@@ -213,7 +216,7 @@ if __name__ == '__main__':
     #     if len(np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0]) == 0:
     #         db.missing_ecg = np.append(db.missing_ecg, id_)
 
-    # db.generate_annotations(types=('xqrs'), pat_list=pat_list, force=False)
+    db.generate_annotations(pat_list=pat_list, force=False)
 
     #
     # for pat in to_load:
