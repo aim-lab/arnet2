@@ -1,12 +1,6 @@
-import sys
-#relative paths
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
-
 from base_parser import *
 
+warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
 
 
@@ -18,7 +12,7 @@ class LTAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -32,53 +26,48 @@ class LTAFDB_Parser(BaseParser):
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "LTAFDB"
-        self.ecg_format = "wfdb"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J', 'MISSB',
-                                 'PSE', 'MB', 'M'])
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
+        self.ecg_format = ".wfdb"
 
         """Variables relative to the different paths"""
         self.raw_ecg_path = cts.DATA_DIR / "af_long_term" / "afltdb"
         self.orig_anns_path = cts.DATA_DIR / "af_long_term" / "afltdb"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.filename = "LTAF.pkl"
-        self.main_path = cts.BASE_DIR / "Shany" / "PreprocessedDatabases" / self.name[:4]
-        self.window_size = window_size
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name[:4]
+
+        """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
+        requested will be loaded into the system."""
 
         if os.path.exists(self.main_path):
             parsed_patients = self.parsed_patients()
             test_pat = parsed_patients[0]
             self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
-
-        """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
-        requested will be loaded into the system."""
-
-        if load_on_start:
-            self.set_window_size(self.window_size)
-
-        self.anns_path = cts.BASE_DIR / "databases" / "af_long_term"
+            if load_on_start:
+                self.set_window_size(self.window_size)
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the RBAFDB) --------------- #
+        # ---------------- Local variables (relevant only to LTAFDB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
+        self.circadian_dict = {}
         self.over_18_patients = self.parse_available_ids()
+
+    """
+    # ------------------------------------------------------------------------- #
+    # ----- Parsing functions: have to be overridden by the child classes ----- #
+    # ------------------------------------------------------------------------- #
+    """
+    """ These functions are documented in the base parser."""
 
     def parse_available_ids(self):
         with open(self.raw_ecg_path / 'RECORDS', 'r') as f:
             records = np.array([x[:-1] for x in f.readlines()])
         return records
 
-    def parse_annotation(self, id, type='epltd0', lead=1):
-        if type not in self.annotation_types:
-            raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
-
-    def parse_reference_annotation(self, id, reannotated=False):
+    def parse_reference_annotation(self, id):
         ann = wfdb.rdann(str(self.raw_ecg_path / id), 'atr')
         if id == 64:  # ID 64 notes did not present the label AFIB at the beginning.
             ann.aux_note[0] = '(AFIB'
@@ -86,26 +75,32 @@ class LTAFDB_Parser(BaseParser):
         rhythm = np.array([self.rhythms_dict[i] for i in rhythm])
         return ann.sample, rhythm
 
-    def record_to_wfdb(self, id, lead=1):
-        record = wfdb.rdrecord(str(self.raw_ecg_path / id))
-        ecg = record.p_signal[:, lead-1]
-        ecg_resampled = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
-        wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
+    def parse_annotation(self, id, lead, type='epltd0'):
+        if type not in self.annotation_types:
+            raise IOError("The requested annotation does not exist.")
+        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
+    def record_to_wfdb(self, id, lead):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
+
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
         record = wfdb.rdrecord(str(self.raw_ecg_path / patient_id))
         ecg = record.p_signal[:, lead-1]
         ecg = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
-        ann = self.parse_annotation(patient_id, type=type)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = None  # This data is not available for this dataset.
@@ -114,16 +109,28 @@ class LTAFDB_Parser(BaseParser):
         self.odi_dict[id] = None  # This data is not available for this dataset.
 
     def parse_demographic_features(self, id):
-        pass
+        pass  # This data is not available for this dataset.
+
+    """
+    # ------------------------------------------------------------------------- #
+    # ---------------- Functions relative to this dataset only ---------------- #
+    # ------------------------------------------------------------------------- #
+    """
 
     def parse_circadian_features(self, id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording."""
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / id))
         if id not in self.circadian_dict.keys():
             self.circadian_dict[id] = {}
-        self.circadian_dict[id]['recording_date'] =  fields['base_date']
-        # np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
+        self.circadian_dict[id]['recording_date'] = fields['base_date']
+        np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
     def record_diagnosis(self, patient_id, win):
+        """
+        This function records the AF diagnosis extracted from holter free text OR tabular diagnosis (diagnosis_merged).
+        The different classes are paroxysmal AF (AF severe) and persistent AF (AF mild)
+        """
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / patient_id))
         sample_descrip = fields['comments']
         if 'non atrial fibrillation' in sample_descrip:
@@ -134,6 +141,7 @@ class LTAFDB_Parser(BaseParser):
         elif 'paroxysmal atrial fibrillation' in sample_descrip:
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_AF_MILD #paroxysmal AF is equivalent to mild/moderate AF
         return
+
 
 if __name__ == '__main__':
     db = LTAFDB_Parser(load_on_start=True)

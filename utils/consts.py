@@ -67,28 +67,28 @@ HIGH_AGE=75
 # Paths definition. 'nt' refers to Windows, 'posix' as Linux (triton01 GPU cluster)
 if os.name == 'nt':
     BASE_DIR = pathlib.PurePath('V:\\AIMLab')
-    REPO_DIR = pathlib.PurePath('C:\\Users\\ShanyBiton\\Documents\\repos\\Generalization')
+    REPO_DIR = pathlib.PurePath('C:\\Users\\ShanyBiton\\Documents\\repos\\Shany_Repo')
     REPO_DIR_POSIX = pathlib.PurePath(str(REPO_DIR).replace('\\', '/').replace('C:','/mnt/c'))
     N_PROCESSES = 8
 elif os.name == 'posix':
-    BASE_DIR = pathlib.PurePath('/MLAIM/AIMLab')
-    REPO_DIR = pathlib.PurePath('/home/shanybiton/repos/Generalization')
+    BASE_DIR = pathlib.PurePath('/MLAIM')
+    REPO_DIR = pathlib.PurePath('/home/shanybiton/repos/Shany_Repo')
     REPO_DIR_POSIX = REPO_DIR
     N_PROCESSES = 15
 
 
 # Paths definition
 DATA_DIR = BASE_DIR / "databases"
-CLASSIFIERS_DIR = BASE_DIR /"Shany" / "Classifiers"
-SNAPSHOTS_DIR = BASE_DIR / "Shany" / "Snapshots"
-MATLAB_TEST_VECTORS_DIR = BASE_DIR / "Shany" / "Matlab_test_vectors"
-EPLTD_PROG_DIR = BASE_DIR / "Shany" / "epltd" / "epltd_all"
+CLASSIFIERS_DIR = BASE_DIR / "AIMLab" /"Shany" / "Classifiers"
+SNAPSHOTS_DIR = BASE_DIR / "AIMLab" / "Shany" / "Snapshots"
+MATLAB_TEST_VECTORS_DIR = BASE_DIR / "AIMLab"/ "Shany" / "Matlab_test_vectors"
+EPLTD_PROG_DIR = BASE_DIR / "AIMLab" / "Shany" / "epltd" / "epltd_all"
 WQRS_PROG_DIR = pathlib.PurePath('/usr/local/bin/wqrs')
 PARSING_PROJECT_DIR = REPO_DIR_POSIX / "parsing"
-ERROR_ANALYSIS_DIR = BASE_DIR / "Shany" / "ErrorAnalysis"
-PREPROCESSED_DATA_DIR = BASE_DIR / "Shany" / "PreprocessedDatabases"
-GEN_ANN_DIR = BASE_DIR / "Shany" / "Annotations"
-REANNOTATION_DIR = BASE_DIR / 'Shany' / 'medAIM'
+ERROR_ANALYSIS_DIR = BASE_DIR / "AIMLab" / "Shany" / "ErrorAnalysis"
+PREPROCESSED_DATA_DIR = BASE_DIR / "AIMLab" / "Shany" / "PreprocessedDatabases"
+GEN_ANN_DIR = BASE_DIR / "AIMLab" / "Shany" / "Annotations"
+REANNOTATION_DIR = BASE_DIR / "AIMLab" / 'Shany' / 'medAIM'
 MODEL_DIR = REPO_DIR / "saved_models"
 
 START_NIGHT = 22                    # Considering night starts at 10 P.M.

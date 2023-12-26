@@ -1,14 +1,9 @@
-if __name__ == '__main__':
+try:
     from base_packages import *
     import consts as cts
-
-else:
-    from base_packages import *
-    import consts as cts
-
-import wfdb.processing as processing
-import multiprocessing
-from itertools import chain
+except ModuleNotFoundError:
+    from utils.base_packages import *
+    import utils.consts as cts
 
 def pad_rhythm(rhythm, missing=None):
     """ Helper function which recieves the changes in the cardiac rhythm labels and pads the whole vector.

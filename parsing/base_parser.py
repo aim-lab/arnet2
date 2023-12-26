@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
 import utils.consts as cts
 import utils.graphics as graph
@@ -279,6 +282,7 @@ class BaseParser:
 
     def generate_annotations(self, types=None, pat_list=None, force=False, lead=1):
         """ This function generates the peak annotations for all the patients in the database.
+        :param lead: The lead for which to generate the annotations for.
         :param types: Tuple containing the names of the annotations to be generated.
         :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
         :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
@@ -307,7 +311,7 @@ class BaseParser:
                             print("Generating " + str(ann_type) + " annotation for patient ID " + str(id))
                             detector = getattr(i_o, ann_type + '_detector')     # Calling the correct wrapper in the feature comp module.
                             detector(id, pool=self.get_pool())                  # Running the wrapper
-                            shutil.move('/home/shanybiton/repos/Generalization/parsing/' + id + '.' + ann_type, self.generated_anns_path / ann_type / str(lead) / (
+                            shutil.move(cts.PARSING_PROJECT_DIR / (id + '.' + ann_type), self.generated_anns_path / ann_type / str(lead) / (
                                     id + '.' + ann_type))                       # The wrapper provides the annotation file in the local directory. We here migrate it to the anns directory.
                     except:
                         continue
@@ -380,7 +384,7 @@ class BaseParser:
         :param test_anns: All the test annotations upon which SQI needs to run. If None, uses all the available annotations.
         """
         self.window_sizes = window_sizes
-        self.generate_annotations(pat_list=patient_list, force=gen_ann, types=test_anns)
+        # self.generate_annotations(pat_list=patient_list, force=gen_ann, types=test_anns)
         # self.parsed_ecgs = self.parsed_patients()
         if patient_list is None:
             patient_list = self.parse_available_ids()

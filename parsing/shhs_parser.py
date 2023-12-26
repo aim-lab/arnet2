@@ -1,47 +1,44 @@
 from base_parser import *
 
+
 warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
 
-
-class SPANISH_Parser(BaseParser):
+# TODO: write this class to fit all other parsers + add reference annotations
+class SHHS_Parser(BaseParser):
 
     def __init__(self, window_size=60, visit=1, afib_lab_type='afib', load_on_start=True):
         """Note: In SHHS and MESA, the window labels and the rlab dictionnary are not relevant. They are based on the global
         label of the patient (binary label for AF) which can be found among the variables. The afib_lab_type argument refers to
         the type of AF label used: AFIB, AFIB incident or AFIB prevalent. AFIB has been used all along.
         """
-        super(SPANISH_Parser, self).__init__()
+        super(SHHS_Parser, self).__init__()
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
-        self.missing_ecg = np.array(['972', '982', '820', '804', '313', '315', '317', '318', '320',
-       '321', '701', '720', '997', '998', '1007', '366', '369', '406',
-       '411', '372', '304', '307', '310', '311', '744', '965', '923'])
+        self.missing_ecg = np.array(['200146', '200246', '200279', '201115', '201669', '201821', '202248', '202308',
+                                     '202317', '203169', '204217'])
 
         """Helper variables"""
         self.window_size = window_size
 
         """Variables relative to the ECG signals."""
-        self.orig_fs = 512  # Warning ! Some files present a different sample frequency !
+        self.orig_fs = 125  # Warning ! Some files present a different sample frequency !
         self.actual_fs = cts.EPLTD_FS
-        self.name = ""
-        self.ecg_format = "edf"
-        self.rhythms = np.array(['(N', '(AFIB'])
+        self.name = "SHHS" + str(visit)
+        self.ecg_format = ".edf"
         self.visit = visit
 
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
-
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.DATA_DIR / 'copdosadb' / 'polysomnography' / 'edfs'
+        self.raw_ecg_path = cts.DATA_DIR / 'shhs' / 'polysomnography' / 'edfs' / ('shhs' + str(self.visit))
         self.orig_anns_path = None
-        self.generated_anns_path = cts.PREPROCESSED_DATA_DIR / self.name
+        self.generated_anns_path = cts.DATA_DIR / "Annotations" / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.filename = "SPANISH.pkl"
-        self.main_path = ""
+        # self.filename = "SHHS" + str(visit) + ".pkl"
+        self.main_path = cts.PREPROCESSED_DATA_DIR / ("SHHS" + str(self.visit))
         self.window_size = window_size
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
@@ -56,9 +53,25 @@ class SPANISH_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the SHHS) ----------------- #
+        # ---------------- Local variables (relevant only to SHHS) ----------------- #
         # ------------------------------------------------------------------------------- #
         """
+
+        self.visit = visit
+        self.missing_cvd_summary = np.array(['204709', '204806'])
+        self.afib_lab_type = afib_lab_type
+        self.afib_lab_file_path = cts.DATA_DIR / 'shhs' / 'datasets' / ('shhs' + str(self.visit) + '-dataset-0.14.0.csv')
+        self.afib_inc_prev_lab_file_path = cts.DATA_DIR / 'shhs' / 'datasets' / 'shhs-cvd-summary-dataset-0.14.0.csv'
+        self.new_af_label_sheetname = "Labels_SHHS_1_RoiV2.csv"     # Reannotated files by Roi Efraim, Rambam Cardiologist.
+        if self.visit == 1:
+            self.afib_tab = pd.read_csv(self.afib_lab_file_path)
+        else:
+            self.afib_tab = pd.read_csv(self.afib_lab_file_path, encoding="ISO-8859-1")
+        self.afib_inc_prev_tab = pd.read_csv(self.afib_inc_prev_lab_file_path)
+        self.curr_edf = None
+        self.af_inc_lab_dict = {}
+        self.af_prev_lab_dict = {}
+        self.afib_lab_dict = {}
 
     """
     # ------------------------------------------------------------------------- #
@@ -67,26 +80,27 @@ class SPANISH_Parser(BaseParser):
     """
 
     def parse_available_ids(self):
-        # return np.array([file[6:12] for file in os.listdir(str(self.raw_ecg_path))])
-        return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
+        return np.array([file[6:12] for file in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_annotation(self, pat, type="epltd0"):
-        return wfdb.rdann(str(self.generated_anns_path / type / pat), type).sample
+    def parse_annotation(self, pat, lead, type="epltd0"):
+        if type not in self.annotation_types:
+            raise IOError("The requested annotation does not exist.")
+        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
 
     def record_to_wfdb(self, id):
-        file = self.raw_ecg_path / (id + ".edf")
+        file = self.raw_ecg_path / ("shhs" + str(self.visit) + "-" + id + ".edf")
         edf = pyedflib.EdfReader(str(self.raw_ecg_path / file))
-        ecg1_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0][0]
-        ecg_raw = edf.readSignal(ecg1_idx)
-        fs = edf.getSampleFrequencies()[ecg1_idx]
+        ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG')[0][0]
+        ecg_raw = edf.readSignal(ecg_idx)
+        fs = edf.getSampleFrequencies()[ecg_idx]
         ecg_resampled = signal.resample(ecg_raw, int(len(ecg_raw) * self.actual_fs / fs))
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'], write_dir='/home/shanybiton/repos/Generalization/parsing/')
+                    sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
         self.curr_edf = edf
         return ecg_resampled
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0'):
-        edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('shhs' + str(self.visit) + '-' + patient_id + '.edf')))
+    def parse_raw_ecg(self, lead, patient_id, start=0, end=-1, type='epltd0', read_ann=True, ):
+        edf = pyedflib.EdfReader(str(self.raw_ecg_path / ('shhs' + str(self.visit) + '-' + patient_id + self.ecg_format)))
         self.curr_edf = edf
         ecg_idx = np.where(np.array(edf.getSignalLabels()) == 'ECG')[0][0]
         ecg_raw = edf.readSignal(ecg_idx)
@@ -203,16 +217,14 @@ class SPANISH_Parser(BaseParser):
 
 
 if __name__ == '__main__':
-    db = SPANISH_Parser(load_on_start=False)
-    pat_list = db.parse_available_ids()
-    pat_list = pat_list[~np.isin(pat_list, db.missing_ecg)]
-    # for id_ in pat_list:
-    #     file = db.raw_ecg_path / (id_ + ".edf")
-    #     edf = pyedflib.EdfReader(str(file))
-    #     if len(np.where(np.array(edf.getSignalLabels()) == 'ECG1')[0]) == 0:
-    #         db.missing_ecg = np.append(db.missing_ecg, id_)
 
-    db.generate_annotations(types=('xqrs'), pat_list=pat_list, force=False)
+    db = SHHS_Parser(visit=1, load_on_start=False)
+    db.load_from_disk()
+    db.create_pool()
+    for pat in db.parsed_patients():
+        db._sqi(pat, 60, 'xqrs')
+        np.save(db.main_path / pat / 'signal_quality' / str(60), db.signal_quality_dict[pat][60])
+        np.save(db.main_path / pat / 'features' / str(60), db.features_dict[pat][60])
 
     #
     # for pat in to_load:

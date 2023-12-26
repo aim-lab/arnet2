@@ -1,6 +1,10 @@
-from scipy.spatial import cKDTree
-import wfdb.processing as processing
-from sklearn.linear_model import LinearRegression
+try:
+    from base_packages import *
+    import consts as cts
+except ModuleNotFoundError:
+    from utils.base_packages import *
+    import utils.consts as cts
+
 
 def sc_median(data, medfilt_lg=9):
 
@@ -724,10 +728,6 @@ def comp_PAS(segment):
 # This main piece of code performs a benchmark on the Physionet Cinc Challenge 2017. The benchmark is performed
 # based on the source code of the PhysioZoo software.
 if __name__ == '__main__':
-
-    from base_packages import *
-    import consts as cts
-
     # Testing results on 200 segments of the challenge - feature extraction functions
     rr_matlab_path = cts.MATLAB_TEST_VECTORS_DIR / 'benchmark_physiozoo_challenge_with_frag.mat'
     rr_file = sio.loadmat(str(rr_matlab_path))
@@ -771,8 +771,3 @@ if __name__ == '__main__':
     assert F1_matlab == F1
     #assert np.all(results_matlab['IndMatch'].reshape(-1) - 1 == IndMatch)
     #assert meanDist_matlab == meanDist
-
-else:
-
-    from base_packages import *
-    import consts as cts
