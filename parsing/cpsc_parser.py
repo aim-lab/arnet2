@@ -149,11 +149,11 @@ class CPSCDB_Parser(BaseParser):
         self.excel_sheet.Patient = self.excel_sheet.Patient.astype(str)
 
     def get_recording_dir(self, patient_id):
-        '''
-        The recordings are divived into two directories: Training I and Training II.
+        """
+        The recordings are divided into two directories: Training I and Training II.
         This function searches patient_id in both and returns the full path accordingly.
         If patient_id is not in any dir, then error is raised.
-        '''
+        """
         with open(self.raw_ecg_path / 'RECORDS', 'r') as f:
             records = f.read().splitlines()
         for line in records:
