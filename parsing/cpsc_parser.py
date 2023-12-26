@@ -149,15 +149,23 @@ class CPSCDB_Parser(BaseParser):
         self.excel_sheet.Patient = self.excel_sheet.Patient.astype(str)
 
     def get_recording_dir(self, patient_id):
+        '''
+        The recordings are divived into two directories: Training I and Training II.
+        This function searches patient_id in both and returns the full path accordingly.
+        If patient_id is not in any dir, then error is raised.
+        '''
         with open(self.raw_ecg_path / 'RECORDS', 'r') as f:
             records = f.read().splitlines()
         for line in records:
             if patient_id in line:
                 return line
         raise IOError("The requested id does not exist.")
-        return
 
     def record_diagnosis(self, patient_id, win):
+        """
+        This function records the AF diagnosis extracted from holter free text OR tabular diagnosis (diagnosis_merged).
+        The different classes are paroxysmal AF (AF severe) and persistent AF (AF mild)
+        """
         _, fields = wfdb.rdsamp(str(self.raw_ecg_path / self.get_recording_dir(patient_id)))
         sample_descrip = fields['comments']
         if 'non atrial fibrillation' in sample_descrip:
@@ -173,12 +181,12 @@ class CPSCDB_Parser(BaseParser):
 
 if __name__ == "__main__":
     db = CPSCDB_Parser(window_size=60, load_on_start=True)
-    ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
-    db.parse_raw_data(patient_list=ids, window_sizes=[60])
+    # ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
+    # db.parse_raw_data(patient_list=ids, window_sizes=[60])
     # for id in db.parse_available_ids():
     #     db.parse_demographic_features('data_24_26')
     #     db.save_patient_to_disk(id)
-    db.save_to_disk()
+    # db.save_to_disk()
     # unique_ids = np.unique([id.rsplit('_', 1)[0] for id in db.parse_available_ids()])
 
     # db.generate_annotations(lead=1, force=True)
