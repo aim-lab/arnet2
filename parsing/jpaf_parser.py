@@ -80,7 +80,7 @@ class JPAFDB_Parser(BaseParser):
     # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
     def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
         record = self.read_ecg(id)
-        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
+        ann = self.read_ann(id, start=record.time[0], end=record.time.iloc[-1])
         # beat = np.array([ann.pos.values])
         tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
         # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
@@ -114,7 +114,7 @@ class JPAFDB_Parser(BaseParser):
         ecg = self.read_ecg(id).iloc[:, lead].astype(float).values
         if filter_signal:
             ecg = dp.bandpass_filter(data=ecg, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         ecg = dp.resample_by_interpolation(ecg, self.orig_fs, self.actual_fs)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
@@ -205,7 +205,7 @@ class JPAFDB_Parser(BaseParser):
         ecg.reset_index(drop=True, inplace=True)
         return ecg
 
-    #TODO: rename circadian dict
+    # TODO: rename circadian dict
     def parse_circadian_features(self, id):
         """ This functions creates a dict which holds two keys: recording_date and start_recording.
         recording_date: the date of start of recording.
@@ -227,7 +227,52 @@ class JPAFDB_Parser(BaseParser):
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
+
                                                                allow_pickle=True).item()
+
+    def read_ann(self, id, start=None, end=None):
+        """
+        This functions read the R-peaks .csv file per id.
+        Then it returns for a given id the reference annotation
+        :param id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param start: The beginning of the ECG.
+        :param end: The end of the ECG.
+        :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
+        :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG.
+        """
+        id_dir = self.get_dir(str(id))[0]
+        example_path = self.raw_ecg_path / id_dir / self.csv_dir
+        RR_df = pd.DataFrame([])
+        ann_files = os.listdir(example_path)
+        ann_files.sort()
+        for f in ann_files:
+            chunks = pd.read_csv(example_path / f, iterator=True, chunksize=1000000, encoding='unicode_escape',
+                                 usecols=[0, 1, 2], names=['time', 'ann', 'pos'],
+                                 header=None, dtype={"NA": 'string', "ann": 'string', 'pos': 'string'})
+            df2 = pd.concat(chunks, ignore_index=True)
+            if len(df2[df2['pos'].str.contains("RR", na=False)]) > 0:
+                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0] + 1:]
+            RR_df = RR_df.append(df2)
+        RR_df.reset_index(inplace=True, drop=True)
+        RR_df['pos'] = RR_df['pos'].astype(int)
+        # df2 = df2.sort_values(by ='loc', ascending=True, na_position='last')
+        ann = RR_df['ann']
+        loc = RR_df['pos']
+        time_df = RR_df['time']
+        real_start = time.strftime('%-H:%M', time.gmtime(start))
+        time_ann_start = time_df[time_df == real_start].index[0]
+        real_end = time.strftime('%-H:%M', time.gmtime(end))
+        temp_time_df = time_df[time_ann_start + 1:]
+        if len(temp_time_df[temp_time_df == real_end]) == 0:
+            time_ann_end = time_df.index[-1]
+        else:
+            if time_df[time_df == real_end].index[-1] < 4000:
+                time_ann_end = time_df.index[-1]
+            else:
+                time_ann_end = time_df[time_df == real_end].index[-1]
+        ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
+
+        return ann_dict.iloc[time_ann_start:time_ann_end + 1]
 
 
 if __name__ == '__main__':

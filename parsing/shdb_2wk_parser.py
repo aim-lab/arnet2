@@ -82,7 +82,7 @@ class SHDB_2wk_Parser(BaseParser):
 
     def parse_reference_annotation(self, id, combine=True, reannotated=True):
         record = self.read_ecg(id)
-        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
+        ann = self.read_ann(id, start=record.time[0], end=record.time.iloc[-1])
         tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
         # if reannotated:
         #     rhythm_df = self.parse_reference_rhythm(id)
@@ -157,10 +157,13 @@ class SHDB_2wk_Parser(BaseParser):
     """
 
     def get_dir(self, id):
+        """ This function returns the full path starting with id"""
         return [i for i in glob.glob(str(self.raw_ecg_path / '*/*')) if
                 i.split('/')[-1].startswith(id)]
 
     def read_ecg(self, id):
+        """ This function reads and returns the ecg signal belonging to id.
+        The ecg is stored in a csv file with two columns: ch1 and ch2 storing two ecg channels."""
         id_dir = self.get_dir(str(id))[0]
         example_path = id_dir + '/' + (str(id.rsplit('_', 2)[0]) + self.ecg_format)
         chunks = pd.read_csv(example_path, iterator=True, chunksize=1000000, encoding='unicode_escape',
@@ -177,7 +180,6 @@ class SHDB_2wk_Parser(BaseParser):
         temp_time = re.split('\s+', temp_time)
 
         date = dt.datetime.strptime(temp_date[0], '%Y/%m/%d')
-        df = pd.DataFrame()
         length = np.size(ch2)
         fs = 1 / self.orig_fs
         [hours, minutes, seconds] = [int(x) for x in temp_time[1].split(':')]
@@ -187,7 +189,6 @@ class SHDB_2wk_Parser(BaseParser):
 
         ecg = pd.DataFrame({'time': timestamp, 'data_ch1': ch1, 'data_ch2': ch2, 'date': date})
         ecg.reset_index(drop=True, inplace=True)
-        # dt = np.asarray(ecg['data_ch2'].iloc[2:], dtype=float)
         return ecg
 
     def record_diagnosis(self, patient_id, win):
@@ -209,6 +210,9 @@ class SHDB_2wk_Parser(BaseParser):
             self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
 
     def parse_circadian_features(self, id):
+        """ This functions creates a dict which holds two keys: recording_date and start_recording.
+        recording_date: the date of start of recording.
+        start_recording: the relative time of the day for when the recording started."""
         if id not in self.circadian_dict.keys():
             self.circadian_dict[id] = {}
         self.circadian_dict[id]['recording_date'] = self.read_ecg(id).date[0].date()
@@ -217,6 +221,9 @@ class SHDB_2wk_Parser(BaseParser):
         np.save(self.main_path / id / 'circadian_dict.npy', self.__dict__['circadian_dict'][id])
 
     def load_circardian_from_disk(self, patient_list=None):
+        """
+        This functions loads circadian_dict that was created by parse_circadian_features.
+        """
         if patient_list is None:
             patient_list = self.parsed_patients()
         for pat in patient_list:
@@ -224,7 +231,16 @@ class SHDB_2wk_Parser(BaseParser):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
                                                                allow_pickle=True).item()
 
-    def read_ann(self, id, start_time=None, end_time=None):
+    def read_ann(self, id, start=None, end=None):
+        """
+        This functions read the R-peaks .csv file per id.
+        Then it returns for a given id the reference annotation
+        :param id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param start: The beginning of the ECG.
+        :param end: The end of the ECG.
+        :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
+        :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG.
+        """
         id_dir = self.get_dir(str(id))[0]
         example_path = self.raw_ecg_path / id_dir / self.csv_dir
         RR_df = pd.DataFrame([])
@@ -244,9 +260,9 @@ class SHDB_2wk_Parser(BaseParser):
         ann = RR_df['ann']
         loc = RR_df['pos']
         time_df = RR_df['time']
-        real_start = time.strftime('%-H:%M', time.gmtime(start_time))
+        real_start = time.strftime('%-H:%M', time.gmtime(start))
         time_ann_start = time_df[time_df == real_start].index[0]
-        real_end = time.strftime('%-H:%M', time.gmtime(end_time))
+        real_end = time.strftime('%-H:%M', time.gmtime(end))
         temp_time_df = time_df[time_ann_start + 1:]
         if len(temp_time_df[temp_time_df == real_end]) == 0:
             time_ann_end = time_df.index[-1]
@@ -255,9 +271,6 @@ class SHDB_2wk_Parser(BaseParser):
                 time_ann_end = time_df.index[-1]
             else:
                 time_ann_end = time_df[time_df == real_end].index[-1]
-        # else:
-        #     time_ann_start=0
-        #     time_ann_end = len(time_df)
         ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
 
         return ann_dict.iloc[time_ann_start:time_ann_end + 1]
@@ -278,6 +291,7 @@ if __name__ == '__main__':
     windows = [60]
     db = SHDB_2wk_Parser(load_on_start=False)
     ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
+    db.get_dir(ids[0])
     # ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
     # pat_list = ann_ids[~np.isin(ann_ids, db.parsed_patients())]
 
