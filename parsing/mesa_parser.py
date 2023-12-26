@@ -3,7 +3,7 @@ from base_parser import *
 warnings.filterwarnings('ignore')
 random.seed(cts.SEED)
 
-
+# TODO: write this class to fit all other parsers + add reference annotations
 class MESA_Parser(BaseParser):
 
     def __init__(self, window_size=60, load_on_start=True):
@@ -160,6 +160,7 @@ class MESA_Parser(BaseParser):
 
 if __name__ == '__main__':
     db = MESA_Parser(load_on_start=True)
+    db.parse_raw_ecg(db.parsed_patients()[0])
     # pat_list = db.parse_available_ids()
     # db.parse_raw_data(patient_list=pat_list)
     # db.save_to_disk()
