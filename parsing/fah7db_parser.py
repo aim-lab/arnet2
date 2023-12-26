@@ -1,29 +1,17 @@
-# General imports
-import pathlib
-
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import wfdb
-import warnings
-import pandas as pd
-import sys
-import scipy.io as sio
-# Relative imports
-import utils.consts as cts
-from parsing.base_parser import *
+from base_parser import *
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 class FAH7DB_Parser(BaseParser):
 
-    def __init__(self, window_size=60, load_on_start=True, load_ectopics=True, windows_shifted=False):
+    def __init__(self, window_size=60, load_on_start=True, ):
 
         super(FAH7DB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
@@ -31,26 +19,22 @@ class FAH7DB_Parser(BaseParser):
 
         """ Helper variables"""
         self.window_size = window_size
-        self.windows_shifted = windows_shifted
 
         """Variables relative to the ECG signals."""
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "FAH7DB"
         self.ecg_format = ".mat"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J',
-                                 '(PAT', '(AT', '(VTS', '(AIVRS', '(IVRS', '(AIVR'])
-
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.BASE_DIR / "Shany" / 'databases' / "fah7db" / "basal"
+        # TODO: move database to MLAIM/databases (?)
+        self.raw_ecg_path = cts.BASE_DIR / "AIMLab" / "Shany" / 'databases' / "basal"
         self.orig_anns_path = None
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.PREPROCESSED_DATA_DIR / ("FAH7DB" + ("_shifted" if windows_shifted else ""))
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
@@ -64,7 +48,7 @@ class FAH7DB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the FAH7DB) --------------- #
+        # ---------------- Local variables (relevant only to FAH7DB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -103,29 +87,28 @@ class FAH7DB_Parser(BaseParser):
                     sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'])
         return re_record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1, correct_peaks=True):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', correct_peaks=True, filter_signal=True, read_ann=True, ):
         file = self.raw_ecg_path / patient_id / (patient_id + "_" + str(lead) + self.ecg_format)
         loaded = sio.loadmat(file, struct_as_record=True)
         record = loaded['ecg'].flatten().flatten()
-        record = bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+        if filter_signal:
+            record = dp.bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
+                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
-        if correct_peaks:
-            # self.create_pool()
-            ann = i_o.qrs_adjust_detector(ecg=record, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000, pool=self.get_pool())
-            # self.destroy_pool()
-            # ann = i_o.qrs_adjust(ecg=record, qrs=ann, fs=self.actual_fs, inputsign=1)
         if end == -1:
             end = int(len(record) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
-        ecg = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        if self.windows_shifted:
-            ann = ann[self.window_size//2:]
-        return ecg, ann
+        record = record[start_sample:end_sample]
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type, lead=lead)
+            if correct_peaks:
+                ann = i_o.qrs_adjust_detector(ecg=record, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return record, ann
+        else:
+            return record
 
     def parse_demographic_features(self, id):
         for win in self.loaded_window_sizes:

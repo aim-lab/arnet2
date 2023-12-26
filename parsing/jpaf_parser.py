@@ -110,7 +110,7 @@ class JPAFDB_Parser(BaseParser):
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
         return record
 
-    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', correct_peaks=True, filter_signal=True, read_ann=True, ):
         ecg = self.read_ecg(id).iloc[:, lead].astype(float).values
         if filter_signal:
             ecg = dp.bandpass_filter(data=ecg, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
@@ -123,7 +123,8 @@ class JPAFDB_Parser(BaseParser):
         ecg = ecg[start_sample:end_sample]
         if read_ann:
             ann = self.parse_annotation(id, type=type, lead=lead)
-            ann = i_o.qrs_adjust(ecg=ecg, qrs=ann, fs=self.actual_fs, inputsign=1)
+            if correct_peaks:
+                ann = i_o.qrs_adjust(ecg=ecg, qrs=ann, fs=self.actual_fs, inputsign=1)
             ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
             ann -= start_sample
             return ecg, ann
