@@ -275,23 +275,10 @@ class SHDB_2wk_Parser(BaseParser):
 
         return ann_dict.iloc[time_ann_start:time_ann_end + 1]
 
-    def return_data(self, ids, feats_to_use, fillna=True, normalize=False):
-        final = tuple()
-        # X, y, glob_lab = db.return_features(pat_list=ids, feats_list=feats_to_use,
-        #                                                       return_global_label=True)
-        ids_rr = db.return_patient_ids(pat_list=ids)
-        rr, rrt, _ = db.return_rr(pat_list=ids)
-        prec = db.return_preceeding_windows(pat_list=ids)
-        data = np.concatenate((rr, prec.reshape(-1, 1), ids_rr.reshape(-1, 1)), axis=1)
-
-        return data, rrt
-
 
 if __name__ == '__main__':
     windows = [60]
     db = SHDB_2wk_Parser(load_on_start=False)
-    ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
-    db.get_dir(ids[0])
     # ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
     # pat_list = ann_ids[~np.isin(ann_ids, db.parsed_patients())]
 
