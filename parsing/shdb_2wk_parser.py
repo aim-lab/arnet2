@@ -31,7 +31,7 @@ class SHDB_2wk_Parser(BaseParser):
         self.ecg_format = ".csv"
 
         """ General variables for signal processing/Filtering """
-        self.sqi_test_ann = 'epltd0'          # The annotation type used to compute and load the SQI variables.
+        self.sqi_test_ann = 'epltd0'  # The annotation type used to compute and load the SQI variables.
         self.sqi_ref_ann = 'xqrs'
 
         """Variables relative to the different paths"""
@@ -89,7 +89,7 @@ class SHDB_2wk_Parser(BaseParser):
             return wfdb.rdann(dest_path, type).sample
         return np.array([])
 
-    def record_to_wfdb(self, id, lead=1):
+    def record_to_wfdb(self, id, lead):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
         re_record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
@@ -98,21 +98,25 @@ class SHDB_2wk_Parser(BaseParser):
                     sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
         return re_record
 
-    def parse_raw_ecg(self, id, start=0, end=-1, type='epltd0', lead=1):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                 signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+        if filter_signal:
+            record = dp.bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
+                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
 
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(id, type=type, lead=lead)
         if end == -1:
             end = int(len(record) / self.actual_fs)
         start_sample = int(start * self.actual_fs)
         end_sample = int(end * self.actual_fs)
         record = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return record, ann
+        if read_ann:
+            ann = self.parse_annotation(id, type=type, lead=lead)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return record, ann
+        else:
+            return ecg
 
     def parse_reference_annotation(self, id, combine=True, reannotated=True):
         record = self.read_ecg(id)
