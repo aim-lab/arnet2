@@ -50,7 +50,7 @@ class JPAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the JPAFDB) --------------- #
+        # ---------------- Local variables (relevant only to JPAFDB) -------------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.ecg_file_name = 'RR'
@@ -80,7 +80,7 @@ class JPAFDB_Parser(BaseParser):
     # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
     def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
         record = self.read_ecg(id)
-        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
+        ann = self.read_ann(id, start=record.time[0], end=record.time.iloc[-1])
         # beat = np.array([ann.pos.values])
         tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
         # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
@@ -102,7 +102,11 @@ class JPAFDB_Parser(BaseParser):
     def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
+        # check if peaks file exist. Sometimes, the detector fails to work
+        dest_path = str(self.generated_anns_path / type / str(lead) / id)
+        if os.path.exists(dest_path + '.' + type):
+            return wfdb.rdann(dest_path, type).sample
+        return np.array([])
 
     def record_to_wfdb(self, id, lead, filter_signal=True):
         record = self.parse_raw_ecg(id, lead=lead, read_ann=False, filter_signal=filter_signal)
@@ -110,11 +114,11 @@ class JPAFDB_Parser(BaseParser):
                     sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
         return record
 
-    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', correct_peaks=True, filter_signal=True, read_ann=True, ):
         ecg = self.read_ecg(id).iloc[:, lead].astype(float).values
         if filter_signal:
             ecg = dp.bandpass_filter(data=ecg, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+                                     signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         ecg = dp.resample_by_interpolation(ecg, self.orig_fs, self.actual_fs)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
@@ -123,7 +127,8 @@ class JPAFDB_Parser(BaseParser):
         ecg = ecg[start_sample:end_sample]
         if read_ann:
             ann = self.parse_annotation(id, type=type, lead=lead)
-            ann = i_o.qrs_adjust(ecg=ecg, qrs=ann, fs=self.actual_fs, inputsign=1)
+            if correct_peaks:
+                ann = i_o.qrs_adjust(ecg=ecg, qrs=ann, fs=self.actual_fs, inputsign=1)
             ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
             ann -= start_sample
             return ecg, ann
@@ -172,7 +177,7 @@ class JPAFDB_Parser(BaseParser):
     """
 
     def get_dir(self, id):
-        """ This function returns all directories starting with same id"""
+        """ This function returns the full path starting with id"""
         return [i for i in os.listdir(self.raw_ecg_path) if i.startswith(id)]
 
     def read_ecg(self, id):
@@ -205,7 +210,7 @@ class JPAFDB_Parser(BaseParser):
         ecg.reset_index(drop=True, inplace=True)
         return ecg
 
-    #TODO: rename circadian dict
+    # TODO: rename circadian dict
     def parse_circadian_features(self, id):
         """ This functions creates a dict which holds two keys: recording_date and start_recording.
         recording_date: the date of start of recording.
@@ -219,13 +224,60 @@ class JPAFDB_Parser(BaseParser):
 
     # TODO: improve function
     def load_circardian_from_disk(self, patient_list=None):
-        """ This functions loads circadian_dict that was created by parse_circadian_features."""
+        """
+        This functions loads circadian_dict that was created by parse_circadian_features.
+        """
         if patient_list is None:
             patient_list = self.parsed_patients()
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
+
                                                                allow_pickle=True).item()
+
+    def read_ann(self, id, start=None, end=None):
+        """
+        This functions read the R-peaks .csv file per id.
+        Then it returns for a given id the reference annotation
+        :param id: The patient ID. Assumed to be in the list of IDs present in the database.
+        :param start: The beginning of the ECG.
+        :param end: The end of the ECG.
+        :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
+        :returns rhythms: A numpy array listing the rhythms corresponding to the peaks in the raw ECG.
+        """
+        id_dir = self.get_dir(str(id))[0]
+        example_path = self.raw_ecg_path / id_dir / self.csv_dir
+        RR_df = pd.DataFrame([])
+        ann_files = os.listdir(example_path)
+        ann_files.sort()
+        for f in ann_files:
+            chunks = pd.read_csv(example_path / f, iterator=True, chunksize=1000000, encoding='unicode_escape',
+                                 usecols=[0, 1, 2], names=['time', 'ann', 'pos'],
+                                 header=None, dtype={"NA": 'string', "ann": 'string', 'pos': 'string'})
+            df2 = pd.concat(chunks, ignore_index=True)
+            if len(df2[df2['pos'].str.contains("RR", na=False)]) > 0:
+                df2 = df2.iloc[df2[df2['pos'].str.contains("RR", na=False)].index[0] + 1:]
+            RR_df = RR_df.append(df2)
+        RR_df.reset_index(inplace=True, drop=True)
+        RR_df['pos'] = RR_df['pos'].astype(int)
+        # df2 = df2.sort_values(by ='loc', ascending=True, na_position='last')
+        ann = RR_df['ann']
+        loc = RR_df['pos']
+        time_df = RR_df['time']
+        real_start = time.strftime('%-H:%M', time.gmtime(start))
+        time_ann_start = time_df[time_df == real_start].index[0]
+        real_end = time.strftime('%-H:%M', time.gmtime(end))
+        temp_time_df = time_df[time_ann_start + 1:]
+        if len(temp_time_df[temp_time_df == real_end]) == 0:
+            time_ann_end = time_df.index[-1]
+        else:
+            if time_df[time_df == real_end].index[-1] < 4000:
+                time_ann_end = time_df.index[-1]
+            else:
+                time_ann_end = time_df[time_df == real_end].index[-1]
+        ann_dict = pd.DataFrame(data={'time': time_df, 'pos': loc.values, 'ann': ann.values})
+
+        return ann_dict.iloc[time_ann_start:time_ann_end + 1]
 
 
 if __name__ == '__main__':

@@ -1,29 +1,17 @@
-# General imports
-import pathlib
-
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import wfdb
-import warnings
-import pandas as pd
-import sys
-import scipy.io as sio
-# Relative imports
-import utils.consts as cts
-from parsing.base_parser import *
+from base_parser import *
 
 warnings.filterwarnings('ignore')
+random.seed(cts.SEED)
 
 class FAH7DB_Parser(BaseParser):
 
-    def __init__(self, window_size=60, load_on_start=True, load_ectopics=True, windows_shifted=False):
+    def __init__(self, window_size=60, load_on_start=True, ):
 
         super(FAH7DB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
@@ -31,42 +19,36 @@ class FAH7DB_Parser(BaseParser):
 
         """ Helper variables"""
         self.window_size = window_size
-        self.windows_shifted = windows_shifted
 
         """Variables relative to the ECG signals."""
         self.orig_fs = 128
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
+        self.ref_lead = 1
         self.name = "FAH7DB"
         self.ecg_format = ".mat"
-        self.rhythms = np.array(['(N', '(AFIB', '(AB', '(AFL', '(B', '(BII', '(IVR', '(NOD',
-                                 '(P', '(PREX', '(SBR', '(SVTA', '(T', '(VFL', '(VT', '(J',
-                                 '(PAT', '(AT', '(VTS', '(AIVRS', '(IVRS', '(AIVR'])
-
-        self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.BASE_DIR / "Shany" / 'databases' / "fah7db" / "basal"
+        # TODO: move database to MLAIM/databases (?)
+        self.raw_ecg_path = cts.BASE_DIR / "AIMLab" / "Shany" / 'databases' / "basal"
         self.orig_anns_path = None
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
-        self.main_path = cts.PREPROCESSED_DATA_DIR / ("FAH7DB" + ("_shifted" if windows_shifted else ""))
+        self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
 
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
 
-        self.window_size = window_size
-        test_pat = self.parsed_patients()[0]
-        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
-        if load_on_start:
-            if os.path.exists(self.main_path):
+        if os.path.exists(self.main_path):
+            parsed_patients = self.parsed_patients()
+            test_pat = parsed_patients[0]
+            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+            if load_on_start:
                 self.set_window_size(self.window_size)
-        self.is_ectopic = {}
-        self.n_ectopics = {}
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the FAH7DB) --------------- #
+        # ---------------- Local variables (relevant only to FAH7DB) --------------- #
         # ------------------------------------------------------------------------------- #
         """
 
@@ -80,56 +62,53 @@ class FAH7DB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([dir for dir in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_reference_annotation(self, id, combine=True, reannotated=False):
+    def parse_reference_annotation(self, id, combine=True, ):
         # No rhythms available
-        _, ann = self.parse_raw_ecg(id, type=self.sqi_ref_ann)
+        _, ann = self.parse_raw_ecg(id, lead=self.ref_lead, type=self.sqi_ref_ann, read_ann=True, correct_peaks=True)
         ltbeats = np.array(['NSR' for i in ann]).astype(object)
-        rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
         return ann, rhythm
 
     def parse_annotation(self, id, type="epltd0", lead=1):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
+        # check if peaks file exist. Sometimes, the detector fails to work
+        dest_path = str(self.generated_anns_path / type / str(lead) / id)
+        if os.path.exists(dest_path + '.' + type):
+            return wfdb.rdann(dest_path, type).sample
+        return np.array([])
 
-    def record_to_wfdb(self, id, lead=1):
-        file = self.raw_ecg_path / id / (id + "_" + str(lead) + self.ecg_format)
-        loaded = sio.loadmat(file, struct_as_record=True)
-        record = loaded['ecg'].flatten().flatten()
-        re_record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
-        re_record = dp.resample_by_interpolation(re_record, self.orig_fs, self.actual_fs)
-        re_record = re_record / 1000
-        re_record = re_record[self.start_ann[id]:]
+    def record_to_wfdb(self, id, lead, filter_signal=True):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False, filter_signal=filter_signal)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'])
-        return re_record
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
+        return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1, correct_peaks=True):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', correct_peaks=True, filter_signal=True, read_ann=True, ):
         file = self.raw_ecg_path / patient_id / (patient_id + "_" + str(lead) + self.ecg_format)
         loaded = sio.loadmat(file, struct_as_record=True)
         record = loaded['ecg'].flatten().flatten()
-        record = bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
+        if filter_signal:
+            record = dp.bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=self.orig_fs/2 - 0.5,
+                                        signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         record = dp.resample_by_interpolation(record, self.orig_fs, self.actual_fs)
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
-        if correct_peaks:
-            # self.create_pool()
-            ann = i_o.qrs_adjust_detector(ecg=record, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000, pool=self.get_pool())
-            # self.destroy_pool()
-            # ann = i_o.qrs_adjust(ecg=record, qrs=ann, fs=self.actual_fs, inputsign=1)
         if end == -1:
             end = int(len(record) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
-        ecg = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        if self.windows_shifted:
-            ann = ann[self.window_size//2:]
-        return ecg, ann
+        record = record[start_sample:end_sample]
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type, lead=lead)
+            if correct_peaks:
+                ann = i_o.qrs_adjust_detector(ecg=record, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return record, ann
+        else:
+            return record
 
     def parse_demographic_features(self, id):
+        #  Demographic features are not available for this database
         for win in self.loaded_window_sizes:
             self.features_dict[id][win]['Age'] = np.nan
             self.features_dict[id][win]['Sex'] = np.nan
