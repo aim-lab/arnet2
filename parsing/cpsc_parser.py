@@ -49,12 +49,15 @@ class CPSCDB_Parser(BaseParser):
         self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.BASE_DIR / "Shany" / "PreprocessedDatabases" / self.name
+
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
 
-        self.window_sizes = np.array([60], dtype=int) # Window sizes available in the dataset
-        if load_on_start:
-            if os.path.exists(self.main_path):
+        if os.path.exists(self.main_path):
+            parsed_patients = self.parsed_patients()
+            test_pat = parsed_patients[0]
+            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+            if load_on_start:
                 self.set_window_size(self.window_size)
 
         """

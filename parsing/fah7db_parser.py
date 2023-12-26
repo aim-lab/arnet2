@@ -55,14 +55,12 @@ class FAH7DB_Parser(BaseParser):
         """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
         requested will be loaded into the system."""
 
-        self.window_size = window_size
-        test_pat = self.parsed_patients()[0]
-        self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "mask_rr")])
-        if load_on_start:
-            if os.path.exists(self.main_path):
+        if os.path.exists(self.main_path):
+            parsed_patients = self.parsed_patients()
+            test_pat = parsed_patients[0]
+            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+            if load_on_start:
                 self.set_window_size(self.window_size)
-        self.is_ectopic = {}
-        self.n_ectopics = {}
 
         """
         # ------------------------------------------------------------------------------- #
