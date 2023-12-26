@@ -96,19 +96,22 @@ class CPSCDB_Parser(BaseParser):
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=ecg_resampled.reshape(-1, 1), fmt=['16'])
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
         record = wfdb.rdrecord(str(self.raw_ecg_path / self.get_recording_dir(patient_id)))
         ecg = record.p_signal[:, lead - 1]
         ecg = signal.resample(ecg, int(len(ecg) * self.actual_fs / self.orig_fs))
-        ann = self.parse_annotation(patient_id, type=type)
         if end == -1:
             end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        return ecg, ann
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = np.nan  # This data is not available for this dataset.
