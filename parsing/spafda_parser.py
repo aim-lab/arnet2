@@ -63,7 +63,8 @@ class SPAFDB_Parser(BaseParser):
         self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
         self.ref_ann_path = cts.DATA_DIR / self.name.lower() / "AF_annotations"
         self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "SPAFBD_description.xlsx"
-        self.get_META()
+        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl', sheet_name=0)
+        self.excel_sheet_AF_analysis = pd.read_excel(self.excel_sheet_path, engine='openpyxl', sheet_name=2)
 
         """
         # ------------------------------------------------------------------------- #
@@ -161,14 +162,6 @@ class SPAFDB_Parser(BaseParser):
     # ---------------- Functions relative to this dataset only ---------------- #
     # ------------------------------------------------------------------------- #
     """
-
-    def get_META(self):
-        '''
-        CSV Columns
-        '''
-        # load and convert annotation data
-        self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl', sheet_name=0)
-        self.excel_sheet_AF_analysis = pd.read_excel(self.excel_sheet_path, engine='openpyxl', sheet_name=2)
 
     def get_dir(self, id):
         return [i for i in glob.glob(str(self.raw_ecg_path / '*/*')) if
