@@ -120,8 +120,8 @@ class SPAFDB_Parser(BaseParser):
         else:
             return ecg
 
-    def parse_reference_annotation(self, patient_id, combine=True, reannotated=True):
-        beat_file = self.ref_peaks_path / (patient_id + '_peaks' + self.ecg_format)
+    def parse_reference_annotation(self, patient_id, combine=True):
+        beat_file = self.orig_anns_path / (patient_id + '_peaks' + self.ecg_format)
         rhythm_file = self.ref_ann_path / ('Annotation_' + patient_id[2:] + self.ecg_format)
         try:
             beat_loaded = mat73.loadmat(beat_file)
@@ -142,6 +142,7 @@ class SPAFDB_Parser(BaseParser):
         return (tbeats * self.actual_fs).astype(int), np.insert(rhythm, 0, 0)
 
     def parse_demographic_features(self, id):
+        #  Demographic features are not available for this database
         for win in self.loaded_window_sizes:
             self.features_dict[id][win]['Age'] = np.nan
             self.features_dict[id][win]['Sex'] = np.nan
