@@ -12,7 +12,7 @@
       <paths name="Generalization">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/shanybiton/repos/Shany_Repo" local="$PROJECT_DIR$" />
+            <mapping deploy="/repos/Shany_Repo" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
