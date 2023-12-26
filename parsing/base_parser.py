@@ -279,6 +279,7 @@ class BaseParser:
 
     def generate_annotations(self, types=None, pat_list=None, force=False, lead=1):
         """ This function generates the peak annotations for all the patients in the database.
+        :param lead: The lead for which to generate the annotations for.
         :param types: Tuple containing the names of the annotations to be generated.
         :param pat_list: List of the patients for whom the annotations should be generated. If None, generates on all the patients.
         :param force: If False, the annotations are not computed if already existing. If true, computes the annotations anyway.
