@@ -14,13 +14,13 @@ class SPANISH_Parser(BaseParser):
         super(SPANISH_Parser, self).__init__()
         """
         # ------------------------------------------------------------------------------- #
-        # ----------------------- To be overriden in child classes ---------------------- #
+        # ----------------------- To be overridden in child classes ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
         """Missing records"""
         self.missing_ecg = np.array(['972', '982', '820', '804', '313', '315', '317', '318', '320',
-       '321', '701', '720', '997', '998', '1007', '366', '369', '406',
-       '411', '372', '304', '307', '310', '311', '744', '965', '923'])
+                                     '321', '701', '720', '997', '998', '1007', '366', '369', '406',
+                                     '411', '372', '304', '307', '310', '311', '744', '965', '923'])
 
         """Helper variables"""
         self.window_size = window_size
@@ -34,7 +34,7 @@ class SPANISH_Parser(BaseParser):
         self.ecg_format = ".edf"
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.DATA_DIR / 'copdosadb' / 'polysomnography' / 'edfs'
+        self.raw_ecg_path = cts.DATA_DIR / 'shhs' / 'polysomnography' / 'edfs'
         self.orig_anns_path = None
         self.generated_anns_path = cts.PREPROCESSED_DATA_DIR / self.name
         self.annotation_types = cts.ANNOTATION_TYPES
@@ -65,10 +65,22 @@ class SPANISH_Parser(BaseParser):
 
     def parse_available_ids(self):
         # return np.array([file[6:12] for file in os.listdir(str(self.raw_ecg_path))])
-        return np.array([file.split('.')[0] for file in os.listdir(str(self.raw_ecg_path))])
+        return np.array([file.split('.')[0] for _, _, files in os.walk(self.raw_ecg_path) for file in files if
+                         file.endswith('.edf')])
+
+    def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
+        record = self.read_ecg(id)
+        ann = self.read_ann(id, start_time=record.time[0], end_time=record.time.iloc[-1])
+        # beat = np.array([ann.pos.values])
+        tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
+        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
+        if combine:
+            rhythm[rhythm == self.rhythms_dict['AFL']] = self.rhythms_dict['AFIB']
+        return (tbeats * self.actual_fs).astype(int), rhythm
 
     def parse_annotation(self, pat, lead, type="epltd0"):
-        return wfdb.rdann(str(self.generated_anns_path / type / pat), type).sample
+        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / pat), type).sample
 
     def record_to_wfdb(self, id, lead):
         record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
@@ -91,7 +103,7 @@ class SPANISH_Parser(BaseParser):
         end_sample = end * self.actual_fs
         ecg = ecg[start_sample:end_sample]
         if read_ann:
-            ann = self.parse_annotation(patient_id, type=type)
+            ann = self.parse_annotation(patient_id, lead=lead, type=type)
             ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
             ann -= start_sample
             return ecg, ann
@@ -100,43 +112,42 @@ class SPANISH_Parser(BaseParser):
 
     # rlab is not relevant here. Same for af burden. Will have rlab all ones and zeros, and af burden 0 or 100%. They
     # should not be considered.
-    def parse_elem_data(self, pat):
-        dicts_to_fill = [self.start_windows_dict, self.end_windows_dict, self.av_prec_windows_dict, self.n_excluded_windows_dict, self.mask_rr_dict]
-        for dic in dicts_to_fill:
-            if pat not in dic.keys():
-                dic[pat] = {}
-
-        ann = self.parse_annotation(pat)
-        keyword = 'afib'
-        if self.visit == 1:
-            keyword = keyword.upper()
-        if self.afib_lab_type == 'afib':
-            label = float(self.afib_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword])
-        elif self.afib_lab_type == 'afibprev':
-            label = self.afib_inc_prev_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword]
-        elif self.afib_lab_type == 'afibinc':
-            label = self.afib_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword]
-
-        self.rr_dict[pat] = np.diff(ann) / self.actual_fs
-        self.rrt_dict[pat] = np.concatenate(([ann[0] / self.actual_fs], np.cumsum(self.rr_dict[pat]) + ann[0] / self.actual_fs))
-        self.rlab_dict[pat] = label * np.ones_like(self.rr_dict[pat])
-        self.excluded_portions_dict[pat] = np.array([[0, self.rrt_dict[pat][0]]])
-        self.recording_time[pat] = self.rrt_dict[pat][-1]
-
-        for win in self.window_sizes:
-            rr = self.rr_dict[pat]
-            rr_reshaped = rr[:(len(rr) // win) * win].reshape(-1, win)
-            n_windows, _ = rr_reshaped.shape
-            rrt = self.rrt_dict[pat]
-            start_windows = rrt[:-1][:(len(rr) // win) * win].reshape(-1, win)[:, 0]
-            end_windows = rrt[1:][:(len(rr) // win) * win].reshape(-1, win)[:, 0]
-
-            self.mask_rr_dict[pat][win] = np.ones(n_windows, dtype=bool)
-            self.n_excluded_windows_dict[pat][win] = 0
-            self.start_windows_dict[pat][win] = start_windows
-            self.end_windows_dict[pat][win] = end_windows
-            self.av_prec_windows_dict[pat][win] = dp.cumsum_reset(self.mask_rr_dict[pat][win])
-
+    # def parse_elem_data(self, pat):
+    #     dicts_to_fill = [self.start_windows_dict, self.end_windows_dict, self.av_prec_windows_dict, self.n_excluded_windows_dict, self.mask_rr_dict]
+    #     for dic in dicts_to_fill:
+    #         if pat not in dic.keys():
+    #             dic[pat] = {}
+    #
+    #     ann = self.parse_annotation(pat)
+    #     keyword = 'afib'
+    #     if self.visit == 1:
+    #         keyword = keyword.upper()
+    #     if self.afib_lab_type == 'afib':
+    #         label = float(self.afib_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword])
+    #     elif self.afib_lab_type == 'afibprev':
+    #         label = self.afib_inc_prev_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword]
+    #     elif self.afib_lab_type == 'afibinc':
+    #         label = self.afib_tab.loc[self.afib_tab['nsrrid'] == int(pat), keyword]
+    #
+    #     self.rr_dict[pat] = np.diff(ann) / self.actual_fs
+    #     self.rrt_dict[pat] = np.concatenate(([ann[0] / self.actual_fs], np.cumsum(self.rr_dict[pat]) + ann[0] / self.actual_fs))
+    #     self.rlab_dict[pat] = label * np.ones_like(self.rr_dict[pat])
+    #     self.excluded_portions_dict[pat] = np.array([[0, self.rrt_dict[pat][0]]])
+    #     self.recording_time[pat] = self.rrt_dict[pat][-1]
+    #
+    #     for win in self.window_sizes:
+    #         rr = self.rr_dict[pat]
+    #         rr_reshaped = rr[:(len(rr) // win) * win].reshape(-1, win)
+    #         n_windows, _ = rr_reshaped.shape
+    #         rrt = self.rrt_dict[pat]
+    #         start_windows = rrt[:-1][:(len(rr) // win) * win].reshape(-1, win)[:, 0]
+    #         end_windows = rrt[1:][:(len(rr) // win) * win].reshape(-1, win)[:, 0]
+    #
+    #         self.mask_rr_dict[pat][win] = np.ones(n_windows, dtype=bool)
+    #         self.n_excluded_windows_dict[pat][win] = 0
+    #         self.start_windows_dict[pat][win] = start_windows
+    #         self.end_windows_dict[pat][win] = end_windows
+    #         self.av_prec_windows_dict[pat][win] = dp.cumsum_reset(self.mask_rr_dict[pat][win])
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = float(self.afib_tab.loc[self.afib_tab['nsrrid'] == int(id), 'ahi_a0h3a'])
@@ -151,7 +162,8 @@ class SPANISH_Parser(BaseParser):
         data_resamp_med = fc.sc_median(data_resamp, medfilt_lg=9)
         det_desat, table_desat_aa, table_desat_bb, table_desat_cc = fc.sc_desaturations(data_resamp_med)
         total_recording_time = ((n_spo2 / sf_spo2) / cts.N_SEC_IN_MIN) / cts.N_MIN_IN_HOUR  # In hours
-        self.odi_dict[id] = len(table_desat_aa) / total_recording_time  # Definition of ODI: Number of desaturations per hour
+        self.odi_dict[id] = len(
+            table_desat_aa) / total_recording_time  # Definition of ODI: Number of desaturations per hour
 
     def parse_demographic_features(self, id):
         # Age (age_s1), Hypertension (HTNDerv_s + visit), metabolic syndrome (??), BMI (bmi_s+visit), gender (gender,
@@ -182,18 +194,21 @@ class SPANISH_Parser(BaseParser):
         new_labels_sheet = pd.read_csv(cts.ERROR_ANALYSIS_DIR / "Reannotation-SHHS" / self.new_af_label_sheetname)
         for i, pat in enumerate(new_labels_sheet['Patient']):
             if str(pat) in self.rr_dict.keys():
-                is_af = np.logical_and(new_labels_sheet['Label'][i] >= cts.PATIENT_LABEL_AF_MILD, new_labels_sheet['Label'][i] <= cts.PATIENT_LABEL_AF_SEVERE)
+                is_af = np.logical_and(new_labels_sheet['Label'][i] >= cts.PATIENT_LABEL_AF_MILD,
+                                       new_labels_sheet['Label'][i] <= cts.PATIENT_LABEL_AF_SEVERE)
                 self.rlab_dict[str(pat)] = is_af * np.ones_like(self.rlab_dict[str(pat)])
                 for win in self.window_sizes:
                     self._win_lab(str(pat), win)
                     self._af_win_lab(str(pat), win)
                 self.af_pat_lab_dict[str(pat)] = new_labels_sheet['Label'][i]
-                self.af_burden_dict[str(pat)] = float(is_af) # Not really significant, as we don't truly have the af_burden. This is just for consistency.
+                self.af_burden_dict[str(pat)] = float(
+                    is_af)  # Not really significant, as we don't truly have the af_burden. This is just for consistency.
 
     def label_hist(self):
         labels_af = np.array([self.af_pat_lab_dict[elem] for elem in self.all_patients()])
         labels_af = labels_af[~np.isnan(labels_af)]
-        labels_af = np.array([np.sum(labels_af == i) for i in [cts.PATIENT_LABEL_NON_AF, cts.PATIENT_LABEL_AF_SEVERE]]) # Patients have AFB of 0 or 100%, i.e. they're considered or as non-AF or as Severe.
+        labels_af = np.array([np.sum(labels_af == i) for i in [cts.PATIENT_LABEL_NON_AF,
+                                                               cts.PATIENT_LABEL_AF_SEVERE]])  # Patients have AFB of 0 or 100%, i.e. they're considered or as non-AF or as Severe.
         fig, axes = graph.create_figure(tight_layout=False)
         axes[0][0].bar(np.array([1, 2]), labels_af, tick_label=['$NSR$', '$AF$'], width=0.2)
         axes[0][0].text(1.0, 2900, '$p=' + str(labels_af[0]) + '$', ha='center', va='bottom', fontsize=24)
@@ -202,10 +217,11 @@ class SPANISH_Parser(BaseParser):
                               x_titles=[['Rhythm types']], y_titles=[["Count"]])
         plt.show()
 
+
 if __name__ == '__main__':
     db = SPANISH_Parser(load_on_start=False)
     # db.parse_raw_ecg(db.parsed_patients()[0])
-    pat_list = db.parse_available_ids()
+    pat_list = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
     db.parse_raw_data()
     # pat_list = pat_list[~np.isin(pat_list, db.missing_ecg)]
     # for id_ in pat_list:
