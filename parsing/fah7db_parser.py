@@ -62,11 +62,11 @@ class FAH7DB_Parser(BaseParser):
     def parse_available_ids(self):
         return np.array([dir for dir in os.listdir(str(self.raw_ecg_path))])
 
-    def parse_reference_annotation(self, id, combine=True, reannotated=False):
+    def parse_reference_annotation(self, id, combine=True, ):
         # No rhythms available
-        _, ann = self.parse_raw_ecg(id, type=self.sqi_ref_ann)
+        _, ann = self.parse_raw_ecg(id, lead=self.ref_lead, type=self.sqi_ref_ann, read_ann=True, correct_peaks=True)
         ltbeats = np.array(['NSR' for i in ann]).astype(object)
-        rhythm = np.array([cts.rhythms_dict[i] for i in ltbeats])
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
         return ann, rhythm
 
     def parse_annotation(self, id, type="epltd0", lead=1):
