@@ -85,50 +85,40 @@ class SPAFDB_Parser(BaseParser):
             return wfdb.rdann(dest_path, type).sample
         return np.array([])
 
-    def record_to_wfdb(self, id, lead=1):
-        file = self.raw_ecg_path / (id + self.ecg_format)
-        try:
-            loaded = mat73.loadmat(file)
-        except Exception:
-            loaded = sio.loadmat(file, struct_as_record=True)
-        record = loaded['signal'].T[lead]
-        orig_fs = int(loaded['fa'].flatten()[0])
-        re_record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=orig_fs/2 - 0.5,
-                                    signal_freq=orig_fs, filter_order=75, notch_freq=50, debug=False)
-        re_record = dp.resample_by_interpolation(re_record, orig_fs, self.actual_fs)
-        re_record = re_record / 1000
+    def record_to_wfdb(self, id, lead, filter_signal=True, correct_peaks=True):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False, filter_signal=filter_signal,
+                                    correct_peaks=correct_peaks)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'])
-        return re_record
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'])
+        return record
 
-    def parse_raw_ecg(self, patient_id, start=0, end=-1, type='epltd0', lead=1, correct_peaks=True):
+    def parse_raw_ecg(self, patient_id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, correct_peaks=True):
         file = self.raw_ecg_path / (patient_id + self.ecg_format)
         try:
             loaded = mat73.loadmat(file)
         except Exception:
             loaded = sio.loadmat(file, struct_as_record=True)
-        record = loaded['signal'].T[lead-1]
+        ecg = loaded['signal'].T[lead-1]
         orig_fs = int(loaded['fa'].flatten()[0])
-        record = bandpass_filter(data=record, id=patient_id, lead='x', lowcut=0.67, highcut=orig_fs/2 - 0.5,
-                                    signal_freq=orig_fs, filter_order=75, notch_freq=50, debug=False)
-        record = dp.resample_by_interpolation(record, orig_fs, self.actual_fs)
-        record = record / 1000
-        ann = self.parse_annotation(patient_id, type=type, lead=lead)
-        if correct_peaks:
-            # self.create_pool()
-            ann = i_o.qrs_adjust_detector(ecg=record, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000, pool=self.get_pool())
-            # self.destroy_pool()
-            # ann = i_o.qrs_adjust(ecg=record, qrs=ann, fs=self.actual_fs, inputsign=1)
+        if filter_signal:
+            ecg = dp.bandpass_filter(data=ecg, id=patient_id, lead='x', lowcut=0.67, highcut=orig_fs/2 - 0.5,
+                                        signal_freq=orig_fs, filter_order=75, notch_freq=50, debug=False)
+        ecg = dp.resample_by_interpolation(ecg, orig_fs, self.actual_fs)
+        ecg = ecg / 1000  # scale amplitude
         if end == -1:
-            end = int(len(record) / self.actual_fs)
+            end = int(len(ecg) / self.actual_fs)
         start_sample = start * self.actual_fs
         end_sample = end * self.actual_fs
-        ecg = record[start_sample:end_sample]
-        ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
-        ann -= start_sample
-        if self.windows_shifted:
-            ann = ann[self.window_size//2:]
-        return ecg, ann
+        ecg = ecg[start_sample:end_sample]
+        if read_ann:
+            ann = self.parse_annotation(patient_id, type=type, lead=lead)
+            if correct_peaks:
+                ann = i_o.qrs_adjust_detector(ecg=ecg, qrs=ann, fs=self.actual_fs, INPUTSIGN=1, n_windows= 2000, pool=self.get_pool())
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_reference_annotation(self, patient_id, combine=True, reannotated=True):
         beat_file = self.ref_peaks_path / (patient_id + '_peaks' + self.ecg_format)
