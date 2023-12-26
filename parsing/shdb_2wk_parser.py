@@ -80,10 +80,14 @@ class SHDB_2wk_Parser(BaseParser):
                os.path.isdir(d)]  # needs to return all the files including days
         return ids
 
-    def parse_annotation(self, id, type="epltd0", lead=1):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
+        # check if peaks file exist. Sometimes, the detector fails to work
+        dest_path = str(self.generated_anns_path / type / str(lead) / id)
+        if os.path.exists(dest_path + '.' + type):
+            return wfdb.rdann(dest_path, type).sample
+        return np.array([])
 
     def record_to_wfdb(self, id, lead=1):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
