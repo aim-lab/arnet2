@@ -311,7 +311,7 @@ class BaseParser:
                             print("Generating " + str(ann_type) + " annotation for patient ID " + str(id))
                             detector = getattr(i_o, ann_type + '_detector')     # Calling the correct wrapper in the feature comp module.
                             detector(id, pool=self.get_pool())                  # Running the wrapper
-                            shutil.move('/home/shanybiton/repos/Generalization/parsing/' + id + '.' + ann_type, self.generated_anns_path / ann_type / str(lead) / (
+                            shutil.move(cts.PARSING_PROJECT_DIR / (id + '.' + ann_type), self.generated_anns_path / ann_type / str(lead) / (
                                     id + '.' + ann_type))                       # The wrapper provides the annotation file in the local directory. We here migrate it to the anns directory.
                     except:
                         continue
