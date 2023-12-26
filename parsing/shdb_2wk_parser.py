@@ -89,14 +89,11 @@ class SHDB_2wk_Parser(BaseParser):
             return wfdb.rdann(dest_path, type).sample
         return np.array([])
 
-    def record_to_wfdb(self, id, lead):
-        record = self.read_ecg(id).iloc[:, lead].astype(float).values
-        re_record = bandpass_filter(data=record, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
-                                    signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
-        re_record = dp.resample_by_interpolation(re_record, self.orig_fs, self.actual_fs)
+    def record_to_wfdb(self, id, lead, filter_signal=True):
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False, filter_signal=filter_signal)
         wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=re_record.reshape(-1, 1), fmt=['16'], )
-        return re_record
+                    sig_name=['V5'], p_signal=record.reshape(-1, 1), fmt=['16'], )
+        return record
 
     def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', filter_signal=True, read_ann=True, ):
         record = self.read_ecg(id).iloc[:, lead].astype(float).values
