@@ -172,7 +172,7 @@ class JPAFDB_Parser(BaseParser):
     """
 
     def get_dir(self, id):
-        """ This function returns all directories starting with same id"""
+        """ This function returns the full path starting with id"""
         return [i for i in os.listdir(self.raw_ecg_path) if i.startswith(id)]
 
     def read_ecg(self, id):
