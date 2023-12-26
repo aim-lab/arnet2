@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
 import utils.consts as cts
 import utils.graphics as graph
