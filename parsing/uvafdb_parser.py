@@ -107,7 +107,11 @@ class UVAFDB_Parser(BaseParser):
     def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
-        return wfdb.rdann(str(self.generated_anns_path / type / str(lead) / id), type).sample
+        # check if peaks file exist. Sometimes, the detector fails to work
+        dest_path = str(self.generated_anns_path / type / str(lead) / id)
+        if os.path.exists(dest_path + '.' + type):
+            return wfdb.rdann(dest_path, type).sample
+        return np.array([])
 
     def record_to_wfdb(self, id, lead):
         record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
