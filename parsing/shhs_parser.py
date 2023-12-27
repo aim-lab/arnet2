@@ -1,9 +1,6 @@
 from base_parser import *
 
 
-warnings.filterwarnings('ignore')
-random.seed(cts.SEED)
-
 # TODO: write this class to fit all other parsers + add reference annotations
 class SHHS_Parser(BaseParser):
 

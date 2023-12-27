@@ -1,7 +1,5 @@
 from base_parser import *
 
-warnings.filterwarnings('ignore')
-random.seed(cts.SEED)
 
 class FAH7DB_Parser(BaseParser):
 
