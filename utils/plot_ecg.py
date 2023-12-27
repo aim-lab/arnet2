@@ -12,7 +12,7 @@ from preprocessing.Feature_extractor import bandpass_filter
 import consts as cts
 import pandas as pd
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
-
+# TODO: MESSY! consider dropping completely
 import ecg_plot
 from math import ceil
 def reorganize_data(data, lead_index, orig_index, actual_fs, orig_fs):
