@@ -1,14 +1,4 @@
-import os
-import pandas as pd
-import utils.consts as cts
-from utils.base_packages import *
-import numpy as np
-import datetime
-from dateutil.parser import *
-from dateutil.parser import parse
-import datetime as dt
-import re
-from dataclasses import dataclass
+from base_packages import *
 
 
 @dataclass
@@ -98,9 +88,9 @@ def read_timestamp(file_name, start_flag=131, chunk_byte_size=4):
     block = next((x for x in system_control_data_list if x.data_tag == start_flag), None)
     vals = np.frombuffer(block.data, dtype=np.int32)
     start_Seconds = int(vals[0] // 128)
-    start_time = datetime.timedelta(seconds=start_Seconds)
+    start_time = dt.timedelta(seconds=start_Seconds)
     end_Seconds = int(vals[1] // 128)
-    end_time = datetime.timedelta(seconds=end_Seconds)
+    end_time = dt.timedelta(seconds=end_Seconds)
     return start_Seconds, end_Seconds
 
 
@@ -176,13 +166,13 @@ def read_arrhevnt_file(file):
                          'class': new_event_class, 'family': new_event_family})
 
 
-def combtime_file_reader(file): #, start_recording):
+def combtime_file_reader(file):
     f = open(file, "rb")
     data = np.fromfile(f, dtype="<u4")
     # df = pd.DataFrame({'beat_time': [start_recording + datetime.timedelta(seconds=x / 128) for x in data]})
     #relative = [start_recording + (x / 128) for x in data]  # with respect to true time start
     #absolute = [(x / 128) for x in data]  # with respect to time 0
-    return data #absolute, relative
+    return data
 
 
 def combflag_file_reader(file_name):
