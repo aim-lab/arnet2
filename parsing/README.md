@@ -17,6 +17,6 @@ Collection of pasrers supporting a set of databases. Here, `BaseParser` is defin
 | cfs       |Holter        |`CFS_Parser`     | cfs_parser.py     | [link](https://sleepdata.org/datasets/cfs)
 | shhs      |Holter        |`SHHS_Parser`    | shhs_parser.py    | [link](https://sleepdata.org/datasets/shhs/pages/04-dataset-introduction.md)
 | spafda    |7-days Holter |`SPAFDB_Parser`  | spafda_parser.py  | private
-| fah7db    |7-days Holter |`FAH7DB_Parser`  | uvafdb_parser.py  | private
+| fah7db    |7-days Holter |`FAH7DB_Parser`  | fah7db_parser.py  | private
 | shdb_2wk  |2-weeks Holter|`SHDB_2wk_Parser`| shdb_2wk_parser.py| private
 
