@@ -1,11 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import utils.consts as cts
+from base_packages import *
 
 
 # Function which creates a figure according to the number of subplots
 def create_figure(**kwargs):
-    """ This function is responsible to build figures based on the different arguments the user provides, among which:
+    """
+    This function is responsible to build figures based on the different arguments the user provides, among which:
         - figsize
         - subplots
         - sharex (Link between the different x axis over the subplots)
@@ -42,8 +41,8 @@ def create_figure(**kwargs):
 # Function which completes a figure with the different titles.
 # Should be called after the creation of the figure and plotting the data
 def complete_figure(fig, axes, **kwargs):
-
-    """ This function is responsible to complete figures based on the different arguments the user provides, among which:
+    """
+    This function is responsible to complete figures based on the different arguments the user provides, among which:
         - different fontiszes
         - display legends
         - limits of x and y axes
