@@ -9,12 +9,14 @@ try:
     import utils.feature_comp as fc
     import utils.data_processing as dp
     import utils.in_out as i_o
+    import utils.dat_reader as dr
 except ModuleNotFoundError:
     import consts as cts
     import graphics as graph
     import feature_comp as fc
     import data_processing as dp
     import in_out as i_o
+    import dat_reader as dr
 
 # system management operations
 import os
