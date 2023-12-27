@@ -4,9 +4,6 @@ Created on Tue Mar 12 15:01:02 2019
 
 @author: rta8y
 """
-import os
-import pandas as pd
-import utils.consts as cts
 from utils.base_packages import *
 
 
@@ -72,22 +69,19 @@ def read_outcome_file(outcomes, patient):
     return patient_outcome
 
 
-os.chdir(cts.DATA_DIR / "uvfdb")
+if __name__ == '__main__':
 
-patient = 'UVA0299'
-file = patient + '.rf'
+    os.chdir(cts.DATA_DIR / "uvfdb")
 
-rf_df = read_rf_file(file)
-rf_df.index = (rf_df.index + 1) * 5
+    patient = 'UVA0299'
+    file = patient + '.rf'
 
-os.chdir('X:\\Bobby\\rfTest')
-rf_df.to_csv('Holter32Test.csv')
+    rf_df = read_rf_file(file)
+    rf_df.index = (rf_df.index + 1) * 5
 
-ecg = rf_df['ecg']
+    os.chdir('X:\\Bobby\\rfTest')
+    rf_df.to_csv('Holter32Test.csv')
 
-# data = [rf_df]
-# rf_df.plot(grid=True)
-# fig = rf_df.iplot(kind='scatter', asFigure=True, annotations=bea_df_dict, world_readable=True)
-# pyo.plot(fig)
+    ecg = rf_df['ecg']
 
 
