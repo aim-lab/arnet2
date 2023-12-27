@@ -1,19 +1,17 @@
-if __name__ == '__main__':
-
-    from base_packages import *
-    import consts as cts
-else:
+try:
     from utils.base_packages import *
-    import utils.graphics as graph
-    import utils.consts as cts
+except ModuleNotFoundError:
+    from base_packages import *
 
 
 def hyperparamaters_comb(dict_vals):
-    """ This function returns all the possible combinations of hyperparameters.
+    """
+    This function returns all the possible combinations of hyperparameters.
     Returns a list of dictionaries. Each dict contains the name and the value of the hyperparameter
     for the given combination.
     :param dict_vals: Dictionnary containing as keys the different hyperparameter names and as values the different values they take.
-    :returns dict_comb: The output list."""
+    :returns dict_comb: The output list.
+    """
     hyper_names = list(dict_vals.keys())
     n_hyper = len(hyper_names)
     combinations = list(itertools.product(*list(dict_vals.values())))
@@ -22,29 +20,32 @@ def hyperparamaters_comb(dict_vals):
 
 
 def is_integer(float_num):
-
-    """ This function returns if the given number is an integer
+    """
+     This function returns if the given number is an integer
     :param float_num: the input number
-    :returns bool: boolean, True if the input is an integer, False otherwise."""
+    :returns bool: boolean, True if the input is an integer, False otherwise.
+    """
     return math.ceil(float_num) == float_num
 
+
 def cumsum_reset(np_arr):
-
-    """ This function performs the 'cumsum' operation on an array, resetting itself each time a zero is
-        found in the array.
-        :param np_arr: Numpy Array containing the input.
-        :returns res: Numpy Array containing the cumulative sum."""
-
+    """
+    This function performs the 'cumsum' operation on an array, resetting itself each time a zero is
+    found in the array.
+    :param np_arr: Numpy Array containing the input.
+    :returns res: Numpy Array containing the cumulative sum.
+    """
     return np.array(pd.DataFrame(np_arr).astype(int).apply(lambda x: x.groupby((~x.astype(bool)).cumsum()).cumsum())).reshape(-1)
 
+
 def resample_by_interpolation(signal, input_fs, output_fs):
-
-    """ This function interpolates a signal from an original to a desired sampling frequency.
-        :param signal: The input signal.
-        :param input_fs: The original sampling frequency.
-        :param output_fs: The desired sampling frequency.
-        :returns resampled_signal: The signal resampled to output_fs."""
-
+    """
+    This function interpolates a signal from an original to a desired sampling frequency.
+    :param signal: The input signal.
+    :param input_fs: The original sampling frequency.
+    :param output_fs: The desired sampling frequency.
+    :returns resampled_signal: The signal resampled to output_fs.
+    """
     scale = output_fs / input_fs
     # calculate new length of sample
     n = round(len(signal) * scale)
@@ -56,13 +57,14 @@ def resample_by_interpolation(signal, input_fs, output_fs):
     )
     return resampled_signal
 
+
 def normalize_data(data_train, data_test):
-
-    """ This functions normalizes train and test sets (Z-normalization) based on the parameters (mean and std.)
-        derived from the training set.
-        :param data_train: Numpy array containing the training data (dimensions: (n_samples, n_features)).
-        :param data_test: Numpy array containing the test data (dimensions: (n_samples, n_features))."""
-
+    """
+    This functions normalizes train and test sets (Z-normalization) based on the parameters (mean and std.)
+    derived from the training set.
+    :param data_train: Numpy array containing the training data (dimensions: (n_samples, n_features)).
+    :param data_test: Numpy array containing the test data (dimensions: (n_samples, n_features)).
+    """
     mean_train = data_train.mean(axis=0)
     std_train = data_train.std(axis=0)
     data_train = (data_train - mean_train) / std_train
@@ -74,12 +76,12 @@ def normalize_data(data_train, data_test):
 
 
 def fillna(X):
-
-    """ Fills the input array colum-wise using the average value over the column.
-        :param X: the input array.
-        :returns X_new: the imputed array.
-        :returns means: the means over the different columns."""
-
+    """
+    Fills the input array colum-wise using the average value over the column.
+    :param X: the input array.
+    :returns X_new: the imputed array.
+    :returns means: the means over the different columns.
+    """
     if len(X) > 0:
         X_new = copy.deepcopy(X)
         means = np.nanmean(X_new, axis=0)
@@ -91,25 +93,24 @@ def fillna(X):
                     means[i] = curr_mean
                 else:
                     X_new[np.isnan(X_new[:, i]), i] = means[i]
-
         return X_new, means
     else:
         return X, np.array([])
 
 
 def check_stratification(X_train, X_test, y_train, y_test, plot=False, feats_name=None, n_points=50):
-
-    """ This function verifies the stratification between train and test data
-        for each one of the different features (verification of the distributions) and for the labels
-        (checks if the proportions for each class is similar)
-        :param X_train: The training dataset.
-        :param X_test: The test dataset.
-        :param y_train: The training labels.
-        :param y_test: The test labels.
-        :param plot (optional): Boolean value to indicate if the features histograms need to be plotted.
-        :param feats_name (optional): The name of the different features ordered in a list.
-        :param n_points (optional): Number of points required for the histograms binning."""
-
+    """
+    This function verifies the stratification between train and test data
+    for each one of the different features (verification of the distributions) and for the labels
+    (checks if the proportions for each class is similar)
+    :param X_train: The training dataset.
+    :param X_test: The test dataset.
+    :param y_train: The training labels.
+    :param y_test: The test labels.
+    :param plot: (optional). Boolean value to indicate if the features histograms need to be plotted.
+    :param feats_name : (optional). The name of the different features ordered in a list.
+    :param n_points: (optional). Number of points required for the histograms binning.
+    """
     if len(y_train) == 0 or len(y_test) == 0:
         return
     else:
@@ -134,23 +135,43 @@ def check_stratification(X_train, X_test, y_train, y_test, plot=False, feats_nam
                     graph.complete_figure(fig, axes)
 
 
-def bandpass_filter(data, id, lead, lowcut, highcut, signal_freq, filter_order,  notch_freq=50, debug=False):
-    """This function uses a Butterworth filter. The coefficoents are computed automatically. Lowcut and highcut are in Hz"""
+def bandpass_filter(signal, id, lead, lowcut, highcut, signal_freq, filter_order,  notch_freq=50, debug=False):
+    """
+    Applies a Butterworth filter and a notch filter to a given signal. The coefficients are computed automatically.
+    :param signal: The input signal.
+    :param id: The id of the signal.
+    :param lead: Lead number.
+    :param lowcut: Low butterworth filter cutoff in Hz.
+    :param highcut: High butterworth filter cutoff in Hz.
+    :param signal_freq: The frequency of the signal in Hz.
+    :param filter_order: Set the order of the butterworth filter.
+    :param notch_freq: The frequencies for which to apply notch filter in z.
+    :param debug: If true, plot the filtered signal and the spectrum.
+    :returns y: Filtered signal.
+    """
     nyquist_freq = 0.5 * signal_freq
     low = lowcut / nyquist_freq
     high = highcut / nyquist_freq
     sos = butter(filter_order, [low, high], btype="band", output='sos', analog=False)
-    y = sosfiltfilt(sos, data)
+    y = sosfiltfilt(sos, signal)
     y = mne.filter.notch_filter(y.astype(np.float), signal_freq, freqs=notch_freq, verbose=debug)
     if debug:
         filename_freq = "exam_" + str(id) + "_lead_" + str(lead) + ".png"
         filename_spect = "exam_" + str(id) + "_lead_" + str(lead) + "_spect.png"
 
         # get_freq_plot(data, y, sos, filter_order, signal_freq, filename_freq)
-        get_spect_plot(data, y, signal_freq, filename_spect, dpi=400)
+        get_spect_plot(signal, y, signal_freq, filename_spect, dpi=400)
     return y
 
-def get_freq_plot(y_orig, y_filt, coefs, order, fs, filename):
+
+def get_freq_plot(coefs, order, fs, filename):
+    """
+    Plots The frequency response given coefficients, order of a filter and frequency.
+    :param coefs: Filter coefficients.
+    :param order: Order of the filter.
+    :param fs: Signal frequency.
+    :param filename: Name for saving the plot.
+    """
     w, h = sosfreqz(coefs, worN=2000)
     plt.subplot(2, 1, 1)
     plt.plot(0.5 * fs * w / np.pi, np.abs(h), '#3465a4')
@@ -171,6 +192,14 @@ def get_freq_plot(y_orig, y_filt, coefs, order, fs, filename):
 
 
 def get_spect_plot(y_orig, y_filt, fs, filename, dpi=400):
+    """
+    Plots The PSD using Welch method and the signal (filtered on top the original).
+    :param y_orig: original signal.
+    :param y_filt: Filtered signal.
+    :param fs: Signal frequency.
+    :param filename: Name of the plot file.
+    :param dpi: Plot resolution.
+    """
     labels = ["(a)", "(b)"]
     # get the FFT of the signals
     ps_orig = np.abs(np.fft.fft(y_orig)) ** 2
