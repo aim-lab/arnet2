@@ -71,6 +71,7 @@ from dateutil.parser import parse
 #  machine learning
 from sklearn.linear_model import LinearRegression
 from scipy.spatial import cKDTree
+from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_recall_curve, roc_curve
 
 np.random.seed(cts.SEED)
 random.seed(cts.SEED)
