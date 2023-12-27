@@ -3,15 +3,10 @@ import os
 
 sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
-import utils.consts as cts
-import utils.graphics as graph
-import utils.feature_comp as fc
-import utils.data_processing as dp
-import utils.in_out as i_o
-import utils.dat_reader as dr
 
 
-# TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
+# TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference
+#  annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
 
 
 class BaseParser:

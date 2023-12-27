@@ -5,8 +5,16 @@
 
 try:
     import utils.consts as cts
+    import utils.graphics as graph
+    import utils.feature_comp as fc
+    import utils.data_processing as dp
+    import utils.in_out as i_o
 except ModuleNotFoundError:
     import consts as cts
+    import graphics as graph
+    import feature_comp as fc
+    import data_processing as dp
+    import in_out as i_o
 
 # management operations
 import os
