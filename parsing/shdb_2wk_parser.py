@@ -1,8 +1,5 @@
 from base_parser import *
 
-warnings.filterwarnings('ignore')
-random.seed(cts.SEED)
-
 
 class SHDB_2wk_Parser(BaseParser):
 

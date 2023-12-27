@@ -1,18 +1,17 @@
-from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_recall_curve, roc_curve
-import pandas as pd
-import numpy as np
-import sys
+from base_packages import *
 
 
 def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, beta):
-    """ This function prints the different metrics reeived as input.
-    :param accuracy:            The accuracy measure.
-    :param fbeta:               The F-beta measure (https://en.wikipedia.org/wiki/F1_score)
-    :param AUROC:               The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
-    :param sensitivity:         The Sensitivity (or Recall) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :param specificity:         The Specificity (or False Positive Rate) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :param PPV:                 The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Precision_and_recall)
-    :returns NPV:               The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
+    """
+     This function prints the different metrics reeived as input.
+    :param accuracy: The accuracy measure.
+    :param fbeta: The F-beta measure (https://en.wikipedia.org/wiki/F1_score)
+    :param se: The Sensitivity (or Recall) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
+    :param sp: The Specificity (or False Positive Rate) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
+    :param PPV: The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Precision_and_recall)
+    :param NPV: The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
+    :param AUROC: The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
+    :param beta: Index for the F-beta measure.
     """
     print("Accuracy: " + str(accuracy))
     print("F" + str(beta) + "-Score: " + str(fbeta))
@@ -24,20 +23,14 @@ def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, beta):
 
 
 def model_metrics(X, y, y_hat, print_metrics=True, beta=1):
-    """ This function returns different statistical binary metrics based on the data (output score/probabilities),
-        the predicted and the actual labels. Function established for binary classification only.
+    """
+    This function returns different statistical binary metrics based on the data (output score/probabilities),
+    the predicted and the actual labels. Function established for binary classification only.
     :param X:                   The output score/probabilities of the algorithm.
     :param y:                   The actual labels of the examples.
     :param y_hat:               The predicted labels of the examples.
+    :param print_metrics:       Boolean value to print or not the metrics. Default is True
     :param beta:                Index for the F-beta measure.
-    :param print_metrics:       Boolean value to print or not the mtrics. Default is True
-    :returns accuracy:          The accuracy measure.
-    :returns fbeta:             The F-beta measure (https://en.wikipedia.org/wiki/F1_score)
-    :returns AUROC:             The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
-    :returns sensitivity:       The Sensitivity (or Recall) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :returns specificity:       The Specificity (or False Positive Rate) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :returns PPV:               The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
-    :returns NPV:               The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
     """
     AUROC = roc_auc_score(y, X)
     accuracy = accuracy_score(y, y_hat)
@@ -64,11 +57,10 @@ def model_metrics(X, y, y_hat, print_metrics=True, beta=1):
 
 
 def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
-
-    """ This function evaluates the performance statistics of a given classifier and returns them.
-        The classifier is assumed to implement the interface of sklearn classifiers (object which
-        should have the following methods: predict, predict_proba).
-
+    """
+    This function evaluates the performance statistics of a given classifier and returns them.
+    The classifier is assumed to implement the interface of sklearn classifiers (object which
+    should have the following methods: predict, predict_proba).
     :param clf:                 The input classifier already trained.
     :param X_new:               The raw data on which the classifier has been trained (numpy array with dimensions (n_samples, n_features).
     :param y_new:               The actual labels of the samples.
@@ -76,6 +68,7 @@ def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
     :param beta:                Index for the F-beta measure computation.
     :param print_metrics:       Boolean value to print or not the mtrics. Default is True
     :param threshold:           Threshold on the decision scores (output of clf.predict_proba) for the positive class. If None, set at 0.5
+    :param beta:                Index for the F-beta measure.
     :returns accuracy:          The accuracy measure.
     :returns fbeta:             The F-beta measure (https://en.wikipedia.org/wiki/F1_score)
     :returns AUROC:             The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
@@ -84,7 +77,6 @@ def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
     :returns PPV:               The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
     :returns NPV:               The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
     """
-
     if threshold is None:
         predicted = clf.predict(X_new)
     else:
@@ -93,12 +85,11 @@ def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
     return model_metrics(sign * pred_score, y_new, predicted, print_metrics, beta)
 
 
-def maximize_f_beta(probas, y_true, ids, rr_len, beta=1):
-    """ This function returns the decision threshold which maximizes the F_beta score.
+def maximize_f_beta(probas, y_true, beta=1):
+    """
+    This function returns the decision threshold which maximizes the F_beta score.
     :param probas: The scores/probabilities returned by the model.
     :param y_true: The actual labels.
-    :param ids: The ids of the patients.
-    :param rr_len: The lengths of the corresponding rr_intervals (in seconds).
     :param beta: The beta value used to compute the score (i.e. balance between Se and PPV).
     :returns best_th: The threshold which optimizes the F_beta score.
     """
@@ -110,13 +101,11 @@ def maximize_f_beta(probas, y_true, ids, rr_len, beta=1):
     return best_th
 
 
-def maximize_Se_plus_Sp(probas, y_true, ids, rr_len, beta=1):
-    """ This function returns the decision threshold which maximizes the Se + Sp Measure.
+def maximize_Se_plus_Sp(probas, y_true):
+    """
+    This function returns the decision threshold which maximizes the Se + Sp Measure.
     :param probas: The scores/probabilities returned by the model.
     :param y_true: The actual labels.
-    :param ids: The ids of the patients.
-    :param rr_len: The lengths of the corresponding rr_intervals (in seconds).
-    :param beta: The beta value used to compute the score (i.e. balance between Se and PPV).
     :returns best_th: The threshold which optimizes the F_beta score.
     """
     fpr, tpr, thresholds = roc_curve(y_true, probas)
@@ -125,13 +114,13 @@ def maximize_Se_plus_Sp(probas, y_true, ids, rr_len, beta=1):
     return best_th
 
 
-def minimize_err_AFB(probas, y_true, ids, rr_len, beta=1):
-    """ This function returns the decision threshold which minimizes the mean error on the AF Burden.
+def minimize_err_AFB(probas, y_true, ids, rr_len):
+    """
+    This function returns the decision threshold which minimizes the mean error on the AF Burden.
     :param probas: The scores/probabilities returned by the model.
     :param y_true: The actual labels.
     :param ids: The ids of the patients.
     :param rr_len: The lengths of the corresponding rr_intervals (in seconds).
-    :param beta: The beta value used to compute the score (i.e. balance between Se and PPV).
     :returns best_th: The threshold which optimizes the mean AFB error.
     """
     # Creating a DataFrame and collecting all the possibilities.
@@ -139,7 +128,8 @@ def minimize_err_AFB(probas, y_true, ids, rr_len, beta=1):
     id_df = pd.DataFrame({'id': ids, 'len_rr': rr_len, 'probas': probas, 'label': y_true})
     id_df['time_in_af'] = id_df['label'] * id_df['len_rr']
     for i in np.arange(0.0, 1.001, 0.01):
-        id_df['time_in_af_' + str(i)] = (id_df['probas'] > i) * id_df['len_rr']     # To sum to eventually obtain the Predicted AF Burden.
+        id_df['time_in_af_' + str(i)] = (id_df['probas'] > i) * id_df['len_rr']  # To sum to eventually obtain the
+        # Predicted AF Burden.
 
     time_in_af = id_df.groupby('id').agg('sum')
     af_burdens = time_in_af.copy()
@@ -152,7 +142,9 @@ def minimize_err_AFB(probas, y_true, ids, rr_len, beta=1):
 
 
 def afb_f_beta_curve(y_pred, y_true, ids, rr_len, pat_labels, beta=1):
-    """ This function returns the decision threshold which maximizes the F_beta score on the AF_Burden estimation for the input patients.
+    """
+    This function returns the decision threshold which maximizes the F_beta score on the AF_Burden estimation for the
+    input patients.
     :param y_pred: The labels returned by the model.
     :param y_true: The actual labels.
     :param ids: The ids of the patients.
@@ -162,7 +154,6 @@ def afb_f_beta_curve(y_pred, y_true, ids, rr_len, pat_labels, beta=1):
     :returns thresholds: All the possible thresholds.
     :returns F_betas: All the possible values for the F_beta score.
     """
-
     id_df = pd.DataFrame({'id': ids, 'len_rr': rr_len, 'y_pred': y_pred, 'y_true': y_true})
     id_df['time_in_af_pred'] = id_df['y_pred'] * id_df['len_rr']
     res = id_df.groupby('id').agg('sum')

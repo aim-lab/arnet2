@@ -1,8 +1,5 @@
 from base_parser import *
 
-warnings.filterwarnings('ignore')
-random.seed(cts.SEED)
-
 
 class UVAFDB_Parser(BaseParser):
 

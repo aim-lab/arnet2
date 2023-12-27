@@ -1,18 +1,14 @@
-try:
-    from base_packages import *
-    import consts as cts
-except ModuleNotFoundError:
-    from utils.base_packages import *
-    import utils.consts as cts
+from base_packages import *
 
 
 def sc_median(data, medfilt_lg=9):
-
-    """ This function implements a median filter used to smooth the spo2 time series and avoid sporadic
-        increase/decrease of SpO2 which could affect the detection of the desaturations.
-        :arg data: input spo2 time series (!!assumed to be sampled at 1Hz).
-        :arg medfilt_lg (optional): median filter length. Default value: 9
-        :returns data_med: the filtered data."""
+    """
+    This function implements a median filter used to smooth the spo2 time series and avoid sporadic
+    increase/decrease of SpO2 which could affect the detection of the desaturations.
+    :arg data: input spo2 time series (!!assumed to be sampled at 1Hz).
+    :arg medfilt_lg: (optional). median filter length. Default value: 9
+    :returns data_med: the filtered data.
+        """
 
     data_med = signal.medfilt(np.round(data), medfilt_lg)
 
@@ -21,12 +17,13 @@ def sc_median(data, medfilt_lg=9):
 
 def sc_resamp(data, fs):
 
-    """ This function is used to re-sample the data at 1Hz. It takes the median SpO2 value
-        over each window of length fs so that the resulting output signal is sampled at 1Hz.
-        Wrapper of the scipy.signal.resample function
-        :arg data: Input SpO2 time series.
-        :arg fs: Sampling frequency of the original time series (Hz).
-        :returns data_out: The re-sampled SpO2 time series at 1 [Hz].
+    """
+    This function is used to re-sample the data at 1Hz. It takes the median SpO2 value
+    over each window of length fs so that the resulting output signal is sampled at 1Hz.
+    Wrapper of the scipy.signal.resample function
+    :arg data: Input SpO2 time series.
+    :arg fs: Sampling frequency of the original time series (Hz).
+    :returns data_out: The re-sampled SpO2 time series at 1 [Hz].
     """
 
     data_out = signal.resample(data, int(len(data) / fs))
@@ -50,9 +47,9 @@ def sc_desaturations(data, thres=3):
 
     :param data: SpO2 time series sampled at 1Hz and with a quantization of 1%.
     :param thres: Desaturation threshold below 'a' point (default 2%). IMPORTANT NOTE: 2% below 'a' corresponds to a 3% desaturation.
-    :return table_desat_aa:  Location of the aa feature points (beginning of the desaturations).
-    :return table_desat_bb:  Location of the aa feature points (lowest point of the desaturations).
-    :return table_desat_cc:  Location of the aa feature points (end of the desaturations).
+    :return table_desat_aa: Location of the aa feature points (beginning of the desaturations).
+    :return table_desat_bb: Location of the aa feature points (lowest point of the desaturations).
+    :return table_desat_cc: Location of the aa feature points (end of the desaturations).
     """
     aa = 1
     bb = 0
@@ -125,7 +122,6 @@ def sc_desaturations(data, thres=3):
 
 
 def bsqi(refqrs, testqrs, agw=0.05, fs=200):
-
     """
     This function is based on the following paper:
         Li, Qiao, Roger G. Mark, and Gari D. Clifford.
@@ -140,11 +136,10 @@ def bsqi(refqrs, testqrs, agw=0.05, fs=200):
 
     :param refqrs:  Annotation of the reference peak detector (Indices of the peaks).
     :param testqrs: Annotation of the test peak detector (Indices of the peaks).
-    :param agw:     Agreement window size (in seconds)
-    :param fs:      Sampling frquency [Hz]
-    :returns F1:    The 'bsqi' score, between 0 and 1.
+    :param agw: Agreement window size (in seconds)
+    :param fs: Sampling frquency [Hz]
+    :returns F1: The 'bsqi' score, between 0 and 1.
     """
-
     agw *= fs
     if len(refqrs) > 0 and len(testqrs) > 0:
         NB_REF = len(refqrs)
@@ -177,7 +172,7 @@ def bsqi(refqrs, testqrs, agw=0.05, fs=200):
 def comp_dRR(data):
     """
     This function computes the differences of successive RR intervals.
-    :param data:    The RR interval input window.
+    :param data: The RR interval input window.
     :returns dRR_s: The RR differences time series.
     """
     # RR interval must be received in seconds
@@ -197,13 +192,14 @@ def comp_dRR(data):
 
 
 def BPcount(sZ):
-    """ Helper function for the computation of the AFEv feature.
-        Computes the center bin counts of a partial 15x15 window belogning to the AFEv histogram.
-        Cleans out the center bin counts.
-    :param sZ:      The input 15x15 matrix.
-    :returns BC:    The number of non-zero bins in the histogram.
-    :returns PC:    The number of points present in the non-zero bins in the histogram.
-    :returns sZ:    The input matrix while the main diagonal and the 4 main side diagonals are cancelled out.
+    """
+    Helper function for the computation of the AFEv feature.
+    Computes the center bin counts of a partial 15x15 window belonging to the AFEv histogram.
+    Cleans out the center bin counts.
+    :param sZ: The input 15x15 matrix.
+    :returns BC: The number of non-zero bins in the histogram.
+    :returns PC: The number of points present in the non-zero bins in the histogram.
+    :returns sZ: The input matrix while the main diagonal and the 4 main side diagonals are cancelled out.
     """
     BC = 0
     PC = 0
@@ -219,19 +215,17 @@ def BPcount(sZ):
 
 
 def metrics(dRR):
-
     """
     This function implements the algorithm of:
         Sarkar, Shantanu, David Ritscher, and Rahul Mehra.
         "A detector for a chronic implantable atrial tachyarrhythmia monitor."
         IEEE Transactions on Biomedical Engineering 55.3 (2008): 1219-1224.
-    :param dRR:     The successive RR differences.
-    :returns OriginCount:   The number of points in the center bin (Indicator of Normal Sinus Rhythm).
-    :returns IrrEv:         The IrrEv metric as described in the paper (Indicator of Heart Rate Irregularities /
-                            IrregularityEvidence).
-    :returns PACEv:         The PACEv metric as described in the paper (Indicator of Ectopic Beats).
+    :param dRR: The successive RR differences.
+    :returns OriginCount: The number of points in the center bin (Indicator of Normal Sinus Rhythm).
+    :returns IrrEv: The IrrEv metric as described in the paper (Indicator of Heart Rate Irregularities /
+    IrregularityEvidence).
+    :returns PACEv: The PACEv metric as described in the paper (Indicator of Ectopic Beats).
     """
-
     dRR = np.vstack((dRR[1:], dRR[:-1])).transpose().astype(float)
     # COMPUTE OriginCount
     OCmask = 0.02
@@ -350,7 +344,6 @@ def metrics(dRR):
 
 
 def comp_sampEn(y, M, r):
-
     """
     This function implements the algorithm of:
         Richman, Joshua S., and J. Randall Moorman.
@@ -391,7 +384,6 @@ def comp_sampEn(y, M, r):
 
 
 def comp_cosEn(segment):
-
     """
     This function implements the algorithm of:
         Lake, Douglas E., and J. Randall Moorman.
@@ -399,11 +391,9 @@ def comp_cosEn(segment):
         the problem of atrial fibrillation detection in implanted ventricular devices."
         American Journal of Physiology-Heart and Circulatory Physiology 300.1 (2011): H319-H325.
     The Coefficient of Sample Entropy (cosEn) is an indicator of irregularity in the input signal and hence a good indicator for AF, on short windows.
-
     :param segment: The input RR intervals time-series.
     :returns cosEn: The coefficient of sample entropy as presented in the paper (indicator of AF on short windows).
     """
-
     r = 0.03        #initial value of the tolerance matching
     M = 2         #maximum template length
 
@@ -429,16 +419,14 @@ def comp_cosEn(segment):
 
 
 def comp_AFEv(segment):
-
     """
     This function implements the algorithm of:
         Sarkar, Shantanu, David Ritscher, and Rahul Mehra.
         "A detector for a chronic implantable atrial tachyarrhythmia monitor."
         IEEE Transactions on Biomedical Engineering 55.3 (2008): 1219-1224.
-    :param segment:     The input RR intervals time-series.
-    :returns AFEv:      The AFEv measure as described in the original paper.
+    :param segment: The input RR intervals time-series.
+    :returns AFEv: The AFEv measure as described in the original paper.
     """
-
     #Compute dRR intervals series
     dRR = comp_dRR(segment)
 
@@ -452,16 +440,14 @@ def comp_AFEv(segment):
 
 
 def comp_IrrEv(segment):
-
     """
     This function implements the algorithm of:
         Sarkar, Shantanu, David Ritscher, and Rahul Mehra.
         "A detector for a chronic implantable atrial tachyarrhythmia monitor."
         IEEE Transactions on Biomedical Engineering 55.3 (2008): 1219-1224.
-    :param segment:     The input RR intervals time-series.
-    :returns IrrEv:      The IrrEv measure as described in the original paper.
+    :param segment: The input RR intervals time-series.
+    :returns IrrEv: The IrrEv measure as described in the original paper.
     """
-
     #Compute dRR intervals series
     dRR = comp_dRR(segment)
 
@@ -471,16 +457,14 @@ def comp_IrrEv(segment):
 
 
 def comp_PACEv(segment):
-
     """
     This function implements the algorithm of:
         Sarkar, Shantanu, David Ritscher, and Rahul Mehra.
         "A detector for a chronic implantable atrial tachyarrhythmia monitor."
         IEEE Transactions on Biomedical Engineering 55.3 (2008): 1219-1224.
-    :param segment:     The input RR intervals time-series.
-    :returns IrrEv:      The PACEv measure as described in the original paper.
+    :param segment: The input RR intervals time-series.
+    :returns IrrEv: The PACEv measure as described in the original paper.
     """
-
     #Compute dRR intervals series
     dRR = comp_dRR(segment)
 
@@ -490,16 +474,14 @@ def comp_PACEv(segment):
 
 
 def comp_OriginCount(segment):
-
     """
     This function implements the algorithm of:
         Sarkar, Shantanu, David Ritscher, and Rahul Mehra.
         "A detector for a chronic implantable atrial tachyarrhythmia monitor."
         IEEE Transactions on Biomedical Engineering 55.3 (2008): 1219-1224.
-    :param segment:             The input RR intervals time-series.
-    :returns OriginCount:       The OriginCount measure as described in the original paper.
+    :param segment: The input RR intervals time-series.
+    :returns OriginCount: The OriginCount measure as described in the original paper.
     """
-
     dRR = comp_dRR(segment)
     dRR = np.vstack((dRR[1:], dRR[:-1])).transpose().astype(float)
     # COMPUTE OriginCount
@@ -510,104 +492,92 @@ def comp_OriginCount(segment):
 
 
 def comp_AVNN(segment):
-
     """ This function returns the mean RR interval (AVNN) over a segment of RR time series.
     :param segment: The input RR intervals time-series.
-    :returns AVNN:  The mean RR interval over the segment.
+    :returns AVNN: The mean RR interval over the segment.
     """
-
     return np.mean(segment)
 
 
 def comp_SDNN(segment):
-
     """ This function returns the standard deviation over the RR intervals (SDNN) found in the input.
     :param segment: The input RR intervals time-series.
-    :returns SDNN:  The std. dev. over the RR intervals.
+    :returns SDNN: The std. dev. over the RR intervals.
     """
-
     return np.std(segment, ddof=1)
 
 
 def comp_SEM(segment):
-
     """ This function returns the Standard Error of the Mean (SEM) over a segment of RR time series.
     :param segment: The input RR intervals time-series.
-    :returns SEM:  The Standard Error of the Mean (SEM) over the segment.
+    :returns SEM: The Standard Error of the Mean (SEM) over the segment.
     """
-
     return np.std(segment, ddof=1) / np.sqrt(len(segment))
 
 
 def comp_minRR(segment):
-
     """ This function returns the Standard Error of the Mean (SEM) over a segment of RR time series.
     :param segment: The input RR intervals time-series.
-    :returns minRR:  The Standard Error of the Mean (SEM) over the segment.
+    :returns minRR: The Standard Error of the Mean (SEM) over the segment.
     """
     return np.min(segment)
 
 
 def comp_medHR(segment):
-
     """ This function returns the Median Heart Rate (MedHR) over a segment of RR time series.
     :param segment: The input RR intervals time-series.
-    :returns medHR:  The Median Heart Rate (medHR) over the segment.
+    :returns medHR: The Median Heart Rate (medHR) over the segment.
     """
-
     return np.median(60 / segment)
 
 
 def comp_PNN20(segment):
-
-    """ This function returns the percentage of the RR interval differences above .02 over a segment of RR time series.
-    :param segment: The input RR intervals time-series.
-    :returns PNN20:  The percentage of the RR interval differences above .02.
     """
-
+    This function returns the percentage of the RR interval differences above .02 over a segment of RR time series.
+    :param segment: The input RR intervals time-series.
+    :returns PNN20: The percentage of the RR interval differences above .02.
+    """
     return 100 * np.sum(np.abs(np.diff(segment)) > 0.02) / (len(segment) - 1)
 
 def comp_PNN50(segment):
-
-    """ This function returns the percentage of the RR interval differences above .05 over a segment of RR time series.
-    :param segment: The input RR intervals time-series.
-    :returns PNN50:  The percentage of the RR interval differences above .05.
     """
-
+    This function returns the percentage of the RR interval differences above .05 over a segment of RR time series.
+    :param segment: The input RR intervals time-series.
+    :returns PNN50: The percentage of the RR interval differences above .05.
+    """
     return 100 * np.sum(np.abs(np.diff(segment)) > 0.05) / (len(segment) - 1)
 
 
 def comp_RMSSD(segment):
-
-    """ This function returns the RMSSD measure over a segment of RR time series.
+    """
+    This function returns the RMSSD measure over a segment of RR time series.
         https://www.biopac.com/application/ecg-cardiology/advanced-feature/rmssd-for-hrv-analysis/
     :param segment: The input RR intervals time-series.
-    :returns PNN20:  The RMSSD measure over the RR interval time series.
+    :returns PNN20: The RMSSD measure over the RR interval time series.
     """
-
     return np.sqrt(np.mean(np.diff(segment) ** 2))
 
 
 def comp_CV(segment):
-
-    """ This function returns the Coefficient of Variation (CV) measure over a segment of RR time series.
+    """
+     This function returns the Coefficient of Variation (CV) measure over a segment of RR time series.
     https://en.wikipedia.org/wiki/Coefficient_of_variation
     :param segment: The input RR intervals time-series.
-    :returns CV:  The CV measure over the RR interval time series.
+    :returns CV: The CV measure over the RR interval time series.
     """
     return np.std(segment, ddof=1) / np.mean(segment)
 
 
 def comp_sq_map(segment):
-
     """ This function implements the algorithm of:
             Zabihi, Morteza, et al.
             "Detection of atrial fibrillation in ECG hand-held devices using
             a random forest classifier."
             2017 Computing in Cardiology (CinC). IEEE, 2017.
         In particular, this functions returns the coefficients of the mapping RR[i] --> (mean(RR) - RR[i]) ** 2
+    :param segment: The input RR intervals time-series.
+    :returns sq_map: the coefficients of the mapping RR[i] --> (mean(RR) - RR[i]) ** 2.
     """
-
     X = np.hstack((segment.reshape(-1, 1), (segment ** 2).reshape(-1, 1)))
     y = (np.mean(segment) - segment) ** 2
     reg = LinearRegression()
@@ -636,34 +606,32 @@ def comp_SD2(segment):
 
 
 def comp_sq_map_intercept(segment):
-
-    """ This function implements the algorithm of:
+    """
+     This function implements the algorithm of:
             Zabihi, Morteza, et al.
             "Detection of atrial fibrillation in ECG hand-held devices using
             a random forest classifier."
             2017 Computing in Cardiology (CinC). IEEE, 2017.
         In particular, this functions returns the intercept coefficient of the mapping RR[i] --> (mean(RR) - RR[i]) ** 2
     """
-
     return comp_sq_map(segment)[0]
 
 
 def comp_sq_map_linear(segment):
-
-    """ This function implements the algorithm of:
+    """
+    This function implements the algorithm of:
             Zabihi, Morteza, et al.
             "Detection of atrial fibrillation in ECG hand-held devices using
             a random forest classifier."
             2017 Computing in Cardiology (CinC). IEEE, 2017.
         In particular, this functions returns the linear coefficient of the mapping RR[i] --> (mean(RR) - RR[i]) ** 2
     """
-
     return comp_sq_map(segment)[1]
 
 
 def comp_sq_map_quadratic(segment):
-
-    """ This function implements the algorithm of:
+    """
+    This function implements the algorithm of:
             Zabihi, Morteza, et al.
             "Detection of atrial fibrillation in ECG hand-held devices using
             a random forest classifier."
@@ -691,7 +659,6 @@ def fragmentation_metrics(segment):
 
 
 def comp_PIP(segment):
-
     N, ip, segment_lengths = fragmentation_metrics(segment)
     #Number of inflection points (where detla NNi changes sign). Subtract 2 for the fake points we added.
     nip = np.count_nonzero(ip)-2
@@ -701,7 +668,6 @@ def comp_PIP(segment):
 
 
 def comp_IALS(segment):
-
     N, ip, segment_lengths = fragmentation_metrics(segment)
     IALS = 1 / np.mean(segment_lengths)  # Inverse Average Length of Segments (IALS)
     return IALS
@@ -769,5 +735,3 @@ if __name__ == '__main__':
     F1 = bsqi(anns1, anns2, agw=0.05, fs=250)
 
     assert F1_matlab == F1
-    #assert np.all(results_matlab['IndMatch'].reshape(-1) - 1 == IndMatch)
-    #assert meanDist_matlab == meanDist

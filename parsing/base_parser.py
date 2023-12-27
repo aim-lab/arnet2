@@ -1,18 +1,12 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
-import utils.consts as cts
-import utils.graphics as graph
-import utils.feature_comp as fc
-import utils.data_processing as dp
-import utils.in_out as i_o
-import scipy.interpolate as interp
-import utils.dat_reader as dr
-from scipy.io import savemat
 
 
-# TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
+# TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference
+#  annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
 
 
 class BaseParser:
@@ -35,34 +29,35 @@ class BaseParser:
         # ------------------------------------------------------------------------------- # """
 
         # Missing records
-        self.missing_ecg = np.array([])  # List of the patients who's ECG is missing (patient is listed in the database but file is absent)
+        self.missing_ecg = np.array(
+            [])  # List of the patients who's ECG is missing (patient is listed in the database but file is absent)
 
         # Helper variables
         self.curr_ecg = None
         self.curr_id = None
 
         """ Variables relative to the ECG signals. """
-        self.orig_fs = None                                 # Sampling frequency of the original files
-        self.actual_fs = None                               # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
-        self.n_leads = 1                                    # Number of ECG leads in the database
-        self.ref_lead = 1                                   # The lead according to which all the elementary dictionnaries are computed
-        self.name = None                                    # Name of the Dataset
-        self.ecg_format = None                              # The format of the ECG files. Should be "wfdb", "edf", "rf"
+        self.orig_fs = None  # Sampling frequency of the original files
+        self.actual_fs = None  # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
+        self.n_leads = 1  # Number of ECG leads in the database
+        self.ref_lead = 1  # The lead according to which all the elementary dictionnaries are computed
+        self.name = None  # Name of the Dataset
+        self.ecg_format = None  # The format of the ECG files. Should be "wfdb", "edf", "rf"
         self.rhythms = np.array(['NSR', 'AFIB', 'AB', 'AFL', 'B', 'BII', 'IVR', 'NOD',
-                            'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
-                            'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
-                                                            # The rhythms defined in the dataset
+                                 'P', 'PREX', 'SBR', 'SVTA', 'T', 'VFL', 'VT', 'J',
+                                 'PAT', 'AT', 'VTS', 'AIVRS', 'IVRS', 'AIVR'])
+        # The rhythms defined in the dataset
         self.rhythms_dict = {self.rhythms[i]: i for i in range(len(self.rhythms))}
-                                                            # Mapping between rhythms and unique ids
+        # Mapping between rhythms and unique ids
 
         """ Variables relative to the different paths. """
-        self.raw_ecg_path = None                            # Path of the raw ECG files
-        self.orig_anns_path = None                          # Path of the raw annotations, if exist (otherwise None)
-        self.generated_anns_path = None                     # Path of the generated annotations
-        self.annotation_types = None                        # Generated annotation types
-        self.main_path = None                               # Main path for the processed database
-        self.window_size = None                             # Current window size used in the dataset
-        self.window_sizes = np.array([60], dtype=int)       # Window sizes available in the dataset
+        self.raw_ecg_path = None  # Path of the raw ECG files
+        self.orig_anns_path = None  # Path of the raw annotations, if exist (otherwise None)
+        self.generated_anns_path = None  # Path of the generated annotations
+        self.annotation_types = None  # Generated annotation types
+        self.main_path = None  # Main path for the processed database
+        self.window_size = None  # Current window size used in the dataset
+        self.window_sizes = np.array([60], dtype=int)  # Window sizes available in the dataset
         self.loaded_window_sizes = np.array([], dtype=int)  # Window sizes currently loaded in the object
 
         """
@@ -73,42 +68,43 @@ class BaseParser:
 
         """Raw data. Used further to derive metrics and features."""
 
-        self.rr_dict = {}                   # Key: Patient_ID, Value: RR intervals divided by windows
-        self.rrt_dict = {}                  # Key: Patient_ID, Value: Relative time of RR intervals divided by windows
-        self.rlab_dict = {}                 # Key: Patient_ID, Value: Rhythm label per beat
-        self.start_windows_dict = {}        # Key: Patient ID, Value: Windows starts (time elapsed from recording start)
-        self.end_windows_dict = {}          # Key: Patient ID, Value: Windows ends (time elapsed from recording start)
-        self.av_prec_windows_dict = {}      # Key: Patient ID, Value: Successive preceding windows available
-        self.recording_time = {}            # Key: Patient ID, Value: Recording time in hours
+        self.rr_dict = {}  # Key: Patient_ID, Value: RR intervals divided by windows
+        self.rrt_dict = {}  # Key: Patient_ID, Value: Relative time of RR intervals divided by windows
+        self.rlab_dict = {}  # Key: Patient_ID, Value: Rhythm label per beat
+        self.start_windows_dict = {}  # Key: Patient ID, Value: Windows starts (time elapsed from recording start)
+        self.end_windows_dict = {}  # Key: Patient ID, Value: Windows ends (time elapsed from recording start)
+        self.av_prec_windows_dict = {}  # Key: Patient ID, Value: Successive preceding windows available
+        self.recording_time = {}  # Key: Patient ID, Value: Recording time in hours
 
         """Dictionaries obtained after computation through the methods."""
-        self.signal_quality_dict = {}       # Key: Patient_ID, Value: SQI for each window
-        self.features_dict = {}             # Key: Patient_ID, Value: Computed features for each window
-        self.af_burden_dict = {}            # Key: Patient_ID, Value: AF Burden
-        self.other_cvd_burden_dict = {}     # Key: Patient_ID, Value: Burden of CVDs different than AF
+        self.signal_quality_dict = {}  # Key: Patient_ID, Value: SQI for each window
+        self.features_dict = {}  # Key: Patient_ID, Value: Computed features for each window
+        self.af_burden_dict = {}  # Key: Patient_ID, Value: AF Burden
+        self.other_cvd_burden_dict = {}  # Key: Patient_ID, Value: Burden of CVDs different than AF
 
         """ Labels dicts."""
-        self.win_lab_dict = {}              # Key: Patient_ID, Value: Rhythm label for each window
-        self.af_win_lab_dict = {}           # Key: Patient_ID, Value: Binary label for AF for each window
-        self.af_pat_lab_dict = {}           # Key: Patient_ID, Value: Type of AF based on AF burden (NSR, AF_Pa, AF_Pe, O)
-        self.ahi_dict = {}                  # Key: Patient_ID, Value: Apnea Hypopnea Index
-        self.odi_dict = {}                  # Key: Patient_ID, Value: Oxygen Desaturation Index
+        self.win_lab_dict = {}  # Key: Patient_ID, Value: Rhythm label for each window
+        self.af_win_lab_dict = {}  # Key: Patient_ID, Value: Binary label for AF for each window
+        self.af_pat_lab_dict = {}  # Key: Patient_ID, Value: Type of AF based on AF burden (NSR, AF_Pa, AF_Pe, O)
+        self.ahi_dict = {}  # Key: Patient_ID, Value: Apnea Hypopnea Index
+        self.odi_dict = {}  # Key: Patient_ID, Value: Oxygen Desaturation Index
 
         """ Patients and exclusions. """
-        self.corrupted_ecg = np.array([])           # List of the patients who's ECG is corrupted (file is present but can't extract a minimal number of annotations (1000))
-        self.missing_af_label = np.array([])        # List of patients without AF label
-        self.low_sqi = np.array([])                 # List of patients which need to be excluded if the signal quality condition is demanded
-        self.parsed_ecgs = np.array([])             # List of the patients already parsed
-        self.excluded_portions_dict = {}            # Key: Patient ID, Value: List of the segments excluded ([start_time, end_time])
-        self.n_excluded_windows_dict = {}           # Key: Patient ID, Value: Number of Excluded windows in preprocessing
-        self.mask_rr_dict = {}                      # Key: Patient ID, Value: Mask to exclude windows obtained after preprocessing
-
+        self.corrupted_ecg = np.array(
+            [])  # List of the patients who's ECG is corrupted (file is present but can't extract a minimal number of annotations (1000))
+        self.missing_af_label = np.array([])  # List of patients without AF label
+        self.low_sqi = np.array(
+            [])  # List of patients which need to be excluded if the signal quality condition is demanded
+        self.parsed_ecgs = np.array([])  # List of the patients already parsed
+        self.excluded_portions_dict = {}  # Key: Patient ID, Value: List of the segments excluded ([start_time, end_time])
+        self.n_excluded_windows_dict = {}  # Key: Patient ID, Value: Number of Excluded windows in preprocessing
+        self.mask_rr_dict = {}  # Key: Patient ID, Value: Mask to exclude windows obtained after preprocessing
 
         """ General variables for signal processing/Filtering """
-        self.min_annotation_len = 1000      # Below this number of peaks, the recording is removed.
-        self.agw = 0.05                     # Agreement window for SQI computation
-        self.pool = None                    # Multiprocessing pool to generate the features and compute the sqi for all the windows.
-        self.sqi_test_ann = 'xqrs'          # The annotation type used to compute and load the SQI variables.
+        self.min_annotation_len = 1000  # Below this number of peaks, the recording is removed.
+        self.agw = 0.05  # Agreement window for SQI computation
+        self.pool = None  # Multiprocessing pool to generate the features and compute the sqi for all the windows.
+        self.sqi_test_ann = 'xqrs'  # The annotation type used to compute and load the SQI variables.
         self.sqi_ref_ann = 'epltd0'
 
     """
@@ -173,6 +169,7 @@ class BaseParser:
         """Computes/Extracts from raw data the ID for each patient.
         :param recording_id: The recording ID. Assumed to be in the list of IDs present in the database.
         """
+
     def parse_demographic_features(self, id):
         """Computes/Extracts from raw data the demographic features for each patient.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
@@ -229,24 +226,29 @@ class BaseParser:
         ref_ann, ref_rhythm = self.parse_reference_annotation(pat)
         ref_rr = np.diff(ref_ann) / self.actual_fs
         start_ref_rr, end_ref_rr = ref_ann[:-1] / self.actual_fs, ref_ann[1:] / self.actual_fs
-        ref_rlab = ref_rhythm[1:]   # To have the same dimension as ref_rr
+        ref_rlab = ref_rhythm[1:]  # To have the same dimension as ref_rr
 
         # First filtering - Removing RR intervals at which equal zero
         mask = ref_rr > cts.RR_OUTLIER_THRESHOLD_INF
         ref_rr, start_ref_rr, end_ref_rr, ref_rlab = ref_rr[mask], start_ref_rr[mask], end_ref_rr[mask], ref_rlab[mask]
-        ref_interbeats = np.append(np.insert((start_ref_rr + end_ref_rr) / 2, 0, max(0, start_ref_rr[0] - 1)), end_ref_rr[-1] + 1.0)
+        ref_interbeats = np.append(np.insert((start_ref_rr + end_ref_rr) / 2, 0, max(0, start_ref_rr[0] - 1)),
+                                   end_ref_rr[-1] + 1.0)
 
         # Second filtering - Based on missing reference annotations
         mask_sup = ref_rr <= cts.RR_OUTLIER_THRESHOLD_SUP
         irreg_rr_indices = np.where(~mask_sup)[0]
-        self.excluded_portions_dict[pat] = np.array([[ref_interbeats[x - sec_int], ref_interbeats[x + sec_int + 2]] for x in irreg_rr_indices])
+        self.excluded_portions_dict[pat] = np.array(
+            [[ref_interbeats[x - sec_int], ref_interbeats[x + sec_int + 2]] for x in irreg_rr_indices])
         if len(self.excluded_portions_dict[pat]) > 0:
-            self.excluded_portions_dict[pat] = np.concatenate(([[0, start_ref_rr[0]]], self.excluded_portions_dict[pat]), axis=0)  # Beggining of recordings without any label are considered excluded
+            self.excluded_portions_dict[pat] = np.concatenate(
+                ([[0, start_ref_rr[0]]], self.excluded_portions_dict[pat]),
+                axis=0)  # Beggining of recordings without any label are considered excluded
         else:
             self.excluded_portions_dict[pat] = np.array([[0, start_ref_rr[0]]])
 
         # Building interpolator for the label
-        ref_rr, start_ref_rr, end_ref_rr, ref_rlab = ref_rr[mask_sup], start_ref_rr[mask_sup], end_ref_rr[mask_sup], ref_rlab[mask_sup]
+        ref_rr, start_ref_rr, end_ref_rr, ref_rlab = ref_rr[mask_sup], start_ref_rr[mask_sup], end_ref_rr[mask_sup], \
+                                                     ref_rlab[mask_sup]
         f = interp.interp1d(end_ref_rr, ref_rlab, kind='nearest', fill_value="extrapolate")
 
         # Saving raw data
@@ -256,12 +258,21 @@ class BaseParser:
 
         # Constituting final filters for windows
         for win in self.window_sizes:
-            start_win = interbeats[:-2][:(len(rr) // win) * win].reshape(-1, win)[:, 0]  # [:, 0] to select the beginning of the window
-            end_win = interbeats[2:][:(len(rr) // win) * win].reshape(-1, win)[:, -1]   # [:, -1] to select the end of the window
-            mask_start = np.logical_or.reduce(tuple([np.logical_and(start_win > x[0], start_win <= x[1]) for x in self.excluded_portions_dict[pat]]))   # The window begins in an excluded portion.
-            mask_end = np.logical_or.reduce(tuple([np.logical_and(end_win > x[0], end_win <= x[1]) for x in self.excluded_portions_dict[pat]]))         # The window ends in an excluded portion.
-            mask_between = np.logical_or.reduce(tuple([np.logical_and(start_win <= x[0], end_win > x[1]) for x in self.excluded_portions_dict[pat]]))   # The window contains an excluded portion.
-            final_mask = np.logical_not(np.logical_or.reduce((mask_start, mask_end, mask_between)))     # We don't want any of the three
+            start_win = interbeats[:-2][:(len(rr) // win) * win].reshape(-1, win)[:,
+                        0]  # [:, 0] to select the beginning of the window
+            end_win = interbeats[2:][:(len(rr) // win) * win].reshape(-1, win)[:,
+                      -1]  # [:, -1] to select the end of the window
+            mask_start = np.logical_or.reduce(tuple([np.logical_and(start_win > x[0], start_win <= x[1]) for x in
+                                                     self.excluded_portions_dict[
+                                                         pat]]))  # The window begins in an excluded portion.
+            mask_end = np.logical_or.reduce(tuple([np.logical_and(end_win > x[0], end_win <= x[1]) for x in
+                                                   self.excluded_portions_dict[
+                                                       pat]]))  # The window ends in an excluded portion.
+            mask_between = np.logical_or.reduce(tuple([np.logical_and(start_win <= x[0], end_win > x[1]) for x in
+                                                       self.excluded_portions_dict[
+                                                           pat]]))  # The window contains an excluded portion.
+            final_mask = np.logical_not(
+                np.logical_or.reduce((mask_start, mask_end, mask_between)))  # We don't want any of the three
             self.start_windows_dict[pat][win] = start_win
             self.end_windows_dict[pat][win] = end_win
             self.mask_rr_dict[pat][win] = final_mask
@@ -309,10 +320,12 @@ class BaseParser:
                     try:
                         if not available_anns[j] or force:
                             print("Generating " + str(ann_type) + " annotation for patient ID " + str(id))
-                            detector = getattr(i_o, ann_type + '_detector')     # Calling the correct wrapper in the feature comp module.
-                            detector(id, pool=self.get_pool())                  # Running the wrapper
-                            shutil.move(cts.PARSING_PROJECT_DIR / (id + '.' + ann_type), self.generated_anns_path / ann_type / str(lead) / (
-                                    id + '.' + ann_type))                       # The wrapper provides the annotation file in the local directory. We here migrate it to the anns directory.
+                            detector = getattr(i_o,
+                                               ann_type + '_detector')  # Calling the correct wrapper in the feature comp module.
+                            detector(id, pool=self.get_pool())  # Running the wrapper
+                            shutil.move(cts.PARSING_PROJECT_DIR / (id + '.' + ann_type),
+                                        self.generated_anns_path / ann_type / str(lead) / (
+                                                id + '.' + ann_type))  # The wrapper provides the annotation file in the local directory. We here migrate it to the anns directory.
                     except:
                         continue
                 # Cleaning local directory
@@ -347,7 +360,8 @@ class BaseParser:
                 ecg, ann = self.parse_raw_ecg(id, type='wqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
-                rqrs_ann = np.array([np.argmax(np.abs(ecg[idx_start[i]:idx_end[i]])) + idx_start[i] for i in range(len(ann))])
+                rqrs_ann = np.array(
+                    [np.argmax(np.abs(ecg[idx_start[i]:idx_end[i]])) + idx_start[i] for i in range(len(ann))])
                 wfdb.wrann(id, 'wrqrs', rqrs_ann, symbol=['q'] * len(rqrs_ann))
                 shutil.move(id + '.wrqrs', self.generated_anns_path / 'wrqrs' / str(lead) / (id + '.wrqrs'))
 
@@ -369,11 +383,13 @@ class BaseParser:
                 ecg, ann = self.parse_raw_ecg(id, type='gqrs', lead=lead)
                 idx_start = np.array([max(ann[i] - int(self.actual_fs * tol), 0) for i in range(len(ann))])
                 idx_end = np.array([min(ann[i] + int(self.actual_fs * tol), len(ecg) - 1) for i in range(len(ann))])
-                rqrs_ann = np.array([np.argmax(np.abs(ecg[idx_start[i]:idx_end[i]])) + idx_start[i] for i in range(len(ann))])
+                rqrs_ann = np.array(
+                    [np.argmax(np.abs(ecg[idx_start[i]:idx_end[i]])) + idx_start[i] for i in range(len(ann))])
                 wfdb.wrann(id, 'rqrs', rqrs_ann, symbol=['q'] * len(rqrs_ann))
                 shutil.move(id + '.rqrs', self.generated_anns_path / 'rqrs' / str(lead) / (id + '.rqrs'))
 
-    def parse_raw_data(self, window_sizes=cts.BASE_WINDOWS, gen_ann=False, feats=cts.IMPLEMENTED_FEATURES, patient_list=None, test_anns=None):
+    def parse_raw_data(self, window_sizes=cts.BASE_WINDOWS, gen_ann=False, feats=cts.IMPLEMENTED_FEATURES,
+                       patient_list=None, test_anns=None):
         """ This function is responsible of performing all the necessary computations for the dataset, among which:
         all the features according to the input, the sqi, the labels per window, the ahi, the odi, and the demographic features if available.
         This function has usually a long running time (at least for the big databases).
@@ -395,26 +411,27 @@ class BaseParser:
             ecg, ann = self.parse_raw_ecg(id, lead=self.ref_lead, type=self.sqi_ref_ann)
             self.curr_ecg, self.curr_id = ecg, id
             if len(ann) > self.min_annotation_len:
-                self.parse_elem_data(id)        # First deriving rr, rlab, rrt dictionnaries and other basic elements.
-                for win in window_sizes:                # Running on all the required windows
+                self.parse_elem_data(id)  # First deriving rr, rlab, rrt dictionnaries and other basic elements.
+                for win in window_sizes:  # Running on all the required windows
                     self.window_sizes = np.unique(np.append(self.window_sizes, win))
                     self.loaded_window_sizes = np.append(self.loaded_window_sizes, win)
-                    self._features(id, win, feats=feats)    # Computing all the features
+                    self._features(id, win, feats=feats)  # Computing all the features
                     if test_anns is None:
                         test_anns = np.setdiff1d(self.annotation_types, self.sqi_ref_ann)
                     for ann_type in test_anns:  # Computing SQI
                         self._sqi(id, win, test_ann=ann_type)
-                    self._win_lab(id, win)                  # Generating label for each window
-                    self._af_win_lab(id, win)               # Generating binary AF label for each window.
-                self.parse_demographic_features(id)         # Parsing demographics
-                self._af_pat_lab(id)                        # Generating patient label among the different categories based on AF burden
-                self.parse_ahi(id)                          # Computing AHI
-                self.parse_odi(id)                          # Computing ODI
-                self.save_patient_to_disk(id)               # Saving
+                    self._win_lab(id, win)  # Generating label for each window
+                    self._af_win_lab(id, win)  # Generating binary AF label for each window.
+                self.parse_demographic_features(id)  # Parsing demographics
+                self._af_pat_lab(id)  # Generating patient label among the different categories based on AF burden
+                self.parse_ahi(id)  # Computing AHI
+                self.parse_odi(id)  # Computing ODI
+                self.save_patient_to_disk(id)  # Saving
             else:
                 print("Corrupted ECG.")
-                self.corrupted_ecg = np.append(self.corrupted_ecg, id)  # If the recording presents less than 1000 peaks, it is considered as corrupted and is not considered.
-            #except:
+                self.corrupted_ecg = np.append(self.corrupted_ecg,
+                                               id)  # If the recording presents less than 1000 peaks, it is considered as corrupted and is not considered.
+            # except:
             #    print('Error')
             #    continue
         self.destroy_pool()
@@ -433,7 +450,7 @@ class BaseParser:
         for i, feat in enumerate(feats):
             if feat not in self.get_available_features(id, win):
                 func = getattr(fc, 'comp_' + feat)
-                self.features_dict[id][win][feat] = np.array(self.pool.starmap(func, zip(rr,)))
+                self.features_dict[id][win][feat] = np.array(self.pool.starmap(func, zip(rr, )))
 
     def _sqi(self, id, win, lead=1, test_ann='xqrs'):
         """ Computes the Signal Quality Index (SQI) of each window.
@@ -448,7 +465,7 @@ class BaseParser:
             self.signal_quality_dict[id][win] = {}
         raw_rrt = self.rrt_dict[id]
         rrt = raw_rrt[:(len(raw_rrt) // win) * win].reshape(-1, win)
-        if len(self.rrt_dict[id]) % win == 0:               # Adding timestamp of the end of last RR.
+        if len(self.rrt_dict[id]) % win == 0:  # Adding timestamp of the end of last RR.
             additional_rrt = self.rrt_dict[id][-1] + 1.0
         else:
             additional_rrt = self.rrt_dict[id][(len(raw_rrt) // win) * win]
@@ -462,11 +479,12 @@ class BaseParser:
                    range(len(ecg_win_starts))]
         # self.create_pool()
         self.signal_quality_dict[id][win][test_ann] = np.array(self.pool.starmap(fc.bsqi,
-                                                             zip(refqrs, testqrs,
-                                                                 self.agw * np.ones(
-                                                                     len(testqrs)),
-                                                                 self.actual_fs * np.ones(
-                                                                     len(testqrs)))))
+                                                                                 zip(refqrs, testqrs,
+                                                                                     self.agw * np.ones(
+                                                                                         len(testqrs)),
+                                                                                     self.actual_fs * np.ones(
+                                                                                         len(testqrs)))))
+
     def _win_lab(self, id, win):
         """ Computes the label of a window. The label is computed based on the most represented label over the window.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
@@ -502,18 +520,21 @@ class BaseParser:
         """
         # Using minimal window size to have the higher granularity
         win = min(self.loaded_window_sizes)
-        raw_rr = self.rr_dict[id][:(len(self.rr_dict[id]) // win) * win].reshape(-1, win)[self.mask_rr_dict[id][win]].reshape(-1)
-        raw_rlab = self.rlab_dict[id][:(len(self.rlab_dict[id]) // win) * win].reshape(-1, win)[self.mask_rr_dict[id][win]].reshape(-1)
+        raw_rr = self.rr_dict[id][:(len(self.rr_dict[id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[id][win]].reshape(-1)
+        raw_rlab = self.rlab_dict[id][:(len(self.rlab_dict[id]) // win) * win].reshape(-1, win)[
+            self.mask_rr_dict[id][win]].reshape(-1)
         if np.all(np.isnan(raw_rlab)):  # Case where the labels are not available (like in SHHS)
             self.af_burden_dict[id] = np.nan
             self.af_pat_lab_dict[id] = np.nan
             self.other_cvd_burden_dict[id] = np.nan
             self.missing_af_label = np.append(self.missing_af_label, id)
         else:
-            time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()                                          # Deriving time in AF.
-            self.af_burden_dict[id] = time_in_af / self.recording_time[id]                                      # Computing AF Burden.
-            self.other_cvd_burden_dict[id] = np.sum(raw_rlab > cts.WINDOW_LABEL_AF) / self.recording_time[id]   # Computing Other CVD Burden.
-            if self.af_burden_dict[id] > cts.AF_SEVERE_THRESHOLD:                                               # Assessing the class according to the guidelines
+            time_in_af = raw_rr[raw_rlab == cts.WINDOW_LABEL_AF].sum()  # Deriving time in AF.
+            self.af_burden_dict[id] = time_in_af / self.recording_time[id]  # Computing AF Burden.
+            self.other_cvd_burden_dict[id] = np.sum(raw_rlab > cts.WINDOW_LABEL_AF) / self.recording_time[
+                id]  # Computing Other CVD Burden.
+            if self.af_burden_dict[id] > cts.AF_SEVERE_THRESHOLD:  # Assessing the class according to the guidelines
                 self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_AF_SEVERE
             elif self.af_burden_dict[id] > cts.AF_MODERATE_THRESHOLD:
                 self.af_pat_lab_dict[id] = cts.PATIENT_LABEL_AF_MODERATE
@@ -539,11 +560,12 @@ class BaseParser:
                 if i % 100 == 0:
                     print(id)
                 for win in wins:
-                    if win not in self.loaded_window_sizes:     # In case this window has not been loaded, we load the features dictionnary and add the feature.
-                        self.features_dict[id][win] = np.load(self.main_path / id / "features" / (str(win) + '.npy'), allow_pickle=True).item()
+                    if win not in self.loaded_window_sizes:  # In case this window has not been loaded, we load the features dictionnary and add the feature.
+                        self.features_dict[id][win] = np.load(self.main_path / id / "features" / (str(win) + '.npy'),
+                                                              allow_pickle=True).item()
                     raw_rr = self.rr_dict[id]
                     rr = raw_rr[:(len(raw_rr) // win) * win].reshape(-1, win)
-                    self.features_dict[id][win][feature_name] = np.array(self.pool.starmap(func, zip(rr,)))
+                    self.features_dict[id][win][feature_name] = np.array(self.pool.starmap(func, zip(rr, )))
                     np.save(self.main_path / id / "features" / str(win), self.features_dict[id][win])
             self.destroy_pool()
 
@@ -575,7 +597,8 @@ class BaseParser:
 
         self.low_sqi = np.array([])
         for id in self.non_corrupted_ecg_patients():
-            total_mask = np.logical_and(self.mask_rr_dict[id][self.window_size], self.signal_quality_dict[id][self.window_size][self.sqi_test_ann] >= win_thresh)
+            total_mask = np.logical_and(self.mask_rr_dict[id][self.window_size],
+                                        self.signal_quality_dict[id][self.window_size][self.sqi_test_ann] >= win_thresh)
             self.av_prec_windows_dict[id][self.window_size] = dp.cumsum_reset(total_mask)
             if self.has_low_sqi(id, win_thresh, file_thresh):
                 self.low_sqi = np.append(self.low_sqi, id)
@@ -589,7 +612,9 @@ class BaseParser:
             flat_ecg = np.load(self.main_path / 'corrupted_ecgs.npy')
         else:
             flat_ecg = np.array([])
-        percentage_ann = np.array([self.mask_rr_dict[pat][self.window_size].sum() / self.mask_rr_dict[pat][self.window_size].shape[0] for pat in self.all_patients()])
+        percentage_ann = np.array(
+            [self.mask_rr_dict[pat][self.window_size].sum() / self.mask_rr_dict[pat][self.window_size].shape[0] for pat
+             in self.all_patients()])
         self.corrupted_ecg = np.append(self.corrupted_ecg, self.all_patients()[percentage_ann < ann_exclusion_rate])
         self.corrupted_ecg = np.unique(np.concatenate((self.corrupted_ecg, flat_ecg)))
 
@@ -653,7 +678,8 @@ class BaseParser:
         :returns path: The path in which the raw recordings are located."""
         return self.raw_ecg_path
 
-    def get_available_preeceding_windows(self, pat_list=None, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
+    def get_available_preeceding_windows(self, pat_list=None, exclude_low_sqi_win=True,
+                                         win_thresh=cts.SQI_WINDOW_THRESHOLD):
         """ Returns for each window and for each patient the number of consecutive windows preceding it, i.e.
         the number of preceding windows which were not excluded by the different criteria.
         :param exclude_low_sqi_win: If true, considers the low SQI windows to be removed.
@@ -667,13 +693,12 @@ class BaseParser:
         if exclude_low_sqi_win:
             masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
                                          self.signal_quality_dict[pat][self.window_size] >= win_thresh) for pat in
-                     pat_list} #[self.sqi_test_ann]
+                     pat_list}  # [self.sqi_test_ann]
         else:
             masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in pat_list}
 
         res_dict = {pat: dp.cumsum_reset(masks[pat]) for pat in masks.keys()}
         return res_dict
-
 
     def all_patients(self):
         """ Returns all the patients parsed and loaded in the system.
@@ -714,7 +739,8 @@ class BaseParser:
             win = self.loaded_window_sizes[0]
         return np.array(list(self.features_dict[pat][win].keys()))
 
-    def return_features(self, pat_list=None, feats_list=None, return_binary=True, return_global_label=False, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
+    def return_features(self, pat_list=None, feats_list=None, return_binary=True, return_global_label=False,
+                        exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
         """Concatenates all the features contained in the whole dataset and returns them in the form X, y.
         :param pat_list: The list of patients for whom the features should be returned.
         :param feats_list: The list of features to return. The columns in the output will correspond to the features given as input.
@@ -730,25 +756,28 @@ class BaseParser:
         else:
             correct_pat_list = np.array([elem for elem in pat_list])
             if len(correct_pat_list) == 0:
-                return np.array([[]]), np.array([])     # Returning empty arrays in case of empty lists.
+                return np.array([[]]), np.array([])  # Returning empty arrays in case of empty lists.
 
         if feats_list is None:
             feats_list = self.get_available_features()
 
         test_pat = self.non_corrupted_ecg_patients()[0]
-        n_windows = {elem: len(self.win_lab_dict[elem][self.window_size][self.mask_rr_dict[elem][self.window_size]]) for elem in correct_pat_list}
+        n_windows = {elem: len(self.win_lab_dict[elem][self.window_size][self.mask_rr_dict[elem][self.window_size]]) for
+                     elem in correct_pat_list}
         tuple_X = ()
 
         if exclude_low_sqi_win:
             masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
-                                         self.signal_quality_dict[pat][self.window_size][self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
+                                         self.signal_quality_dict[pat][self.window_size][
+                                             self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
         else:
             masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_pat_list}
 
         for feat in feats_list:
             if feat == 'sqi':
                 to_add = np.concatenate(tuple(
-                    self.signal_quality_dict[elem][self.window_size][self.sqi_test_ann][masks[elem]].reshape(-1, 1) for elem in
+                    self.signal_quality_dict[elem][self.window_size][self.sqi_test_ann][masks[elem]].reshape(-1, 1) for
+                    elem in
                     correct_pat_list), axis=0)
             elif type(self.features_dict[test_pat][self.window_size][feat]) == float:
                 to_add = np.concatenate(tuple(
@@ -756,24 +785,30 @@ class BaseParser:
                     correct_pat_list), axis=0)
             else:
                 to_add = np.concatenate(
-                    tuple(self.features_dict[elem][self.window_size][feat][masks[elem][:len(masks[elem])]].reshape(-1, 1) for elem in correct_pat_list),
+                    tuple(
+                        self.features_dict[elem][self.window_size][feat][masks[elem][:len(masks[elem])]].reshape(-1, 1)
+                        for elem in correct_pat_list),
                     axis=0)
             tuple_X = tuple_X + (to_add,)
 
         X = np.concatenate(tuple_X, axis=1)
 
         if return_binary:
-            y = np.concatenate(tuple(self.af_win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
+            y = np.concatenate(
+                tuple(self.af_win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
         else:
-            y = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
+            y = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
 
         if return_global_label:
-            global_lab = np.concatenate(tuple(self.af_pat_lab_dict[elem] * np.ones(np.sum(masks[elem])) for elem in correct_pat_list), axis=0)
+            global_lab = np.concatenate(
+                tuple(self.af_pat_lab_dict[elem] * np.ones(np.sum(masks[elem])) for elem in correct_pat_list), axis=0)
             return X, y, global_lab
         else:
             return X, y
 
-    def return_rr(self, pat_list=None, return_binary=True, return_global_label=False, exclude_low_sqi_win=True, win_thresh=cts.SQI_WINDOW_THRESHOLD):
+    def return_rr(self, pat_list=None, return_binary=True, return_global_label=False, exclude_low_sqi_win=True,
+                  win_thresh=cts.SQI_WINDOW_THRESHOLD):
         """Concatenates all the RR windows contained in the whole dataset and returns them in the form X, y.
         :param pat_list: The list of patients for whom the features should be returned.
         :param return_binary: If true, returns the binary AF label, otherwise the general rhythm label (af_win_lab vs. win_lab)
@@ -788,32 +823,41 @@ class BaseParser:
         else:
             correct_pat_list = np.array([elem for elem in pat_list])
             if len(correct_pat_list) == 0:
-                return np.array([[]]), np.array([])     # Returning empty arrays in case of empty lists.
+                return np.array([[]]), np.array([])  # Returning empty arrays in case of empty lists.
 
         if exclude_low_sqi_win:
             masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
-                                         self.signal_quality_dict[pat][self.window_size][self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
+                                         self.signal_quality_dict[pat][self.window_size][
+                                             self.sqi_test_ann] >= win_thresh) for pat in correct_pat_list}
         else:
             masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_pat_list}
 
-        X = np.concatenate(tuple(self.rr_dict[elem][:(len(self.rr_dict[elem]) // self.window_size) * self.window_size].reshape(-1, self.window_size)[masks[elem]] for elem in correct_pat_list), axis=0)
+        X = np.concatenate(tuple(
+            self.rr_dict[elem][:(len(self.rr_dict[elem]) // self.window_size) * self.window_size].reshape(-1,
+                                                                                                          self.window_size)[
+                masks[elem]] for elem in correct_pat_list), axis=0)
         X_rrt = np.concatenate(tuple(
-            self.rrt_dict[elem][:(len(self.rr_dict[elem]) // self.window_size) * self.window_size].reshape(-1, self.window_size)[masks[elem]] for elem in correct_pat_list), axis=0)
+            self.rrt_dict[elem][:(len(self.rr_dict[elem]) // self.window_size) * self.window_size].reshape(-1,
+                                                                                                           self.window_size)[
+                masks[elem]] for elem in correct_pat_list), axis=0)
         win_start = np.concatenate(tuple(
             self.start_windows_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
         win_end = np.concatenate(tuple(
             self.end_windows_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
         win_lab = np.concatenate(tuple(
             self.rlab_dict[elem][:(len(self.rlab_dict[elem]) // self.window_size) * self.window_size].reshape(-1,
-                                                                                                            self.window_size)[
+                                                                                                              self.window_size)[
                 masks[elem]] for elem in correct_pat_list), axis=0)
         if return_binary:
-            y = np.concatenate(tuple(self.af_win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
+            y = np.concatenate(
+                tuple(self.af_win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
         else:
-            y = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
+            y = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size][masks[elem]] for elem in correct_pat_list), axis=0)
 
         if return_global_label:
-            global_lab = np.concatenate(tuple(self.af_pat_lab_dict[elem] * np.ones(np.sum(masks[elem])) for elem in correct_pat_list), axis=0)
+            global_lab = np.concatenate(
+                tuple(self.af_pat_lab_dict[elem] * np.ones(np.sum(masks[elem])) for elem in correct_pat_list), axis=0)
             return X, X_rrt, y, global_lab, win_start, win_end
         else:
             return X, X_rrt, y, win_start, win_end, win_lab
@@ -830,11 +874,12 @@ class BaseParser:
         else:
             correct_list = np.array([elem for elem in pat_list])
             if len(correct_list) == 0:
-                return np.array([])     # Returning empty arrays in case of empty lists.
+                return np.array([])  # Returning empty arrays in case of empty lists.
 
         if exclude_low_sqi_win:
             masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
-                                         self.signal_quality_dict[pat][self.window_size][self.sqi_test_ann] >= win_thresh) for pat in correct_list}
+                                         self.signal_quality_dict[pat][self.window_size][
+                                             self.sqi_test_ann] >= win_thresh) for pat in correct_list}
         else:
             masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_list}
         num_duplicates = {pat: np.sum(masks[pat]) for pat in masks.keys()}
@@ -857,22 +902,26 @@ class BaseParser:
         else:
             correct_list = np.array([elem for elem in pat_list])
             if len(correct_list) == 0:
-                return np.array([])     # Returning empty arrays in case of empty lists.
+                return np.array([])  # Returning empty arrays in case of empty lists.
 
         if exclude_low_sqi_win:
             masks = {pat: np.logical_and(self.mask_rr_dict[pat][self.window_size],
-                                         self.signal_quality_dict[pat][self.window_size][self.sqi_test_ann] >= win_thresh) for pat in correct_list}
+                                         self.signal_quality_dict[pat][self.window_size][
+                                             self.sqi_test_ann] >= win_thresh) for pat in correct_list}
         else:
             masks = {pat: self.mask_rr_dict[pat][self.window_size] for pat in correct_list}
 
-        y = np.concatenate(tuple(self.av_prec_windows_dict[elem][self.window_size][masks[elem]] for elem in correct_list), axis=0)
+        y = np.concatenate(
+            tuple(self.av_prec_windows_dict[elem][self.window_size][masks[elem]] for elem in correct_list), axis=0)
 
         return y
+
     # ------------------------------------------------------------------------- #
     # ---------------------- Import/Export functions -------------------------- #
     # ------------------------------------------------------------------------- #
 
-    def plot_ecg(self, patient_id, lead, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False, add_peak=None,
+    def plot_ecg(self, patient_id, lead, disp_peaks=True, start=0, end=-1, ann_type='epltd0', savefig=False,
+                 add_peak=None,
                  correct_peaks=False, format='png'):
         """
         Plots the ECG raw signal with annotation peaks and the RR intervals.
@@ -903,11 +952,14 @@ class BaseParser:
             crr = np.diff(cannot) / self.actual_fs
             axes[1][0].plot(timeline[cannot][:-1], crr, color='orange', label='c-RR Interval')
         graph.complete_figure(fig, axes, x_titles=[[''], ['Time (s)']], y_titles=[['ECG (mV)'], ['RR interval (s)']],
-                              legend_fontsize=20, savefig=savefig, format=format, put_legend=False * np.ones(axes.shape, dtype=bool),
-                              main_title='ECG_Plot_' + str(self.name) + '_start=' + str(start) + '_end=' + str(end) + "_disp_peaks=" + str(disp_peaks))
+                              legend_fontsize=20, savefig=savefig, format=format,
+                              put_legend=False * np.ones(axes.shape, dtype=bool),
+                              main_title='ECG_Plot_' + str(self.name) + '_start=' + str(start) + '_end=' + str(
+                                  end) + "_disp_peaks=" + str(disp_peaks))
         plt.show()
 
-    def export_to_physiozoo(self, pat, directory=cts.ERROR_ANALYSIS_DIR, start=0, end=-1, force=False, ann_type='epltd0', export_rhythms=False, n_leads=1):
+    def export_to_physiozoo(self, pat, directory=cts.ERROR_ANALYSIS_DIR, start=0, end=-1, force=False,
+                            ann_type='epltd0', export_rhythms=False, n_leads=1):
         """ This function exports a given recording to the physiozoo format for further investigation.
         The files are exported under a .txt format with the proper headers to be read by the PhysioZoo software.
         The raw ECG as well as the peaks are exported. If provided, the AF events are exported as well.
@@ -925,31 +977,31 @@ class BaseParser:
                       '\n'
                       'Channels:\n']
         channels = [['\n'
-                      '    - type:   electrography\n',
-                      '      name:   data' + str(i) + '\n',
-                      '      unit:   mV\n',
-                      '      enable: yes\n'] for i in range(1, n_leads+1)]
+                     '    - type:   electrography\n',
+                     '      name:   data' + str(i) + '\n',
+                     '      unit:   mV\n',
+                     '      enable: yes\n'] for i in range(1, n_leads + 1)]
         end_header = ['\n',
                       '---\n',
                       '\n']
         [ecg_header.extend(channels[i]) for i in range(n_leads)]
         ecg_header.extend(end_header)
 
-        peaks_header =   ['---\n',
-                          'Mammal:            human\n',
-                          'Fs:                ' + str(self.actual_fs) + '\n',
-                          'Integration_level: electrocardiogram\n',
-                          '\n'
-                          'Channels:\n',
-                          '\n'
-                          '    - type:   peak\n',
-                          '      name:   interval\n',
-                          '      unit:   index\n',
-                          '      enable: yes\n',
-                          '\n',
-                          '---\n',
-                          '\n'
-                          ]
+        peaks_header = ['---\n',
+                        'Mammal:            human\n',
+                        'Fs:                ' + str(self.actual_fs) + '\n',
+                        'Integration_level: electrocardiogram\n',
+                        '\n'
+                        'Channels:\n',
+                        '\n'
+                        '    - type:   peak\n',
+                        '      name:   interval\n',
+                        '      unit:   index\n',
+                        '      enable: yes\n',
+                        '\n',
+                        '---\n',
+                        '\n'
+                        ]
 
         sig_qual_header = ['---\n',
                            'type: quality annotation\n',
@@ -965,15 +1017,17 @@ class BaseParser:
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-
-
-        ecgs = np.concatenate(tuple([self.parse_raw_ecg(pat, start=start, end=end, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in range(1, n_leads+1)]), axis=1)
+        ecgs = np.concatenate(tuple(
+            [self.parse_raw_ecg(pat, start=start, end=end, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in
+             range(1, n_leads + 1)]), axis=1)
         ann = self.parse_raw_ecg(pat, lead=self.ref_lead, start=start, end=end, type=ann_type)[1]
         if end == -1:
             end = self.recording_time[pat]
 
-        ecg_full_path = directory / (pat + '_ecg_start_' + str(start) + '_end_' + str(end) + '_n_leads_' + str(n_leads) + '.txt')
-        peaks_full_path = directory / (pat + '_peaks_start_' + str(start) + '_end_' + str(end) + '_' + str(ann_type) + '.txt')
+        ecg_full_path = directory / (
+                    pat + '_ecg_start_' + str(start) + '_end_' + str(end) + '_n_leads_' + str(n_leads) + '.txt')
+        peaks_full_path = directory / (
+                    pat + '_peaks_start_' + str(start) + '_end_' + str(end) + '_' + str(ann_type) + '.txt')
         rhythms_full_path = directory / (pat + '_rhythms_start_' + str(start) + '_end_' + str(end) + '.txt')
         # Raw ECG
         join_func = lambda x: ' '.join(['%.2f' % i for i in x])
@@ -999,7 +1053,7 @@ class BaseParser:
                     periods = np.concatenate(([0], np.where(np.diff(rhythms.astype(int)))[0] + 1, [len(rhythms) - 1]))
                     start_idx, end_idx = periods[:-1], periods[1:]
                     final_rhythms = rhythms[start_idx]
-                    mask_rhythms = final_rhythms > 0    # We do not keep NSR as rhythm
+                    mask_rhythms = final_rhythms > 0  # We do not keep NSR as rhythm
                     raw_rrt = self.rrt_dict[pat]
                     rrt = raw_rrt[:(len(raw_rrt) // self.window_size) * self.window_size].reshape(-1, self.window_size)
                     start_events, end_events = rrt[start_idx, 0], rrt[end_idx, 0]
@@ -1009,15 +1063,21 @@ class BaseParser:
                     end_events[end_events > (end - start)] = end - start
                     final_rhythms = final_rhythms[mask_rhythms]
                     final_rhythms_str = np.array([self.rhythms[i][1:] for i in final_rhythms])
-                    rhythms_file.write('\n'.join(['%.5f\t%.5f\t%s' % (start_events[i], end_events[i], final_rhythms_str[i]) for i in range(len(start_events))]))
+                    rhythms_file.write('\n'.join(
+                        ['%.5f\t%.5f\t%s' % (start_events[i], end_events[i], final_rhythms_str[i]) for i in
+                         range(len(start_events))]))
 
     def report_low_sqi(self):
         if len(self.low_sqi) > 0:
             """Export in an excel table a summary of the excluded patients because of bad quality."""
-            low_sqi = np.array([[int(i), self.signal_quality_dict[i][self.window_size][self.sqi_test_ann].mean()] for i in self.low_sqi])
+            low_sqi = np.array(
+                [[int(i), self.signal_quality_dict[i][self.window_size][self.sqi_test_ann].mean()] for i in
+                 self.low_sqi])
             sorted_idx = np.argsort(low_sqi[:, 1])
             low_sqi = low_sqi[sorted_idx]
-            np.savetxt(cts.ERROR_ANALYSIS_DIR / (self.name + '_low_sqi_' + str(self.window_size) + '_beats_' + str(self.sqi_test_ann) + '.csv'), low_sqi, fmt="%d,%.2f", header='PatientID,SQI,Manual Review,Comments', comments='')
+            np.savetxt(cts.ERROR_ANALYSIS_DIR / (
+                        self.name + '_low_sqi_' + str(self.window_size) + '_beats_' + str(self.sqi_test_ann) + '.csv'),
+                       low_sqi, fmt="%d,%.2f", header='PatientID,SQI,Manual Review,Comments', comments='')
         else:
             print("All the patients satisfy the SQI criteria.")
 
@@ -1030,8 +1090,10 @@ class BaseParser:
         print("Information about " + str(self.window_size) + "-beats windows dataset:")
         print("Total time: " + str(self.total_time(pat_list)))
         print("Total time in AF: " + str(self.total_time_in_af(pat_list)))
-        print("Mean time of the recordings: " + str(np.mean([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
-        print("Std time of the recordings: " + str(np.std([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
+        print("Mean time of the recordings: " + str(
+            np.mean([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
+        print("Std time of the recordings: " + str(
+            np.std([self.recording_time[pat] / cts.N_S_IN_HOUR for pat in pat_list])))
         all_labs = np.array([self.af_pat_lab_dict[pat] for pat in pat_list])
         mask_non_af_pat = np.logical_or(all_labs == cts.PATIENT_LABEL_NON_AF, all_labs == cts.PATIENT_LABEL_OTHER_CVD)
         mask_mild_pat = all_labs == cts.PATIENT_LABEL_AF_MILD
@@ -1044,21 +1106,25 @@ class BaseParser:
         print("Total number of Severe (AFIB patients: " + str(np.sum(mask_severe_pat)))
         all_wins = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list), axis=0)
         try:
-            non_af_wins = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_non_af_pat]), axis=0)
+            non_af_wins = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_non_af_pat]), axis=0)
         except ValueError:
             non_af_wins = np.array([])
         try:
-            mild_af_wins = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_mild_pat]), axis=0)
+            mild_af_wins = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_mild_pat]), axis=0)
         except ValueError:
             mild_af_wins = np.array([])
 
         try:
-            moderate_af_wins = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_moderate_pat]), axis=0)
+            moderate_af_wins = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_moderate_pat]), axis=0)
         except ValueError:
             moderate_af_wins = np.array([])
 
         try:
-            severe_af_wins = np.concatenate(tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_severe_pat]), axis=0)
+            severe_af_wins = np.concatenate(
+                tuple(self.win_lab_dict[elem][self.window_size] for elem in pat_list[mask_severe_pat]), axis=0)
         except ValueError:
             severe_af_wins = np.array([])
 
@@ -1075,7 +1141,6 @@ class BaseParser:
         all_exclusions = np.concatenate((excluded_pat_for_anns, excluded_sqi_not_ann))
         patients_after_exclusions = np.setdiff1d(pat_list, all_exclusions)
 
-
         _, _, y_include_low_sqi, _, _, _ = self.return_rr(pat_list=patients_after_exclusions, exclude_low_sqi_win=False)
         _, _, y_without_low_sqi, _, _, _ = self.return_rr(pat_list=patients_after_exclusions, exclude_low_sqi_win=True)
         print("Excluded patients because of annotations: " + str(len(excluded_pat_for_anns)))
@@ -1091,21 +1156,20 @@ class BaseParser:
         if item not in pat_list:
             raise IndexError('Patient ID does not exist in the database/has not been loaded.')
         pat_dict = {
-                        'rr': self.rr_dict[item],
-                        'rrt': self.rrt_dict[item],
-                        'rlab': self.rlab_dict[item],
-                        'sqi': self.signal_quality_dict[item][self.window_size][self.sqi_test_ann],
-                        'features': self.features_dict[item][self.window_size],
-                        'af_burden': self.af_burden_dict[item],
-                        'other_cvd_burden': self.other_cvd_burden_dict[item],
-                        'win_lab': self.win_lab_dict[item][self.window_size],
-                        'af_win_lab': self.af_win_lab_dict[item][self.window_size],
-                        'af_pat_lab': self.af_pat_lab_dict[item],
-                        'ahi': self.ahi_dict[item],
-                        'odi': self.odi_dict[item]
+            'rr': self.rr_dict[item],
+            'rrt': self.rrt_dict[item],
+            'rlab': self.rlab_dict[item],
+            'sqi': self.signal_quality_dict[item][self.window_size][self.sqi_test_ann],
+            'features': self.features_dict[item][self.window_size],
+            'af_burden': self.af_burden_dict[item],
+            'other_cvd_burden': self.other_cvd_burden_dict[item],
+            'win_lab': self.win_lab_dict[item][self.window_size],
+            'af_win_lab': self.af_win_lab_dict[item][self.window_size],
+            'af_pat_lab': self.af_pat_lab_dict[item],
+            'ahi': self.ahi_dict[item],
+            'odi': self.odi_dict[item]
         }
         return pat_dict
-
 
     def create_pool(self):
         """ Creates a multiprocessing pool to generate the features and other computations."""
@@ -1181,12 +1245,12 @@ class BaseParser:
                 if np.isnan(self.af_pat_lab_dict[id]):
                     self.missing_af_label = np.append(self.missing_af_label, id)
 
-
     def save_patient_to_disk(self, pat):
         """ This function saves one patient to the disk.
         :param pat: The patient ID to be saved. """
         win_indep_subfolders = ['rr', 'rlab', 'rrt', 'excluded_portions']
-        win_dep_subfolders = ['features', 'signal_quality', 'af_win_lab', 'win_lab', 'start_windows', 'end_windows', 'av_prec_windows', 'mask_rr']
+        win_dep_subfolders = ['features', 'signal_quality', 'af_win_lab', 'win_lab', 'start_windows', 'end_windows',
+                              'av_prec_windows', 'mask_rr']
         if not os.path.exists(self.main_path / pat):
             os.makedirs(self.main_path / pat)
         for dir in win_indep_subfolders:
@@ -1199,12 +1263,12 @@ class BaseParser:
                     os.makedirs(self.main_path / pat / dir)
                 np.save(self.main_path / pat / dir / str(win), self.__dict__[dir + '_dict'][pat][win])
         np.save(self.main_path / pat / 'pat_values', np.array([self.af_burden_dict[pat],
-                                                                    self.other_cvd_burden_dict[pat],
-                                                                    self.af_pat_lab_dict[pat],
-                                                                    self.ahi_dict[pat],
-                                                                    self.odi_dict[pat],
-                                                                    self.recording_time[pat],
-                                                                    self.n_excluded_windows_dict[pat]]))
+                                                               self.other_cvd_burden_dict[pat],
+                                                               self.af_pat_lab_dict[pat],
+                                                               self.ahi_dict[pat],
+                                                               self.odi_dict[pat],
+                                                               self.recording_time[pat],
+                                                               self.n_excluded_windows_dict[pat]]))
 
     def load_patient_from_disk(self, pat, wins=None):
         """ This function loads one patient to the disk.
@@ -1212,7 +1276,8 @@ class BaseParser:
         :param wins: The windows to load.
         """
         win_indep_subfolders = ['rr', 'rlab', 'rrt', 'excluded_portions']
-        win_dep_subfolders = ['features', 'signal_quality', 'af_win_lab', 'win_lab', 'start_windows', 'end_windows', 'av_prec_windows', 'mask_rr', 'n_excluded_windows']
+        win_dep_subfolders = ['features', 'signal_quality', 'af_win_lab', 'win_lab', 'start_windows', 'end_windows',
+                              'av_prec_windows', 'mask_rr', 'n_excluded_windows']
         if wins is None:
             wins = self.window_sizes
         for dir in win_indep_subfolders:
@@ -1249,7 +1314,8 @@ class BaseParser:
                                    filter_order=75, notch_freq=50, debug=False)
         ecg_mask = ecg_lead.copy()
         for i, r in af_df.iterrows():
-            ecg_mask[int((r.start_time - start) * self.actual_fs) - point:int((r.end_time - start) * self.actual_fs) + point] = 0
+            ecg_mask[
+            int((r.start_time - start) * self.actual_fs) - point:int((r.end_time - start) * self.actual_fs) + point] = 0
         af_ecg = ecg_lead - ecg_mask
         seg_af_ecg = af_ecg[start:end]
         plt.style.use('seaborn-white')
@@ -1257,10 +1323,11 @@ class BaseParser:
         ax.plot(seg_af_ecg, linewidth=0.7, zorder=0)
         for i, r in af_df.iterrows():
             if int(r.start_time) > start:
-                ax.fill_between((int((r.start_time - start) * self.actual_fs), int((r.end_time - start) * self.actual_fs)),
-                                -2,
-                                2, facecolor='orange', alpha=0.4,
-                                zorder=1)
+                ax.fill_between(
+                    (int((r.start_time - start) * self.actual_fs), int((r.end_time - start) * self.actual_fs)),
+                    -2,
+                    2, facecolor='orange', alpha=0.4,
+                    zorder=1)
         x_time = np.arange(start, end, (end - start) / 10)
         str_time = pd.to_datetime(pd.Series(x_time / self.actual_fs) + time, unit='s', utc=True).dt.strftime('%H:%M:%S')
         ax.set(xticks=(x_time - start))
@@ -1279,20 +1346,21 @@ class BaseParser:
         for i, r in df_af.iterrows():
             ecg = []
             annot = []
-            for j in range(1, n_lead+1):
+            for j in range(1, n_lead + 1):
                 ecg_j, ann_j = self.parse_raw_ecg(r.id, j, r.start_time, r.end_time, type=self.sqi_ref_ann)
-                cann_j = i_o.qrs_adjust(ecg=ecg_j,qrs=ann_j,fs=self.actual_fs,inputsign=1, debug=0)
+                cann_j = i_o.qrs_adjust(ecg=ecg_j, qrs=ann_j, fs=self.actual_fs, inputsign=1, debug=0)
                 annot.append(cann_j)
                 ecg.append(ecg_j)
             data = np.array(ecg)
             rqrs = np.array(annot)
-            if self.name=='UVAFDB':
+            if self.name == 'UVAFDB':
                 mdic = {"data": data, "rqrs": rqrs, "fs": self.actual_fs, "start_": r.start_time, "end_": r.end_time}
             else:
                 mdic = {"data": data, "rqrs": rqrs, "fs": self.actual_fs, "start_": r.start_time, "end_": r.end_time,
                         "recording_hour": self.circadian_dict[r.id]['start_recording']}
             savemat(
-                "/home/shanybiton/repos/Lund/wins/" + self.name + "/" + str(r.id) + "_af_win_start_" + str(r.start_time) + "_end_" + str(
+                "/home/shanybiton/repos/Lund/wins/" + self.name + "/" + str(r.id) + "_af_win_start_" + str(
+                    r.start_time) + "_end_" + str(
                     r.end_time) + ".mat", mdic)
 
     def plot_win_len(self, df, start_bin=20, end_bin=120, step=10, figsize=(8, 8), savefig=False,
@@ -1346,22 +1414,23 @@ class BaseParser:
 
     def export_model_output(self, pat, af_df, directory=cts.ERROR_ANALYSIS_DIR, force=False, algo='ArNet2'):
         rhythms_header = ['---\n',
-                           'type: quality annotation\n',
-                           'source file: ',  # To be completed by filename
-                           '\n',
-                           '---\n',
-                           '\n',
-                           'Beginning\tEnd\t\tClass\n']
+                          'type: quality annotation\n',
+                          'source file: ',  # To be completed by filename
+                          '\n',
+                          '---\n',
+                          '\n',
+                          'Beginning\tEnd\t\tClass\n']
         rhythms_header[1] = 'type: rhythms annotation\n'
 
         rhythms_full_path = directory / f'{pat}_rhythms_output_{algo}.txt'
         start_events = np.array(af_df.start_time.values)
         end_events = np.array(af_df.end_time.values)
-        final_rhythms_str = np.array(['AFIB']* len(end_events))
+        final_rhythms_str = np.array(['AFIB'] * len(end_events))
         if not os.path.exists(rhythms_full_path) or force:
-                with open(rhythms_full_path, 'w+') as rhythms_file:
-                    rhythms_header[2] = 'source file: ' + pat + '_rhythms.txt\n'
-                    rhythms_file.writelines(rhythms_header)
-                    rhythms_file.write('\n'.join(['%.5f\t%.5f\t%s' % (start_events[i], end_events[i], final_rhythms_str[i]) for i in range(len(start_events))]))
+            with open(rhythms_full_path, 'w+') as rhythms_file:
+                rhythms_header[2] = 'source file: ' + pat + '_rhythms.txt\n'
+                rhythms_file.writelines(rhythms_header)
+                rhythms_file.write('\n'.join(
+                    ['%.5f\t%.5f\t%s' % (start_events[i], end_events[i], final_rhythms_str[i]) for i in
+                     range(len(start_events))]))
         return
-
