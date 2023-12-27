@@ -30,6 +30,8 @@ import random
 import scipy
 import scipy.signal as signal
 from scipy.signal import savgol_filter, butter, sosfreqz, sosfiltfilt
+import scipy.interpolate as interp
+
 import mne
 
 # Graphics
@@ -48,6 +50,7 @@ import io
 import copy
 import pickle
 import mat73
+from scipy.io import savemat
 
 # time-related functions
 import datetime as dt
