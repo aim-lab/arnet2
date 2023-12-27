@@ -1,5 +1,9 @@
 from base_packages import *
 
+""",
+Reading and processing Holter data in a PATHFINDER 710 family data format. 
+"""
+
 
 @dataclass
 class SystemControlData:
@@ -10,9 +14,17 @@ class SystemControlData:
     data: bytes = None
 
 
-def read_control_file(file_name, chunk_byte_size):
+def read_control_file(file, chunk_byte_size):
+    """
+    Reads the system control data which is stored in the file:
+    MAIN.DAT
+    which contains all the system control parameter data.
+    :param file: Path to file.
+    :param chunk_byte_size: A given byte size
+    :return: A list of the system parameters.
+    """
     system_control_data_list = list()
-    with open(file_name, "rb") as control_file:
+    with open(file, "rb") as control_file:
         while True:
             data_tag = control_file.read(chunk_byte_size)
             if data_tag:
@@ -29,28 +41,46 @@ def read_control_file(file_name, chunk_byte_size):
 
 
 def is_date(ds):
+    """
+    Checks if a given string contains a date stamp.
+    :param ds: A string.
+    :return: If True, returns True. Otherwise, return False.
+    """
     if re.match(r'\d{2}/\d{2}/\d{4}', ds):
         return bool(parse(ds))
     return False
 
 
 def is_age(ds):
+    """
+    Checks if a given string contains an age value.
+    :param ds: A string.
+    :return: If True, returns True. Otherwise, return False.
+    """
     if re.match(r'^100|[1-9]?\d$', ds):
         return True
     return False
 
 
-def read_patient_file(file_name):
+def read_patient_file(file):
+    """
+    Reads the patient data which is stored in the file:
+    PATIENT.TXT
+    which contains all the patient data in ASCII
+    :param file: Path to file.
+    :return: Patient information including date of recording (recording_date), date of Holter analysis (analysis_date)
+    and demographics (age & gender).
+    """
     parsed_date = []
     parsed_age = []
     parsed_gender = []
-    with open(file_name, 'r', encoding="iso-8859-1") as fin:
+    with open(file, 'r', encoding="iso-8859-1") as fin:
         f = fin.read().splitlines()
         for idx, e in enumerate(f):
-            if (is_date(e)):
+            if is_date(e):
                 date = parse(e, dayfirst=True)
                 parsed_date.append(date)
-            if (is_age(e)):
+            if is_age(e):
                 parsed_age.append(e)
                 parsed_gender.append(f[idx + 1])
     parsed_date.sort()
@@ -61,30 +91,38 @@ def read_patient_file(file_name):
     return recording_date, analysis_date, age, sex[0]
 
 
-def read_timestamp(file_name, start_flag=131, chunk_byte_size=4):
-    @dataclass
-    class SystemControlData:
-        data_tag: int = None
-        byte_size: int = None
-        continuation_flag: int = None
-        start_offset: int = None
-        data: bytes = None
+def read_timestamp(file, start_flag=131, chunk_byte_size=4):
+    """
+    Reads the timestamp which is stored in the file:
+    MAIN.DAT
+    :param file: Path to file.
+    :param start_flag: The unique data tag value.
+    :param chunk_byte_size: A given byte size.
+    :return: Start and end of recording in seconds.
+    """
+    # @dataclass
+    # class SystemControlData:
+    #     data_tag: int = None
+    #     byte_size: int = None
+    #     continuation_flag: int = None
+    #     start_offset: int = None
+    #     data: bytes = None
 
-    # system_control_data_list = read_control_file(file_name, chunk_byte_size=chunk_byte_size)
-    system_control_data_list = list()
-    with open(file_name, "rb") as control_file:
-        while True:
-            data_tag = control_file.read(chunk_byte_size)
-            if data_tag:
-                chunk = SystemControlData()
-                chunk.data_tag = int.from_bytes(data_tag, 'little', signed=True)
-                chunk.byte_size = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
-                chunk.continuation_flag = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
-                chunk.start_offset = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
-                chunk.data = control_file.read(chunk.byte_size)
-                system_control_data_list.append(chunk)
-            else:
-                break
+    system_control_data_list = read_control_file(file, chunk_byte_size=chunk_byte_size)
+    # system_control_data_list = list()
+    # with open(file, "rb") as control_file:
+    #     while True:
+    #         data_tag = control_file.read(chunk_byte_size)
+    #         if data_tag:
+    #             chunk = SystemControlData()
+    #             chunk.data_tag = int.from_bytes(data_tag, 'little', signed=True)
+    #             chunk.byte_size = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
+    #             chunk.continuation_flag = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
+    #             chunk.start_offset = int.from_bytes(control_file.read(chunk_byte_size), 'little', signed=True)
+    #             chunk.data = control_file.read(chunk.byte_size)
+    #             system_control_data_list.append(chunk)
+    #         else:
+    #             break
     block = next((x for x in system_control_data_list if x.data_tag == start_flag), None)
     vals = np.frombuffer(block.data, dtype=np.int32)
     start_Seconds = int(vals[0] // 128)
@@ -95,6 +133,18 @@ def read_timestamp(file_name, start_flag=131, chunk_byte_size=4):
 
 
 def read_ecg_file(file, b=12, dynamic_range=10, decimal_point=5):
+    """
+    Reads the ecg raw data which is stored in:
+    RAWECG1/2/3.DAT
+    for channels 1, 2 & 3 respectively.
+    The 12 bit ECG data is packed into a 16 bit unsigned integer (2 packed into each INT32).  The top 4 bits of each 16
+    bit integer is used to store additional information.
+    :param file: Path to file.
+    :param b: Default: 12.
+    :param dynamic_range: Default: 10.
+    :param decimal_point: Round the number up until the decimal place.
+    :return: The ecg raw data.
+    """
     f = open(file, "rb")
     raw_data = np.fromfile(f, dtype="<u2")
 
@@ -108,6 +158,12 @@ def read_ecg_file(file, b=12, dynamic_range=10, decimal_point=5):
 
 
 def read_arrhevnt_file(file):
+    """
+    Reads the Event data for all events which is stored in:
+    ARRHEVNT.DAT
+    :param file: Path to file.
+    :return: dataframe with start, end and length of events.
+    """
     f = open(file, "rb")
     raw_data = np.fromfile(f, dtype="<u4")
     array_size = 59000
@@ -167,17 +223,29 @@ def read_arrhevnt_file(file):
 
 
 def combtime_file_reader(file):
+    """
+    Reads the beat times data stored consecutively for the full duration of the recording which is stored in:
+    COMBTIME.DAT
+    :param file: Path to file.
+    :return: array (?) with beat values.
+    """
     f = open(file, "rb")
     data = np.fromfile(f, dtype="<u4")
     # df = pd.DataFrame({'beat_time': [start_recording + datetime.timedelta(seconds=x / 128) for x in data]})
-    #relative = [start_recording + (x / 128) for x in data]  # with respect to true time start
-    #absolute = [(x / 128) for x in data]  # with respect to time 0
+    # relative = [start_recording + (x / 128) for x in data]  # with respect to true time start
+    # absolute = [(x / 128) for x in data]  # with respect to time 0
     return data
 
 
-def combflag_file_reader(file_name):
+def combflag_file_reader(file):
+    """
+    Reads the beat flags data stored consecutively for the full duration of the recording which is stored in:
+    COMBFLAG.DAT
+    :param file: Path to file.
+    :return: array (?) with beat flag values.
+    """
     # <u4 is for little endian 32 bit int
-    f = open(file_name, "rb")
+    f = open(file, "rb")
     raw_data = np.fromfile(f, dtype="<u4")
     # each array will contain True / False based on the flag (bit)
     recorder_clip = raw_data & (0x1 << 31) > 0
