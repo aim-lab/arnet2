@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
+# TODO: MESSY!! consider removing completely
 lab_intervals_dict={}
 lab_count_dict = {}
 lab_time_intervals_dict = {}
