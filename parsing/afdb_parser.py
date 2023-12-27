@@ -28,8 +28,8 @@ class AFDB_Parser(BaseParser):
         self.ecg_format = ".wfdb"
 
         """Variables relative to the different paths."""
-        self.raw_ecg_path = cts.DATA_DIR / "afdb"
-        self.orig_anns_path = cts.DATA_DIR / "afdb"
+        self.raw_ecg_path = cts.DATA_DIR / self.name.lower()
+        self.orig_anns_path = cts.DATA_DIR / self.name.lower()
         self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
         self.main_path = cts.PREPROCESSED_DATA_DIR / self.name
