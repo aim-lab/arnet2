@@ -90,7 +90,7 @@ def read_patient_file(file):
     analysis_date = parsed_date[1]
     return recording_date, analysis_date, age, sex[0]
 
-
+# TODO: run rbaf_parser with the modified function. If runs smoothly, remove commented lines
 def read_timestamp(file, start_flag=131, chunk_byte_size=4):
     """
     Reads the timestamp which is stored in the file:
