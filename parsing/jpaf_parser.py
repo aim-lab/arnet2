@@ -1,11 +1,11 @@
 from base_parser import *
 
 
-class JPAFDB_Parser(BaseParser):
+class SHDB_Parser(BaseParser):
 
     def __init__(self, window_size=60, load_on_start=True):
 
-        super(JPAFDB_Parser, self).__init__()
+        super(SHDB_Parser, self).__init__()
 
         """
         # ------------------------------------------------------------------------------- #
@@ -24,11 +24,11 @@ class JPAFDB_Parser(BaseParser):
         self.actual_fs = cts.EPLTD_FS
         self.n_leads = 2
         self.ref_lead = 1
-        self.name = "JPAFDB"
+        self.name = "SHDB"
         self.ecg_format = ".csv"
 
         """Variables relative to the different paths"""
-        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "examples"
+        self.raw_ecg_path = cts.DATA_DIR / 'jpafdb' / "examples"
         self.orig_anns_path = None
         self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
@@ -47,7 +47,7 @@ class JPAFDB_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only to JPAFDB) -------------------- #
+        # ---------------- Local variables (relevant only to SHDB) ---------------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.ecg_file_name = 'RR'
@@ -279,7 +279,7 @@ class JPAFDB_Parser(BaseParser):
 
 if __name__ == '__main__':
     windows = [60]
-    db = JPAFDB_Parser(load_on_start=True)
+    db = SHDB_Parser(load_on_start=True)
     # ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
     ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
     pat_list = ann_ids[~np.isin(ann_ids, db.parsed_patients())]
