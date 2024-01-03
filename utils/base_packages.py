@@ -46,8 +46,10 @@ import scipy.interpolate as interp
 import mne
 
 # Graphics
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
+from matplotlib.cm import get_cmap
 
 # I/O
 import csv
@@ -75,6 +77,11 @@ from sklearn.metrics import roc_auc_score, \
     accuracy_score, confusion_matrix, precision_recall_curve, roc_curve, auc
 from sklearn.ensemble import VotingClassifier
 from sklearn.preprocessing import LabelEncoder
+
+# statistics
+import scikit_posthocs as sp
+from scipy.stats import ttest_rel, kruskal
+from statsmodels.stats.proportion import proportions_ztest
 
 np.random.seed(cts.SEED)
 random.seed(cts.SEED)
