@@ -4,6 +4,7 @@
 *.pkl
 *.xlsx
 *.txt
+*.npy
 
 # ignore ALL files in ANY directory named as follows
 figs/
