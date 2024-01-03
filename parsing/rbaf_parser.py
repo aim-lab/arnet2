@@ -195,26 +195,32 @@ class RBAFDB_Parser(BaseParser):
     # ------------------------------------------------------------------------- #
     """
 
-    def record_diagnosis(self, patient_id, win):
+    def record_diagnosis(self, pat_list):
         """
         This function records the AF diagnosis extracted from holter free text OR tabular diagnosis (diagnosis_merged).
-        The different classes are paroxysmal AF (AF severe) and persistent AF (AF mild)
+        The different classes are paroxysmal AF (PAF), persistent AF (perAF) and Atrial Flutter (AFL).
         """
         af_cases = np.array(self.excel_sheet["holter_id"][self.excel_sheet.apply(
             lambda x: self.excel_sheet['diagnosis_merged'].astype(str).str.contains(
                 'ATRIAL FIBRILLATION', flags=re.I)).any(axis=1)].values).astype(str)
+        afl_cases = np.array(self.excel_sheet["holter_id"][self.excel_sheet.apply(
+            lambda x: self.excel_sheet['diagnosis_merged'].astype(str).str.contains(
+                'FLUTTER', flags=re.I)).any(axis=1)].values).astype(str)
         per_af = np.array(self.excel_sheet["holter_id"][
                               self.excel_sheet['diagnosis_merged'].str.contains('|'.join(self.searchPer),
                                                                                 na=False)].values).astype(str)
         par_af = np.setdiff1d(af_cases, per_af)
-        if patient_id in per_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_SEVERE  # persistent AF is equivalent to severe AF
-        elif patient_id in par_af:  # Assessing the class according to the guidelines
-            self.features_dict[patient_id][win][
-                'diagnosis'] = cts.PATIENT_LABEL_AF_MILD  # paroxysmal AF is equivalent to mild/moderate AF
-        else:
-            self.features_dict[patient_id][win]['diagnosis'] = cts.PATIENT_LABEL_NON_AF
+        if pat_list is None:
+            pat_list = db.parsed_patients()
+        for pat in pat_list:
+            if pat in per_af:  # Assessing the class according to the guidelines
+                self.diagnosis_dict[pat] ='perAF'
+            elif pat in par_af:  # Assessing the class according to the guidelines
+                self.diagnosis_dict[pat] = 'PAF'
+            elif pat in afl_cases:  # Assessing the class according to the guidelines
+                self.diagnosis_dict[pat] = 'AFL'
+            else:
+                self.diagnosis_dict[pat] = 'other'
 
     def load_beat_flags(self, wins=None, pat_list=None):
         """ This function loads the number of ectopic beats per window for the RBAF dataset.
