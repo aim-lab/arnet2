@@ -34,7 +34,7 @@ class CostumedVotingClassifier(VotingClassifier):
 
     def _predict(self, X):
         """
-        Collect results from clf.predict_proba calls and further predicts labels based on a decision_th.
+        Collect results from clf.predict_proba calls and further predicts labels based on best_th.
         """
         stackX = None
         for est in self.estimators_:
