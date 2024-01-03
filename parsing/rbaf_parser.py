@@ -214,7 +214,7 @@ class RBAFDB_Parser(BaseParser):
             pat_list = db.parsed_patients()
         for pat in pat_list:
             if pat in per_af:  # Assessing the class according to the guidelines
-                self.diagnosis_dict[pat] ='perAF'
+                self.diagnosis_dict[pat] ='PerAF'
             elif pat in par_af:  # Assessing the class according to the guidelines
                 self.diagnosis_dict[pat] = 'PAF'
             elif pat in afl_cases:  # Assessing the class according to the guidelines
