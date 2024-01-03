@@ -1,28 +1,16 @@
 # General imports
-import argparse
-import os
-import pathlib
-import warnings
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import VotingClassifier
 from sklearn.preprocessing import LabelEncoder
 import sys
 
-# relative paths
-from src.models import metrics
-
-sys.path.append('/home/shanybiton/repos/Generalization')
-sys.path.append('/home/shanybiton/repos/Generalization/utils')
-sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
-
 # Relative imports
-import src.models.model_utils as model_utils
+import models.model_utils as model_utils
 import utils.consts as cts
-import data.data_loading as data_loading
+import ArNet2.data.data_loading as data_loading
 from parsing.db_loader import *
-import src.models.metrics as metrics
+import models.metrics as metrics
 
 
 class CostumedVotingClassifier(VotingClassifier):
@@ -85,7 +73,8 @@ if __name__ == '__main__':
         probas = eclf._collect_probas(X)
         metrics_dict[set_name] = metrics.model_metrics(np.zeros(shape=np.shape(y)), y, yhat, print_metrics=True)
         mean_abs_afb_error_dict[set_name] = metrics.mean_abs_afb_error(X, y,
-                                                                       yhat)  # takes a lot of time, so maybe we should comment it for now before making it faster
+                                                                       yhat)  # takes a lot of time, so maybe we
+        # should comment it for now before making it faster
 
         if error_analysis:
             df = pd.DataFrame([])
@@ -99,5 +88,4 @@ if __name__ == '__main__':
             df['start_time'] = t_s[:, 0]
             df['end_time'] = t_s[:, -1]
             df['set_name'] = set_name
-            model_utils.save_df(df,
-                                f"/home/shanybiton/repos/Generalization/output/VotingClassifier_{set_name}_pred.csv")
+            model_utils.save_df(df, cts.REPO_DIR / 'output' / f"VotingClassifier_{set_name}_pred.csv")
