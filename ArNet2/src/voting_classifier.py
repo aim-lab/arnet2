@@ -1,11 +1,4 @@
-# General imports
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import VotingClassifier
-from sklearn.preprocessing import LabelEncoder
-import sys
-
-# Relative imports
+from utils.base_packages import *
 import models.model_utils as model_utils
 import utils.consts as cts
 import ArNet2.data.data_loading as data_loading
