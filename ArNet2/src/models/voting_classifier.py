@@ -1,9 +1,9 @@
 from utils.base_packages import *
-import models.model_utils as model_utils
+import model_utils as model_utils
 import utils.consts as cts
 import ArNet2.data.data_loading as data_loading
 from parsing.db_loader import *
-import models.metrics as metrics
+import metrics as metrics
 
 
 class CostumedVotingClassifier(VotingClassifier):
