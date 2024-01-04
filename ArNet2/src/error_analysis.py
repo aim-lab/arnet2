@@ -74,9 +74,25 @@ def plot_cosEn(cosEn1, cosEn2, test_dict, savefig=False, savedir=None, dpi=400):
         plt.show()
     return
 
+def create_prediction_df(model):
+    predictions_df = pd.DataFrame()
+def load_error_analysis_files(model):
+    """
+    Loads all necessary files for the error analysis.
+    :param model: The model for which to load probabilities for the error analysis.
+    :return: patient_file: Contains descriptive information and true labels about all the Holters.
+    :return: predictions_df: Creates during the eval() step in train_and_eval() for error_analysis=True.
+    Contains probabilities and predicted labels per window. This file is relative to the chosen model.
+    :return: rlab_df:
+    """
+    patient_file = pd.read_excel(cts.REPO_DIR / 'ArNet2' / 'files' / 'patient_file.xlsx')
+    predictions_df = pd.read_excel(cts.REPO_DIR / 'ArNet2' / 'output' / f'{model}_test_all_pred_error_analysis.csv')
+    rlab_df = pd.read_excel(cts.REPO_DIR / 'ArNet2' / 'error_analysis' / 'test_all_rlab.xlsx')
+    return patient_file, predictions_df, rlab_df
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate data input for AF classification')
+    parser = argparse.ArgumentParser(description='Run error analysis and print summary and plots')
     parser.add_argument('--model', default='XGB',
                         help='choose: "XGB" / "ArNet" / "ArNet2"')
     parser.add_argument('--add_age_sex', action='store_false',
@@ -86,20 +102,20 @@ if __name__ == '__main__':
 
     if unk:
         warnings.warn("Unknown arguments:" + str(unk) + ".")
+
     print("Loading Data...")
-    data_train, test_dict = data_loading.return_input_model(parser_mapping_dict=PARSER_MAP,
-                                                            test_set_list=cts.test_set_list)
-    _, test_dict_XGB = data_loading.return_input_model(parser_mapping_dict=PARSER_MAP, test_set_list=cts.test_set_list,
-                                                       algo='XGB')
-    patient_file = pd.read_excel(cts.REPO_DIR / 'patient_file.xlsx')
-    df_model_all = pd.read_excel(cts.REPO_DIR / 'output' / 'ArNet2_test_all_pred_error_analysis.csv')
-    df_model_all_rlab = pd.read_excel(cts.REPO_DIR / 'error_analysis' / 'test_all_rlab.xlsx')
+    # data_train, test_dict = data_loading.return_input_model(parser_mapping_dict=PARSER_MAP,
+    #                                                         test_set_list=cts.test_set_list)
+    # _, test_dict_XGB = data_loading.return_input_model(parser_mapping_dict=PARSER_MAP, test_set_list=cts.test_set_list,
+    #                                                    algo='XGB')
+    print("Loading files...")
+    patients_df, model_predictions_df, rlab_df = load_error_analysis_files(args.model)
 
     ###################################
     # AF vs other rhythm analysis for FN
     print('Analysing FN windows..')
-    FN_all = df_model_all_rlab.loc[df_model_all_rlab.pred.eq(False) & df_model_all_rlab.lab.eq(True)]
-    FP_all = df_model_all_rlab.loc[df_model_all_rlab.pred.eq(True) & df_model_all_rlab.lab.eq(False)]
+    FN_all = rlab_df.loc[rlab_df.pred.eq(False) & rlab_df.lab.eq(True)]
+    FP_all = rlab_df.loc[rlab_df.pred.eq(True) & rlab_df.lab.eq(False)]
     (labels_FN, counts_strat_FN) = np.unique(FN_all.lab_rhythm.values, return_counts=True)
     print(f'out of the FN windows:')
     print("\n".join(
@@ -170,12 +186,12 @@ if __name__ == '__main__':
     ###################################
     # AFL analysis
     print('Analysing TP AFL windows..')
-    TP_all = df_model_all_rlab.loc[df_model_all_rlab.pred.eq(True) & df_model_all_rlab.lab.eq(True)]
+    TP_all = rlab_df.loc[rlab_df.pred.eq(True) & rlab_df.lab.eq(True)]
     AFIB_only = []
     AFL_only = []
     AFL_AFIB = []
     for pat in TP_all.id.unique():
-        wins = df_model_all_rlab.loc[df_model_all_rlab.id.eq(pat)]
+        wins = rlab_df.loc[rlab_df.id.eq(pat)]
         AFL_per = 100 * (len(wins.loc[wins.lab_rhythm.eq(cts.rhythms_dict["AFL"])]) / len(wins))
         AFIB_per = 100 * (len(wins.loc[wins.lab_rhythm.eq(cts.rhythms_dict["AFIB"])]) / len(wins))
         print(pat)
@@ -191,8 +207,8 @@ if __name__ == '__main__':
         f'Total AFIB-AFL patients: {len(AFL_AFIB)}, Total AFIB only patients: {len(AFIB_only)}, Total AFL only patients: {len(AFL_only)}')
 
     FN_AFL = np.count_nonzero(FN_all.lab_rhythm.eq(cts.rhythms_dict['AFL']))
-    AFL_wins = np.count_nonzero(df_model_all_rlab.lab_rhythm.eq(cts.rhythms_dict['AFL']))
-    AF_wins = np.count_nonzero(df_model_all_rlab.lab.eq(True))
+    AFL_wins = np.count_nonzero(rlab_df.lab_rhythm.eq(cts.rhythms_dict['AFL']))
+    AF_wins = np.count_nonzero(rlab_df.lab.eq(True))
     print(
         f'Number of FN AFL windows: {FN_AFL}, percentage out of all AFL windows: {np.round(100 * (FN_AFL / AFL_wins), 2)}')
 
@@ -200,10 +216,10 @@ if __name__ == '__main__':
 
     X, y, t_s = test_dict['test_all']
     pred_afb, true_afb, pred_af_lab, true_af_lab, Afl_dict = {}, {}, {}, {}, {}
-    for i, pat in enumerate(df_model_all.id.unique()):
+    for i, pat in enumerate(model_predictions_df.id.unique()):
         X_pat = X[X[:, -1] == pat]
         y_pat = y[X[:, -1] == pat]
-        y_pred_pat = df_model_all.loc[df_model_all.id.eq(pat), 'pred']
+        y_pred_pat = model_predictions_df.loc[model_predictions_df.id.eq(pat), 'pred']
         rr = X_pat[:, :-3]
         true_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pat) / np.sum(rr))
         pred_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pred_pat) / np.sum(rr))
@@ -211,8 +227,8 @@ if __name__ == '__main__':
         true_afb[pat] = true_af_burden
         pred_af_lab[pat] = _af_pat_lab(pred_af_burden)
         true_af_lab[pat] = _af_pat_lab(true_af_burden)
-        Afl_dict[pat] = len(df_model_all.loc[df_model_all.id.eq(pat) & df_model_all.lab_rhythm.eq(3)]) / len(
-            df_model_all.loc[df_model_all.id.eq(pat)])
+        Afl_dict[pat] = len(model_predictions_df.loc[model_predictions_df.id.eq(pat) & model_predictions_df.lab_rhythm.eq(3)]) / len(
+            model_predictions_df.loc[model_predictions_df.id.eq(pat)])
     pat_df = pd.DataFrame.from_dict(pred_af_lab, orient='index').reset_index().rename(
         columns={'index': 'Holter_id', 0: 'pred_af_lab'})
     pat_df['true_af_lab'] = pat_df['Holter_id'].map(true_af_lab)
@@ -243,12 +259,12 @@ if __name__ == '__main__':
     # plot_cosEn(cosEn_F, cosEn_M, test_dict_XGB, savefig=True, savedir=cts.REPO_DIR/ 'figs' / 'error_analysis', dpi=400)
     ids_F = np.unique(test_dict_XGB['Female_group'][0][:, -1])
     ids_M = np.unique(test_dict_XGB['Male_group'][0][:, -1])
-    AFL_wins_F = len(df_model_all_rlab.loc[
-                         df_model_all_rlab.id.isin(ids_F) & df_model_all_rlab.lab_rhythm.eq(cts.rhythms_dict['AFL'])])
-    AFL_wins_M = len(df_model_all_rlab.loc[
-                         df_model_all_rlab.id.isin(ids_M) & df_model_all_rlab.lab_rhythm.eq(cts.rhythms_dict['AFL'])])
-    AF_wins_F = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_F) & df_model_all_rlab.lab.eq(True)])
-    AF_wins_M = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_M) & df_model_all_rlab.lab.eq(True)])
+    AFL_wins_F = len(rlab_df.loc[
+                         rlab_df.id.isin(ids_F) & rlab_df.lab_rhythm.eq(cts.rhythms_dict['AFL'])])
+    AFL_wins_M = len(rlab_df.loc[
+                         rlab_df.id.isin(ids_M) & rlab_df.lab_rhythm.eq(cts.rhythms_dict['AFL'])])
+    AF_wins_F = len(rlab_df.loc[rlab_df.id.isin(ids_F) & rlab_df.lab.eq(True)])
+    AF_wins_M = len(rlab_df.loc[rlab_df.id.isin(ids_M) & rlab_df.lab.eq(True)])
     print(
         f'Number of AFL windows For females: {AFL_wins_F}, percentage out of all AFL windows: {np.round(100 * (AFL_wins_F / AFL_wins), 2)},')
     print(f'Prevalence of AFL in females: {np.round(100 * (AFL_wins_F / AF_wins_F), 2)}')
@@ -275,23 +291,23 @@ if __name__ == '__main__':
     ids_mid_age = np.unique(test_dict_XGB['mid_age_group'][0][:, -1])
     ids_high_age = np.unique(test_dict_XGB['high_age_group'][0][:, -1])
 
-    AFL_wins_low = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_low_age) & df_model_all_rlab.lab_rhythm.eq(
+    AFL_wins_low = len(rlab_df.loc[rlab_df.id.isin(ids_low_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFL'])])
-    AF_wins_low = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_low_age) & df_model_all_rlab.lab_rhythm.eq(
+    AF_wins_low = len(rlab_df.loc[rlab_df.id.isin(ids_low_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFIB'])])
-    LAB_wins_low = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_low_age) & df_model_all_rlab.lab.eq(True)])
+    LAB_wins_low = len(rlab_df.loc[rlab_df.id.isin(ids_low_age) & rlab_df.lab.eq(True)])
 
-    AFL_wins_mid = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_mid_age) & df_model_all_rlab.lab_rhythm.eq(
+    AFL_wins_mid = len(rlab_df.loc[rlab_df.id.isin(ids_mid_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFL'])])
-    AF_wins_mid = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_mid_age) & df_model_all_rlab.lab_rhythm.eq(
+    AF_wins_mid = len(rlab_df.loc[rlab_df.id.isin(ids_mid_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFIB'])])
-    LAB_wins_mid = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_mid_age) & df_model_all_rlab.lab.eq(True)])
+    LAB_wins_mid = len(rlab_df.loc[rlab_df.id.isin(ids_mid_age) & rlab_df.lab.eq(True)])
 
-    AFL_wins_high = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_high_age) & df_model_all_rlab.lab_rhythm.eq(
+    AFL_wins_high = len(rlab_df.loc[rlab_df.id.isin(ids_high_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFL'])])
-    AF_wins_high = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_high_age) & df_model_all_rlab.lab_rhythm.eq(
+    AF_wins_high = len(rlab_df.loc[rlab_df.id.isin(ids_high_age) & rlab_df.lab_rhythm.eq(
         cts.rhythms_dict['AFIB'])])
-    LAB_wins_high = len(df_model_all_rlab.loc[df_model_all_rlab.id.isin(ids_high_age) & df_model_all_rlab.lab.eq(True)])
+    LAB_wins_high = len(rlab_df.loc[rlab_df.id.isin(ids_high_age) & rlab_df.lab.eq(True)])
 
     print(
         f'Number of AFL windows For age group le 60: {AFL_wins_low}, percentage out of all AFL windows: {np.round(100 * (AFL_wins_low / AFL_wins), 2)}')
