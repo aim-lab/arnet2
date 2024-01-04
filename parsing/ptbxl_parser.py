@@ -78,12 +78,11 @@ class PTBXL_Parser(BaseParser):
         return np.array([])
 
     def record_to_wfdb(self, id, lead):
-         # ecg = record.p_signal[:, lead]
-        # re_ecg = dp.resample_by_interpolation(ecg, self.orig_fs, cts.EPLTD_FS)
-        signal_epltd = np.concatenate((ecg, ecg))
-        wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
-                    sig_name=['V5'], p_signal=signal_epltd.reshape(-1, 1), fmt=['16'])
-        return ecg
+        record = self.parse_raw_ecg(id, lead=lead, read_ann=False)
+        record_epltd = np.concatenate((record, record))
+        wfdb.wrsamp(id, fs=self.actual_fs, units=['mV'],
+                    sig_name=['V5'], p_signal=record_epltd.reshape(-1, 1), fmt=['16'])
+        return
 
     def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
         loc = np.where(self.traces_ids == int(id))[0][0]
