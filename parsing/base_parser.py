@@ -80,6 +80,7 @@ class BaseParser:
         self.signal_quality_dict = {}  # Key: Patient_ID, Value: SQI for each window
         self.features_dict = {}  # Key: Patient_ID, Value: Computed features for each window
         self.af_burden_dict = {}  # Key: Patient_ID, Value: AF Burden
+        self.diagnosis_dict = {}  # Key: Patient_ID, Value: diagnosis in str
         self.other_cvd_burden_dict = {}  # Key: Patient_ID, Value: Burden of CVDs different than AF
 
         """ Labels dicts."""

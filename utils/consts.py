@@ -1,4 +1,6 @@
-from base_packages import *
+import pathlib
+import os
+import numpy as np
 
 # TODO: remove consts which were inherited from Armand and are not in use
 # Paths definition. 'nt' refers to Windows, 'posix' as Linux (triton01 GPU cluster)

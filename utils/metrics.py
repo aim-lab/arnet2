@@ -1,7 +1,7 @@
 from base_packages import *
 
 
-def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, beta):
+def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, AUCPR, beta):
     """
      This function prints the different metrics reeived as input.
     :param accuracy: The accuracy measure.
@@ -11,6 +11,7 @@ def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, beta):
     :param PPV: The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Precision_and_recall)
     :param NPV: The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
     :param AUROC: The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
+    :param AUCPR: The Area Under the PR Curve. (https://glassboxmedicine.com/2019/03/02/measuring-performance-auprc/)
     :param beta: Index for the F-beta measure.
     """
     print("Accuracy: " + str(accuracy))
@@ -20,23 +21,26 @@ def print_met(accuracy, fbeta, se, sp, PPV, NPV, AUROC, beta):
     print("PPV: " + str(PPV))
     print("NPV: " + str(NPV))
     print("AUROC: " + str(AUROC))
+    print("AUCPR: " + str(AUCPR))
 
 
-def model_metrics(X, y, y_hat, print_metrics=True, beta=1):
+def model_metrics(X, y, y_true, print_metrics=True, beta=1):
     """
     This function returns different statistical binary metrics based on the data (output score/probabilities),
     the predicted and the actual labels. Function established for binary classification only.
-    :param X:                   The output score/probabilities of the algorithm.
-    :param y:                   The actual labels of the examples.
-    :param y_hat:               The predicted labels of the examples.
-    :param print_metrics:       Boolean value to print or not the metrics. Default is True
-    :param beta:                Index for the F-beta measure.
+    :param X: The output score/probabilities of the algorithm.
+    :param y: The actual labels of the examples.
+    :param y_hat: The predicted labels of the examples.
+    :param print_metrics: Boolean value to print or not the metrics. Default is True
+    :param beta: Index for the F-beta measure.
     """
     AUROC = roc_auc_score(y, X)
-    accuracy = accuracy_score(y, y_hat)
-    TN, FP, FN, TP = confusion_matrix(y, y_hat).ravel()
+    precision_, recall_, thresholds = precision_recall_curve(y, X)
+    accuracy = accuracy_score(y, y_true)
+    TN, FP, FN, TP = confusion_matrix(y, y_true).ravel()
     precision = TP / (TP + FP)
     recall = TP / (TP + FN)
+    AUCPR = auc(recall_, precision_)
 
     if np.isnan(precision):
         precision = sys.float_info.epsilon
@@ -51,9 +55,9 @@ def model_metrics(X, y, y_hat, print_metrics=True, beta=1):
     if np.isnan(fbeta):
         fbeta = sys.float_info.epsilon
     if print_metrics:
-        print_met(accuracy, fbeta, sensitivity, specificity, PPV, NPV, AUROC, beta)
-        print(confusion_matrix(y, y_hat))
-    return accuracy, fbeta, sensitivity, specificity, PPV, NPV, AUROC
+        print_met(accuracy, fbeta, sensitivity, specificity, PPV, NPV, AUROC, AUCPR, beta)
+        print(confusion_matrix(y, y_true))
+    return accuracy, fbeta, sensitivity, specificity, PPV, NPV, AUROC, AUCPR
 
 
 def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
@@ -61,21 +65,15 @@ def eval(clf, X_new, y_new, sign=1, print_metrics=True, threshold=None, beta=1):
     This function evaluates the performance statistics of a given classifier and returns them.
     The classifier is assumed to implement the interface of sklearn classifiers (object which
     should have the following methods: predict, predict_proba).
-    :param clf:                 The input classifier already trained.
-    :param X_new:               The raw data on which the classifier has been trained (numpy array with dimensions (n_samples, n_features).
-    :param y_new:               The actual labels of the samples.
-    :param sign:                The direction of the decision function ( '<=' or '>=' for weak classifiers).
-    :param beta:                Index for the F-beta measure computation.
-    :param print_metrics:       Boolean value to print or not the mtrics. Default is True
-    :param threshold:           Threshold on the decision scores (output of clf.predict_proba) for the positive class. If None, set at 0.5
-    :param beta:                Index for the F-beta measure.
-    :returns accuracy:          The accuracy measure.
-    :returns fbeta:             The F-beta measure (https://en.wikipedia.org/wiki/F1_score)
-    :returns AUROC:             The Area Under the ROC Curve. (https://glassboxmedicine.com/2019/02/23/measuring-performance-auc-auroc/)
-    :returns sensitivity:       The Sensitivity (or Recall) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :returns specificity:       The Specificity (or False Positive Rate) of the algorithm. (https://en.wikipedia.org/wiki/Sensitivity_and_specificity)
-    :returns PPV:               The Positive Predictive Value (or Precision) of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
-    :returns NPV:               The Negative Predictive Value of the algorithm. (https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)
+    :param clf: The input classifier already trained.
+    :param X_new: The raw data on which the classifier has been trained.
+    :param y_new: The actual labels of the samples.
+    :param sign: The direction of the decision function ( '<=' or '>=' for weak classifiers).
+    :param beta: Index for the F-beta measure computation.
+    :param print_metrics: Boolean value to print or not the mtrics. Default is True
+    :param threshold: Threshold on the decision scores (output of clf.predict_proba) for the positive class. If None, set at 0.5
+    :param beta: Index for the F-beta measure.
+    :returns: evaluation metrics returned by model_metrics().
     """
     if threshold is None:
         predicted = clf.predict(X_new)
@@ -112,6 +110,28 @@ def maximize_Se_plus_Sp(probas, y_true):
     se, sp = tpr, 1 - fpr
     best_th = thresholds[np.argmin(np.abs(se - sp))]
     return best_th
+
+
+def mean_abs_afb_error(X, y, y_true):
+    """
+    This function returns average absolute AF Burden.
+    :param X: The raw data on which the classifier has been trained.
+    :param y: The predicted labels.
+    :param y_true: The actual labels.
+    :returns best_th: The threshold which optimizes the F_beta score.
+    """
+    pat_list = np.unique(X[:, -1])
+    mean_abs_error_af_burden = 0
+    for i, pat in enumerate(pat_list):
+        X_pat = X[X[:, -1] == pat]
+        y_pat = y[X[:, -1] == pat]
+        y_pred_pat = y_true[X[:, -1] == pat]
+        rr = X_pat[:, :-3]
+        true_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pat) / np.sum(rr))
+        pred_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pred_pat) / np.sum(rr))
+        error_af_burden = pred_af_burden - true_af_burden
+        mean_abs_error_af_burden += abs(error_af_burden) / len(pat_list)
+    return mean_abs_error_af_burden
 
 
 def minimize_err_AFB(probas, y_true, ids, rr_len):

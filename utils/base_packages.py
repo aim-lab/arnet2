@@ -26,7 +26,6 @@ import warnings
 import re
 import glob
 import pathlib
-from dataclasses import dataclass
 
 # Data Processing
 import numpy as np
@@ -46,8 +45,10 @@ import scipy.interpolate as interp
 import mne
 
 # Graphics
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
+from matplotlib.cm import get_cmap
 
 # I/O
 import csv
@@ -62,6 +63,7 @@ import copy
 import pickle
 import mat73
 from scipy.io import savemat
+import argparse
 
 # time-related functions
 import datetime as dt
@@ -71,7 +73,15 @@ from dateutil.parser import parse
 #  machine learning
 from sklearn.linear_model import LinearRegression
 from scipy.spatial import cKDTree
-from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_recall_curve, roc_curve
+from sklearn.metrics import roc_auc_score, \
+    accuracy_score, confusion_matrix, precision_recall_curve, roc_curve, auc
+from sklearn.ensemble import VotingClassifier
+from sklearn.preprocessing import LabelEncoder
+
+# statistics
+import scikit_posthocs as sp
+from scipy.stats import ttest_rel, kruskal
+from statsmodels.stats.proportion import proportions_ztest
 
 np.random.seed(cts.SEED)
 random.seed(cts.SEED)

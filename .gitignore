@@ -1,0 +1,15 @@
+# ignore ALL .log files
+*.MAT
+*.pickle
+*.pkl
+*.xlsx
+*.txt
+*.npy
+
+# ignore ALL files in ANY directory named as follows
+figs/
+feedback/
+inputs/
+ref/
+reports/
+error_analysis/

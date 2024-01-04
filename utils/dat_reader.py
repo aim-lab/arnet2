@@ -1,4 +1,9 @@
-from base_packages import *
+try:
+    from utils.base_packages import *
+except ModuleNotFoundError:
+    from base_packages import *
+
+from dataclasses import dataclass
 
 """,
 Reading and processing Holter data in a PATHFINDER 710 family data format. 
