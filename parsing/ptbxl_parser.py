@@ -3,24 +3,29 @@ from base_parser import *
 
 class PTBXL_Parser(BaseParser):
 
-    def __init__(self, force_parsing=False, train_part=0.8, ids_patient=None):
+    def __init__(self):
 
         super(PTBXL_Parser, self).__init__()
 
+        """
+        # ------------------------------------------------------------------------------- #
+        # ----------------------- To be overridden in child classes --------------------- #
+        # ------------------------------------------------------------------------------- #
+        """
         """Variables relative to the ECG signals."""
         self.orig_fs = 500
         self.actual_fs = 400
         self.n_leads = 12
+        self.ref_lead = 6
         self.name = "PTBXL"
         self.ecg_format = ".wfdb"
         self.lead_index = ('I', 'II', 'III', 'aVL', 'aVR', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6')
         self.lead_dict = {self.lead_index[i]: i for i in range(len(self.lead_index))}
 
         """Variables relative to the different paths"""
-        self.DATA_DIR = cts.BASE_DATA_DIR / "PTB-XL" / "1.0.1"
-        self.ECG_DATA_DIR = self.DATA_DIR
-        self.raw_ecg_path = self.ECG_DATA_DIR / "preprocessed"
-        self.generated_anns_path = cts.BASE_DIR / "Shany" / "Annotations" / "PTB-XL"
+        self.raw_ecg_path = cts.DATA_DIR / "PTB-XL" / "1.0.1"
+        self.orig_anns_path = None
+        self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.main_path = cts.PREPROCESSED_DATA_DIR / "PTB-XL"
         """
         # ------------------------------------------------------------------------------- #
