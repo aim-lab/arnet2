@@ -42,14 +42,14 @@ class PTBXL_Parser(BaseParser):
 
         """
         # ------------------------------------------------------------------------------- #
-        # ---------------- Local variables (relevant only for the PTBXL) --------------- #
+        # ---------------- Local variables (relevant only to PTBXL) --------------- #
         # ------------------------------------------------------------------------------- #
         """
         self.spreadsheet_format = ".csv"
         self.spreadsheet_name = "ptbxl_database"
         self.scp_name = "scp_statements"
-        self.path_to_spreadsheet = self.DATA_DIR / (self.spreadsheet_name + self.spreadsheet_format)
-        self.path_to_scp = self.DATA_DIR / (self.scp_name + self.spreadsheet_format)
+        self.path_to_spreadsheet = self.raw_ecg_path / (self.spreadsheet_name + self.spreadsheet_format)
+        self.path_to_scp = self.raw_ecg_path / (self.scp_name + self.spreadsheet_format)
         self.res = "hr"
         self.get_META()
         self.traces_ids = self.META.ecg_id.values
@@ -68,37 +68,41 @@ class PTBXL_Parser(BaseParser):
         # EXAM IDS
         return self.META.patient_id.values
 
-    def parse_annotation(self, id, type="epltd0", lead=6):
+    def parse_annotation(self, id, lead, type="epltd0"):
         if type not in self.annotation_types:
             raise IOError("The requested annotation does not exist.")
-        if np.isin(self.corrupted_ecg, id).any():
-            print('The record is flat')
-            ann = []
-        else:
-            ecg_len = len(self.record_to_wfdb(id, lead=lead))
-            filename = str(id) + "_lead_" + str(lead)
-            ann = wfdb.rdann(str(self.generated_anns_path / type / filename), type).sample
-            ann = ann[ann > ecg_len] - ecg_len
-        return ann
+        # The peak detectors fails to work on flat recordings.
+        dest_path = str(self.generated_anns_path / type / str(lead) / id)
+        if os.path.exists(dest_path + '.' + type):
+            return wfdb.rdann(dest_path, type).sample
+        return np.array([])
 
     def record_to_wfdb(self, id, lead):
-        loc = np.where(self.traces_ids == int(id))[0][0]
-        rel_path = self.get_ecg_path(int(id))
-        record = wfdb.rdrecord(str(self.ECG_DATA_DIR) + "/" + rel_path)
-        record = self.x[loc].reshape(-1, self.x.shape[-1])
-        # ecg = record.p_signal[:, lead]
-        ecg = record[:, lead]
+         # ecg = record.p_signal[:, lead]
         # re_ecg = dp.resample_by_interpolation(ecg, self.orig_fs, cts.EPLTD_FS)
         signal_epltd = np.concatenate((ecg, ecg))
         wfdb.wrsamp(str(id), fs=self.actual_fs, units=['mV'],
                     sig_name=['V5'], p_signal=signal_epltd.reshape(-1, 1), fmt=['16'])
         return ecg
 
-    def parse_raw_ecg(self, exam_id, start=0, end=-1, type='epltd0', lead=0):
-        ecg = self.record_to_wfdb(exam_id, lead=lead)
-        ann = self.parse_annotation(exam_id, type=type, lead=lead)
-
-        return ecg, ann
+    def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', read_ann=True, ):
+        loc = np.where(self.traces_ids == int(id))[0][0]
+        # rel_path = self.get_ecg_path(int(id))
+        # record = wfdb.rdrecord(str(self.raw_ecg_path / rel_path))
+        record = self.x[loc].reshape(-1, self.x.shape[-1])
+        ecg = record[:, lead]
+        if end == -1:
+            end = int(len(ecg) / self.actual_fs)
+        start_sample = start * self.actual_fs
+        end_sample = end * self.actual_fs
+        ecg = ecg[start_sample:end_sample]
+        if read_ann:
+            ann = self.parse_annotation(id, type=type, lead=lead)
+            ann = ann[np.where(np.logical_and(ann >= start_sample, ann < end_sample))]
+            ann -= start_sample
+            return ecg, ann
+        else:
+            return ecg
 
     def parse_ahi(self, id):
         self.ahi_dict[id] = np.nan  # This data is not available for this dataset.
