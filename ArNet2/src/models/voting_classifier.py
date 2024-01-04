@@ -3,7 +3,7 @@ import model_utils as model_utils
 import utils.consts as cts
 import ArNet2.data.data_loading as data_loading
 from parsing.db_loader import *
-import metrics as metrics
+import error_analysis_utils as metrics
 
 
 class CostumedVotingClassifier(VotingClassifier):

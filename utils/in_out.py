@@ -1,4 +1,7 @@
-from base_packages import *
+try:
+    from utils.base_packages import *
+except ModuleNotFoundError:
+    from base_packages import *
 
 
 def pad_rhythm(rhythm, missing=None):

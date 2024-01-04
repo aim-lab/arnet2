@@ -1,16 +1,4 @@
-import sys
-import numpy as np
-from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_recall_curve, roc_curve, auc
-from scipy.stats import ttest_rel, kruskal
-from statsmodels.stats.proportion import proportions_ztest
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import pandas as pd
-from matplotlib.cm import get_cmap
-import scikit_posthocs as sp
-
-import utils.consts as cts
-import utils.graphics as graph
+from utils.base_packages import *
 
 font = {'weight': 'normal',
         # 'family' : 'normal',
@@ -210,40 +198,3 @@ def plot_proba_histogram(probas, best_th, y_true):
     # Plot the accuracy vs the confidence, bin per bin
     plt.plot(np.arange(0, 1, 0.1), np.array(n_corrects) / np.array(n_probs))
     plt.show()
-
-
-def paired_T_test(errors_af_burden_dict, model_1, model_2, set='test_all'):
-    errors_af_burden_all_1 = np.hstack(errors_af_burden_dict[set][model_1].values())
-    errors_af_burden_all_2 = np.hstack(errors_af_burden_dict[set][model_2].values())
-
-    mean = np.mean(np.abs(errors_af_burden_all_1) - np.abs(errors_af_burden_all_2))
-    std = np.std(np.abs(errors_af_burden_all_1) - np.abs(errors_af_burden_all_2), ddof=1)
-    T = mean / (std / np.sqrt(len(errors_af_burden_all_2)))
-    (stat, pval) = ttest_rel(errors_af_burden_all_1, errors_af_burden_all_2)
-    print(f"Statistical testing (T-test) {model_1} vs {model_2}:")
-    print(f"The t-values is: {T}\n")
-    print('|EAF (%)| was {} with p-value of {}<0.0001'.format(
-        'statistically significant' if pval < 0.0001 else 'not statistically significant', pval))
-
-
-def propotional_T_test(model_1, model_2, set='test_all'):
-    df_model_1 = pd.read_csv(cts.REPO_DIR / 'output' / f'{model_1}_{set}_pred.csv')
-    df_model_2 = pd.read_csv(cts.REPO_DIR / 'output' / f'{model_2}_{set}_pred.csv')
-    sample_success_model_1, sample_size_model_1 = (np.count_nonzero(df_model_1.pred), len(df_model_1))
-    sample_success_model_2, sample_size_model_2 = (np.count_nonzero(df_model_2.pred), len(df_model_2))
-    successes = np.array([sample_success_model_1, sample_success_model_2])
-    samples = np.array([sample_size_model_1, sample_size_model_2])
-    (stat, pval) = proportions_ztest(count=successes, nobs=samples, alternative='two-sided')
-    print(f"Statistical testing (propotional_T_test) {model_1} vs {model_2}:")
-    print('F1-score was {} with p-value of {}<0.0001'.format(
-        'statistically significant' if pval < 0.0001 else 'not statistically significant', pval))
-
-
-def statistical_post_hoc_test(df, val_col_kruskal, val_col, group_col):
-    for group in df[group_col].unique():
-        stat, p = kruskal(df.loc[df[group_col].eq(val_col_kruskal), val_col],
-                          df.loc[df[group_col].eq(group), val_col])
-        print(f'{val_col_kruskal} vs {group}:')
-        print('Statistics=%.3f, p=%f' % (stat, p))
-    psthoc_df = sp.posthoc_dunn(df, val_col=val_col, group_col=group_col, p_adjust='holm')
-    return psthoc_df

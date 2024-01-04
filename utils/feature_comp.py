@@ -1,5 +1,7 @@
-from base_packages import *
-
+try:
+    from utils.base_packages import *
+except ModuleNotFoundError:
+    from base_packages import *
 
 def sc_median(data, medfilt_lg=9):
     """
