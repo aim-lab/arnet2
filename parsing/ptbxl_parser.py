@@ -103,12 +103,6 @@ class PTBXL_Parser(BaseParser):
         else:
             return ecg
 
-    def parse_ahi(self, id):
-        self.ahi_dict[id] = np.nan  # This data is not available for this dataset.
-
-    def parse_odi(self, id):
-        self.odi_dict[id] = np.nan  # This data is not available for this dataset.
-
     """
     # ------------------------------------------------------------------------- #
     # ---------------- Functions relative to this dataset only ---------------- #
