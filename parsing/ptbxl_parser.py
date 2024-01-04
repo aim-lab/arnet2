@@ -3,7 +3,7 @@ from base_parser import *
 
 class PTBXL_Parser(BaseParser):
 
-    def __init__(self):
+    def __init__(self, load_on_start=True):
 
         super(PTBXL_Parser, self).__init__()
 
@@ -27,6 +27,19 @@ class PTBXL_Parser(BaseParser):
         self.orig_anns_path = None
         self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.main_path = cts.PREPROCESSED_DATA_DIR / "PTB-XL"
+
+        """ Checking the parsed window sizes and setting the window size. The data corresponding to the window size
+        requested will be loaded into the system."""
+
+        if os.path.exists(self.main_path):
+            parsed_patients = self.parsed_patients()
+            test_pat = parsed_patients[0]
+            self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
+            if load_on_start:
+                self.set_window_size(self.window_size)
+        self.is_ectopic = {}
+        self.n_ectopics = {}
+
         """
         # ------------------------------------------------------------------------------- #
         # ---------------- Local variables (relevant only for the PTBXL) --------------- #
