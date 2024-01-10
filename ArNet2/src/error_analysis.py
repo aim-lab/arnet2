@@ -93,7 +93,7 @@ def load_error_analysis_files(model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run error analysis and print summary and plots')
-    parser.add_argument('--model', default='XGB',
+    parser.add_argument('--model', default='ArNet2',
                         help='choose: "XGB" / "ArNet" / "ArNet2"')
     parser.add_argument('--add_age_sex', action='store_false',
                         help='create sex and age test dicts')
