@@ -74,8 +74,11 @@ def plot_cosEn(cosEn1, cosEn2, test_dict, savefig=False, savedir=None, dpi=400):
         plt.show()
     return
 
+
 def create_prediction_df(model):
     predictions_df = pd.DataFrame()
+
+
 def load_error_analysis_files(model):
     """
     Loads all necessary files for the error analysis.
