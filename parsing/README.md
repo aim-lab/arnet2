@@ -19,4 +19,4 @@ Collection of pasrers supporting a set of databases. Here, `BaseParser` is defin
 | spafda      |7-days Holter |`SPAFDB_Parser`  | spafda_parser.py  | private
 | fah7db      |7-days Holter |`FAH7DB_Parser`  | fah7db_parser.py  | private
 | shdb_2wk    |2-weeks Holter|`SHDB_2wk_Parser`| shdb_2wk_parser.py| private
-| ptb-xl      |12-lead ECG   |`PTBXL_Parser`   | ptbxl_parser.py   | [link]([https://sleepdata.org/datasets/shhs/pages/04-dataset-introduction.md](https://physionet.org/content/ptb-xl/1.0.3/)https://physionet.org/content/ptb-xl/1.0.3/)
+| ptb-xl      |12-lead ECG   |`PTBXL_Parser`   | ptbxl_parser.py   | [link](https://sleepdata.org/datasets/shhs/pages/04-dataset-introduction.md](https://physionet.org/content/ptb-xl/1.0.3/)https://physionet.org/content/ptb-xl/1.0.3/)
