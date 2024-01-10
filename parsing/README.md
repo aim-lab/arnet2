@@ -1,7 +1,7 @@
 
 # Parsing
 
-Collection of pasrers supporting a set of databases. Here, `BaseParser` is defined in the module base_parser.py. All other .py files inherit from `BaseParser` extending the list of variables and the parser functions.
+Collection of pasrers supporting a set of databases. Here, `BaseParser` is defined in the module base_parser.py. All other .py files inherit from `BaseParser` extending the list of variables and functions.
 
 ### Supported databases
 
