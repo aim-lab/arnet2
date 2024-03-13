@@ -30,7 +30,7 @@ class CPSCDB_Parser(BaseParser):
 
         """Variables relative to the different paths"""
         # TODO: move database to MLAIM/databases (?)
-        self.raw_ecg_path = cts.BASE_DIR / "AIMLab" / "Shany" / 'databases' / self.name.lower() / "cpsc2021" / "1.0.0"
+        self.raw_ecg_path = cts.DATA_DIR / self.name.lower() / "cpsc2021" / "1.0.0"
         self.orig_anns_path = self.raw_ecg_path
         self.generated_anns_path = cts.GEN_ANN_DIR / self.name
         self.annotation_types = np.intersect1d(np.array(os.listdir(self.generated_anns_path)), cts.ANNOTATION_TYPES)
