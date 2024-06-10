@@ -1,0 +1,3 @@
+path:
+    arnet2: "./model/ArNet2.pkl"
+    resnet: "./model/ResNet.pkl"
