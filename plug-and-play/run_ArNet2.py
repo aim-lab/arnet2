@@ -49,14 +49,16 @@ def run(input_file, config):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(add_help=True,
-                                     description='Use ArNEt2 in a plug-and-play manner.')
+                                     description='Use ArNet2 in a plug-and-play manner.')
     parser.add_argument("--config", type=str, default="config.yml",
                         help="model hyperparameters")
-    parser.add_argument('--device', default='cuda:1', help='Device')
-    parser.add_argument('--path_to_database', type=str,
-                        help='path to folder containing tnmg database')
-    parser.add_argument('--sample_freq', type=int, default=400,
-                        help='sample frequency (in Hz) in which all traces will be resampled at (default: 400)')
+    parser.add_argument('--input_file', type=str, default='./df_test.csv',
+                        help='path to data file')
+    parser.add_argument('--save_path', type=str, default='./',
+                        help='location to save the output file')
+    parser.add_argument('--ouput_name', type=str, default='df_test_proba.csv',
+                        help='A unique name for the output file')
+
     args, unk = parser.parse_known_args()
     # Check for unknown options
     if unk:
@@ -68,6 +70,5 @@ if __name__ == '__main__':
     config_path = "./config/" + args.config
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    input_file = './df_test.csv'
-    df_pred = run(input_file, config)
-    df_pred.to_csv('./df_test_proba.csv')
+    df_pred = run(args.input_file, config)
+    df_pred.to_csv(f"{args.save_path}/{args.ouput_name}.csv")
