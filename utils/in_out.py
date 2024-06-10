@@ -2,7 +2,7 @@ try:
     from utils.base_packages import *
 except ModuleNotFoundError:
     from base_packages import *
-
+import numpy as np
 
 def pad_rhythm(rhythm, missing=None):
     """

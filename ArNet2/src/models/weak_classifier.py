@@ -15,7 +15,7 @@ sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
 import utils.consts as cts
 from sklearn.metrics import precision_recall_curve
 import model_utils as model_utils
-import error_analysis_utils as metrics
+import metrics as metrics
 from parsing.db_loader import *
 import data.data_loading as data_loading
 
