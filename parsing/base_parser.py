@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
-
+import numpy as np
 
 # TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference
 #  annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
