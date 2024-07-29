@@ -32,12 +32,26 @@ def prepare_deatil_pat(df):
     return detail_pat
 
 
-def replace_int_to_str(rhythm, rhythms_dict):
-    loc = np.nonzero(np.diff(rhythm))[0] if np.nonzero(np.diff(rhythm))[0].size else np.array([0])
-    rhythm_idx = rhythm[loc]
-    rhythm_str = np.array([rhythms_dict[i] for i in rhythm_idx])
-    return rhythm_str, loc
+# def replace_int_to_str(rhythm, rhythms_dict):
+#     loc = np.nonzero(np.diff(rhythm))[0] if np.nonzero(np.diff(rhythm))[0].size else np.array([0])
+#     rhythm_idx = rhythm[loc]
+#     rhythm_str = np.array([rhythms_dict[i] for i in rhythm_idx])
+#     return rhythm_str, loc
 
+
+def replace_duplicates_with_placeholder(rhythm, rhythm_dict, placeholder='"'):
+    rhythm_str = np.array([rhythm_dict[i] for i in rhythm])
+    seen = ['']
+    result = []
+
+    for item in rhythm_str:
+        if item in seen:
+            result.append(placeholder)
+        else:
+            seen = [item]
+            result.append(item)
+
+    return np.array(result)
 
 if __name__ == '__main__':
     db = SHDB_Parser(load_on_start=True)
@@ -47,6 +61,7 @@ if __name__ == '__main__':
 
     rhythm_dict = {y: '(' + x for x, y in db.rhythms_dict.items()}
     rhythm_dict[0] = '(N'
+    counts_df = pd.DataFrame(columns=rhythm_dict.keys(), index=pat_list)
     ann_type = db.sqi_ref_ann
     dest_path = cts.BASE_DIR / 'AIMLab' / 'Shany' / 'databases' / 'shdb_physionet'
     if not os.path.exists(dest_path):
@@ -55,30 +70,32 @@ if __name__ == '__main__':
     print(f'Writing database to {dest_path}..')
     for pat in pat_list:
         print(f'Saving pat: {pat}')
-        ecgs = np.concatenate(tuple(
-            [db.parse_raw_ecg(pat, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in
-             range(1, db.n_leads + 1)]), axis=1)
+        # ecgs = np.concatenate(tuple(
+        #     [db.parse_raw_ecg(pat, type=ann_type, lead=lead)[0].reshape(-1, 1) for lead in
+        #      range(1, db.n_leads + 1)]), axis=1)
         ann = db.parse_raw_ecg(pat, lead=db.ref_lead, type=ann_type)[1]
         rhythm_ = db.parse_medaim_annotations(pat, np.cumsum(ann) / cts.N_MS_IN_S)
-        rhythm, rhythm_sample = replace_int_to_str(rhythm_, rhythm_dict)
+        rhythm = replace_duplicates_with_placeholder(rhythm_, rhythm_dict)
         print(f'rhythms available: {np.unique(rhythm)}')
+        res = list(zip(*np.unique(rhythm_, return_counts=True)))
+        for re in res:
+            counts_df.loc[pat, re[0]] = re[-1]
 
-        wfdb.wrsamp(pat, fs=db.actual_fs, units=['mV', 'mV'], sig_name=['ECG1', 'ECG2'],
-                    p_signal=ecgs, fmt=['16', '16'],
-                    base_time=datetime.time(*return_time_from_millis(db.circadian_dict[pat]['start_recording'])),
-                    base_date=datetime.date(db.circadian_dict[pat]['recording_date'].year, 1, 1),
-                    write_dir=str(dest_path))  # ecgs
-        wfdb.wrann(pat, 'atr', rhythm_sample, aux_note=rhythm, fs=db.actual_fs,
-                   write_dir=str(dest_path), symbol=np.array(
-                ['+'] * len(rhythm_sample)))  # , label_store=np.array([1] * len(ann)))  # annotations
-        wfdb.wrann(pat, 'qrs', ann, aux_note=np.array([' '] * len(ann)), fs=db.actual_fs,
-                   write_dir=str(dest_path),
-                   symbol=np.array(['N'] * len(ann)))  # , label_store=np.array([1] * len(ann)))  # annotations
-    detail_pat = db.excel_sheet.loc[db.excel_sheet['Study ID'].isin(pat_list)]
-    detail_pat = prepare_deatil_pat(detail_pat)
-    detail_pat.to_csv(dest_path / 'AdditionalData.csv', index=False)
+        # wfdb.wrsamp(pat, fs=db.actual_fs, units=['mV', 'mV'], sig_name=['ECG1', 'ECG2'],
+        #             p_signal=ecgs, fmt=['16', '16'],
+        #             base_time=datetime.time(*return_time_from_millis(db.circadian_dict[pat]['start_recording'])),
+        #             base_date=datetime.date(db.circadian_dict[pat]['recording_date'].year, 1, 1),
+        #             write_dir=str(dest_path))  # ecgs
+        wfdb.wrann(pat, 'atr', sample=ann, aux_note=rhythm, fs=db.actual_fs,
+                   write_dir=str(dest_path), label_store=np.array([22]*len(rhythm_)))  # , label_store=np.array([1] * len(ann)))  # annotations
+        # wfdb.wrann(pat, 'qrs', ann, aux_note=np.array([' '] * len(ann)), fs=db.actual_fs,
+        #            write_dir=str(dest_path),
+        #            symbol=np.array(['N'] * len(ann)))  # , label_store=np.array([1] * len(ann)))  # annotations
+    # detail_pat = db.excel_sheet.loc[db.excel_sheet['Study ID'].isin(pat_list)]
+    # detail_pat = prepare_deatil_pat(detail_pat)
+    # detail_pat.to_csv(dest_path / 'AdditionalData.csv', index=False)
 
     # create RECORDS file
-    with open(dest_path / 'RECORDS.txt', 'w') as file_handler:
-        for item in pat_list:
-            file_handler.write("{}\n".format(item))
+    # with open(dest_path / 'RECORDS.txt', 'w') as file_handler:
+    #     for item in pat_list:
+    #         file_handler.write("{}\n".format(item))
