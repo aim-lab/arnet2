@@ -10,13 +10,13 @@ if os.name == 'nt':
     REPO_DIR_POSIX = pathlib.PurePath(str(REPO_DIR).replace('\\', '/').replace('C:', '/mnt/c'))
     N_PROCESSES = 8
 elif os.name == 'posix':
-    BASE_DIR = pathlib.PurePath('/oriondata')
+    BASE_DIR = pathlib.PurePath('/MLAIM')
     REPO_DIR = pathlib.PurePath('/home/shanybiton/repos/Shany_Repo')
     REPO_DIR_POSIX = REPO_DIR
     N_PROCESSES = 15
 
 # Paths definition
-DATA_DIR = pathlib.PurePath('/MLAIM') / "databases"
+DATA_DIR = BASE_DIR / "databases"
 CLASSIFIERS_DIR = BASE_DIR / "AIMLab" / "Shany" / "Classifiers"
 SNAPSHOTS_DIR = BASE_DIR / "AIMLab" / "Shany" / "Snapshots"
 MATLAB_TEST_VECTORS_DIR = BASE_DIR / "AIMLab" / "Shany" / "Matlab_test_vectors"

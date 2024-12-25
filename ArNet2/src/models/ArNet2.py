@@ -1,3 +1,7 @@
+"""
+ArNet2: not cleaned because hopefully doomed to disappear.
+"""
+
 # General imports
 import os
 import numpy as np
@@ -12,16 +16,9 @@ from tensorflow.keras.regularizers import L1L2
 
 # Relative imports
 import utils.consts as cts
-try:
-    # Try import locally
-    from OneDCNN import OneDCNN
-    from ResNet import ResNet
-    from datagen import DataGenerator
-except ModuleNotFoundError:
-    from .OneDCNN import OneDCNN
-    from .ResNet import ResNet
-    from .datagen import DataGenerator
-
+from OneDCNN import OneDCNN
+from ResNet import ResNet
+from datagen import DataGenerator
 
 
 def fbeta_score(y_true, y_pred, beta, eps=1e-9):

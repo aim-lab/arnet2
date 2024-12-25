@@ -10,20 +10,20 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import argparse
 import warnings
-#
-# sys.path.append('/home/shanybiton/repos/Generalization')
-# sys.path.append('/home/shanybiton/repos/Generalization/src')
-# sys.path.append('/home/shanybiton/repos/Generalization/src/models')
-# sys.path.append('/home/shanybiton/repos/Generalization/utils')
-# sys.path.append('/home/shanybiton/repos/Generalization/parsing')
-# sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
+
+sys.path.append('/home/shanybiton/repos/Generalization')
+sys.path.append('/home/shanybiton/repos/Generalization/src')
+sys.path.append('/home/shanybiton/repos/Generalization/src/models')
+sys.path.append('/home/shanybiton/repos/Generalization/utils')
+sys.path.append('/home/shanybiton/repos/Generalization/parsing')
+sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
 
 # Relative imports
 import utils.consts as cts
-import ArNet2.data.data_processing as dp
-from ArNet2.data import data_augmentation as da
+import data.data_processing as dp
+from data import data_augmentation as da
 from parsing.db_loader import *
-import src.models.model_utils as model_utils
+import models.model_utils as model_utils
 
 def get_label(val:int):
     Diagnosis_dict = {cts.PATIENT_LABEL_NON_AF: 'Non-AF',
@@ -53,7 +53,7 @@ def print_summary(db, pat_set, set_name=None):
     :param db: The database parser.
     :param pat_set: The list for which the data should be generated.
     :param set_name: The naming of the summary"""
-    patient_file = pd.read_excel(cts.REPO_DIR / 'patient_file.xlsx')
+    patient_file = pd.read_excel(cts.REPO_DIR / 'patients_df.xlsx')
     if set_name in ['train', 'test', 'val']:
         patient_file = patient_file.loc[patient_file.db.eq(db.name) & patient_file.set.eq(set_name)]
     else:
@@ -191,7 +191,7 @@ def stratified_split_part_one(db, pat_set, partition): # Used for datasets that 
     return train_pat, test_pat
 
 def group_sex(test_dict):
-    patient_file = pd.read_excel(cts.REPO_DIR / 'patient_file.xlsx')
+    patient_file = pd.read_excel(cts.REPO_DIR / 'patients_df.xlsx')
     patient_file = patient_file.loc[patient_file.set.eq('test')]
     M_group = patient_file.loc[patient_file.sex.eq('M'), 'id']
     F_group = patient_file.loc[patient_file.sex.eq('F'), 'id']
@@ -216,7 +216,7 @@ def group_sex(test_dict):
 
 
 def group_age(test_dict, low_age=cts.LOW_AGE, high_age=cts.HIGH_AGE):
-    patient_file = pd.read_excel(cts.REPO_DIR / 'patient_file.xlsx')
+    patient_file = pd.read_excel(cts.REPO_DIR / 'patients_df.xlsx')
     low_group = patient_file.loc[patient_file.age.le(low_age), 'id']
     mid_group = patient_file.loc[patient_file.age.gt(low_age) & patient_file.age.le(high_age), 'id']
     old_group = patient_file.loc[patient_file.age.gt(high_age), 'id']

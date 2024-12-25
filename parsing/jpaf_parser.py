@@ -1,4 +1,4 @@
-from parsing.base_parser import *
+from base_parser import *
 
 
 class SHDB_Parser(BaseParser):
@@ -43,7 +43,7 @@ class SHDB_Parser(BaseParser):
             self.window_sizes = np.array([int(x[:-4]) for x in os.listdir(self.main_path / test_pat / "features")])
             if load_on_start:
                 self.set_window_size(self.window_size)
-                # self.load_circardian_from_disk()
+                self.load_circardian_from_disk()
 
         """
         # ------------------------------------------------------------------------------- #
@@ -58,7 +58,7 @@ class SHDB_Parser(BaseParser):
         self.peak_ann = np.array(['N', 'Q', 'V', 'S'])
         self.peak_ann_dict = {self.peak_ann[i]: i for i in range(len(self.peak_ann))}
         self.circadian_dict = {}
-        self.excel_sheet_path = cts.DATA_DIR / 'jpafdb' / "List_AF_latest.xlsx"
+        self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "List_AF_latest.xlsx"
         self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
         self.excel_sheet["Study ID"] = self.excel_sheet["Study ID"].astype(str).str.zfill(3)
         self.over_18_patients = np.array(self.excel_sheet[self.excel_sheet["Age"] >= 18]
@@ -75,15 +75,23 @@ class SHDB_Parser(BaseParser):
         return np.array([dir.split('_')[0].zfill(3) for dir in os.listdir(str(self.raw_ecg_path))])
 
     # TODO: add parse_physiozoo_af_annotations() for -reannotated recordings
-    def parse_reference_annotation(self, id, combine=True, medaim=True):
+    def parse_reference_annotation(self, id, combine=True):  # , reannotated=True):
         record = self.read_ecg(id)
         ann = self.read_ann(id, start=record.time[0], end=record.time.iloc[-1])
+        # beat = np.array([ann.pos.values])
         tbeats = np.cumsum(ann.pos.values) / cts.N_MS_IN_S
-        if medaim:
-            rhythm = self.parse_medaim_annotations(id, tbeats)
-        else:
-            ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
-            rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
+        # ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        # if reannotated:
+        #     rhythm_df = self.parse_reference_rhythm(id)
+        #     for index, l in rhythm_df.iterrows():
+        #         l1 = np.abs(tbeats - l.Beginning)
+        #         l2 = np.abs(tbeats - l.End)
+        #         begin = np.where(l1 == l1.min())
+        #         end = np.where(l2 == l2.min())
+        #         ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        # else:
+        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
         if combine:
             rhythm[rhythm == self.rhythms_dict['AFL']] = self.rhythms_dict['AFIB']
         return (tbeats * self.actual_fs).astype(int), rhythm
@@ -106,7 +114,7 @@ class SHDB_Parser(BaseParser):
     def parse_raw_ecg(self, id, lead, start=0, end=-1, type='epltd0', correct_peaks=True, filter_signal=True, read_ann=True, ):
         ecg = self.read_ecg(id).iloc[:, lead].astype(float).values
         if filter_signal:
-            ecg = dp.bandpass_filter(signal=ecg, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
+            ecg = dp.bandpass_filter(data=ecg, id=id, lead='x', lowcut=0.67, highcut=self.orig_fs / 2 - 0.5,
                                      signal_freq=self.orig_fs, filter_order=75, notch_freq=50, debug=False)
         ecg = dp.resample_by_interpolation(ecg, self.orig_fs, self.actual_fs)
         if end == -1:
@@ -221,6 +229,7 @@ class SHDB_Parser(BaseParser):
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
+
                                                                allow_pickle=True).item()
 
     def read_ann(self, id, start=None, end=None):
@@ -273,15 +282,8 @@ if __name__ == '__main__':
     db = SHDB_Parser(load_on_start=True)
     # ids = np.setdiff1d(db.parse_available_ids(), db.missing_ecg)
     ann_ids = np.array(next(os.walk(cts.REANNOTATION_DIR / (db.name + '-annotated')))[1])
-    pat_list = ann_ids[np.isin(ann_ids, db.parsed_patients())]
-    # for pat in pat_list:
-    #     print('parsing pat: ' + pat)
-    #     db.parse_elem_data(pat, combine=False, medaim=True)
-    #     db._win_lab(pat, db.window_size)  # Generating label for each window
-    #     db._af_win_lab(pat, db.window_size)  # Generating binary AF label for each window.
-    #     db._af_pat_lab(pat)  # Generating patient label among the different categories based on AF burden
-
-    # db.plot_ecg(patient_id='127', start=20654 - 42, end=20654 + 16, savefig=True)
+    pat_list = ann_ids[~np.isin(ann_ids, db.parsed_patients())]
+    db.plot_ecg(patient_id='127', start=20654 - 42, end=20654 + 16, savefig=True)
     # db.parse_raw_data(patient_list=pat_list)
 
     # for id in db.parse_available_ids():

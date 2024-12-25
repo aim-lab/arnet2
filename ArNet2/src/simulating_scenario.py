@@ -11,8 +11,8 @@ import pandas as pd
 from matplotlib.cm import get_cmap
 import re
 
-import ArNet2.data.data_loading as data_loading
-import ArNet2.src.models.metrics as metrics
+import data_loading
+import src.models.metrics as metrics
 import numpy as np
 import sys
 import seaborn as sns
@@ -25,9 +25,9 @@ sys.path.append('/home/shanybiton/repos/Generalization/parsing')
 sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
 
 # Relative imports
-import ArNet2.src.models.model_utils as model_utils
+import src.models.model_utils as model_utils
 import utils.consts as cts
-from ArNet2.data.data_loading import *
+from data_loading import *
 from parsing.db_loader import *
 import utils.graphics as graph
 from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_recall_curve, roc_curve, auc
@@ -107,22 +107,7 @@ def record_diagnosis(df):
     df.loc[df.holter_id.isin(afl_cases), 'AFL?'] = 1
     return df
 
-def _af_pat_lab(afb, thresh=cts.AF_MODERATE_THRESHOLD):
-    """ Computes the AF Burden and the global label for a given patient. The AF Burden is computed as the time
-    spent on AF divided by the total time of the recording. The different categories of patients are: Non-AF (Time in AF
-    does not exceed 30 [sec], Mild AF (Time in AF above 30 [sec] and AFB under 4%), Moderate AF (AFB between 4 and 80%),
-    and Severe AF (AFB between 80 and 100%). If the burden of a given pathology for a patient is over 50%, we flage him as a patient
-    suffering from another CVD (label cts.PATIENT_LABEL_OTHER_CVD). As a convention, for windows, 0 is the label for NSR, 1 for AF, and above
-    2 for other rhythms.
-    :param id: The patient afb.
-    """
-    if afb > 100 * cts.AF_SEVERE_THRESHOLD:  # Assessing the class according to the guidelines
-        af_pat_lab = cts.PATIENT_LABEL_AF_SEVERE
-    elif afb > 100 * thresh:
-        af_pat_lab = cts.PATIENT_LABEL_AF_MODERATE
-    else:
-        af_pat_lab = cts.PATIENT_LABEL_NON_AF
-    return af_pat_lab
+
 
 def afb_density_dist(pat_df, col='pred_afb', savefig=False, savedir=None, dpi=400):
     plt.style.use('seaborn-white')
@@ -233,7 +218,7 @@ if __name__ == '__main__':
         cts.DATA_DIR / 'rbafdb' / "documentation" / "RBAF_Holter_Info.xlsx")  # Patients obtained from rambam with holter recordings
     RBAF_holter_info_all['AF'] = 0
     RBAF_holter_info_all['AFL'] = 0
-    patient_file = pd.read_excel(cts.REPO_DIR / 'patient_file.xlsx')
+    patient_file = pd.read_excel(cts.REPO_DIR / 'patients_df.xlsx')
     rbdb = patient_file[patient_file.db.eq('RBDB-test')]
     RBAF_holter_info_all.loc[RBAF_holter_info_all.holter_id.isin(rbdb.loc[rbdb.lab.gt(0), 'id']), 'AF'] = 1
     pat_list = pat_list.append(RBAF_holter_info_all.loc[RBAF_holter_info_all.holter_id.isin(rbdb_ni_rbdb2)])

@@ -10,8 +10,8 @@ import pandas as pd
 from matplotlib.gridspec import GridSpec
 from matplotlib.cm import get_cmap
 
-import ArNet2.data.data_loading
-import models.metrics as metrics
+import data_loading
+import src.models.metrics as metrics
 import numpy as np
 import sys
 
@@ -22,11 +22,11 @@ sys.path.append('/home/shanybiton/repos/Generalization/parsing')
 sys.path.append('/home/shanybiton/repos/Generalization/preprocessing')
 
 # Relative imports
-import models.model_utils as model_utils
+import src.models.model_utils as model_utils
 import utils.consts as cts
-from ArNet2.data.data_loading import *
+from data_loading import *
 from parsing.db_loader import *
-from models.weak_classifier import WeakClassifier
+from src.models.weak_classifier import WeakClassifier
 
 font = {'weight' : 'normal',
         # 'family' : 'normal',

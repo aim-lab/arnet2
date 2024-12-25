@@ -2,10 +2,7 @@ try:
     from utils.base_packages import *
 except ModuleNotFoundError:
     from base_packages import *
-import numpy as np
-import pandas as pd
-from scipy.signal import savgol_filter, butter, sosfreqz, sosfiltfilt
-import mne
+
 
 def hyperparamaters_comb(dict_vals):
     """
