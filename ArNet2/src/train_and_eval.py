@@ -18,7 +18,7 @@ sys.path.append('/home/shanybiton/repos/Generalization/src')
 # Relative imports
 
 import utils.consts as cts
-import models.error_analysis_utils as metrics
+import models.metrics as metrics
 import models.model_utils as model_utils
 from parsing.db_loader import *
 import data.data_loading as data_loading

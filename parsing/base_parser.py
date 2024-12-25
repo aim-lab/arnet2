@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.abspath('..'))
 from utils.base_packages import *
-
+import numpy as np
 
 # TODO: Restructure parse_elem_data function. (Maybe create a function per parser to return the reference
 #  annotations). This has been done for UVAF, need to implement the parse_ref_ann for all other databases
@@ -38,7 +38,7 @@ class BaseParser:
 
         """ Variables relative to the ECG signals. """
         self.orig_fs = None  # Sampling frequency of the original files
-        self.actual_fs = None  # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
+        self.parse_reference_annotationactual_fs = None  # Sampling frequency of the resampled files (resampling is necessary to use the EPLTD C Code)
         self.n_leads = 1  # Number of ECG leads in the database
         self.ref_lead = 1  # The lead according to which all the elementary dictionnaries are computed
         self.name = None  # Name of the Dataset
@@ -119,7 +119,7 @@ class BaseParser:
         :returns arr: numpy array listing all the patients."""
         raise NotImplementedError("Needs to be called by a child class.")
 
-    def parse_reference_annotation(self, id):
+    def parse_reference_annotation(self, id, combine=True, medaim=False):
         """ This function returns for a given patient the reference annotation, if available.
         :param id: The patient ID. Assumed to be in the list of IDs present in the database.
         :returns peaks: A numpy array listing the indices of the peaks in the raw ECG.
@@ -199,7 +199,19 @@ class BaseParser:
         """
         return os.path.exists(self.generated_anns_path / type / str(lead) / (id + '.' + type))
 
-    def parse_elem_data(self, pat):
+    def parse_medaim_annotations(self, pat, tbeats):
+        rhythm_df = self.parse_medaim_reference_rhythm(pat)
+        ltbeats = np.array(['NSR' for i in tbeats]).astype(object)
+        for index, l in rhythm_df.iterrows():
+            l1 = np.abs(tbeats - l.Beginning)
+            l2 = np.abs(tbeats - l.End)
+            begin = np.where(l1 == l1.min())
+            end = np.where(l2 == l2.min())
+            ltbeats[int(begin[0][0]):int(end[0][0])] = l.Class
+        rhythm = np.array([self.rhythms_dict[i] for i in ltbeats])
+        return rhythm
+
+    def parse_elem_data(self, pat, combine=True, medaim=False):
         """ This function is responsible for extracting the basic raw data for the given id.
         It fills the following elementary dictionaries: rr_dict (RR intervals), rlab_dict (label for each RR interval),
         rrt (timestamp of each RR interval), mask RR (which windows we can rely on based on the presence of proper annotations),
@@ -224,7 +236,7 @@ class BaseParser:
         interbeats = np.append(np.insert((start_rr + end_rr) / 2, 0, max(0, start_rr[0] - 1)), end_rr[-1] + 1.0)
 
         # Extracting the reference annotation
-        ref_ann, ref_rhythm = self.parse_reference_annotation(pat)
+        ref_ann, ref_rhythm = self.parse_reference_annotation(pat, combine=combine, medaim=medaim)
         ref_rr = np.diff(ref_ann) / self.actual_fs
         start_ref_rr, end_ref_rr = ref_ann[:-1] / self.actual_fs, ref_ann[1:] / self.actual_fs
         ref_rlab = ref_rhythm[1:]  # To have the same dimension as ref_rr
@@ -281,7 +293,7 @@ class BaseParser:
             self.n_excluded_windows_dict[pat][win] = (~final_mask).sum()
             self.av_prec_windows_dict[pat][win] = dp.cumsum_reset(final_mask)
 
-    def parse_reference_rhythm(self, id):
+    def parse_medaim_reference_rhythm(self, id):
         dest_path = cts.REANNOTATION_DIR / (self.name + '-annotated')
         if not os.path.exists(dest_path):
             print('No re-annotated recordings for' + self.name)

@@ -1,5 +1,5 @@
 from base_parser import *
-
+import numpy as np
 
 class RBAFDB_Parser(BaseParser):
 
@@ -79,9 +79,9 @@ class RBAFDB_Parser(BaseParser):
         self.searchPer = ['ACUTE', 'CHRONIC']
         self.searchPar = ['PAROXYSMAL', 'FIBRILLATION']
         self.searchFlutter = ['FLUTTER']
-        self.excel_sheet_path_prometheus = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info_prometheus.xlsx"
-        self.excel_sheet_path_mdclone = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info_mdclone.xlsx"
-        self.excel_sheet_path = cts.DATA_DIR / self.name.lower() / "documentation" / "RBAF_Holter_Info.xlsx"
+        self.excel_sheet_path_prometheus = cts.BASE_DIR / '/AIMLab/Shany/databases/rbafdb/documentation' / "RBAF_Holter_Info.xlsx"
+        self.excel_sheet_path_mdclone = cts.BASE_DIR / '/AIMLab/Shany/databases/rbafdb/documentation' / "RBAF_Holter_Info_mdclone.xlsx"
+        self.excel_sheet_path = cts.BASE_DIR / '/AIMLab/Shany/databases/rbafdb/documentation' / "RBAF_Holter_Info.xlsx"
         self.excel_sheet_prometheus = pd.read_excel(self.excel_sheet_path_prometheus, engine='openpyxl')
         self.excel_sheet_mdclone = pd.read_excel(self.excel_sheet_path_mdclone, engine='openpyxl')
         self.excel_sheet = pd.read_excel(self.excel_sheet_path, engine='openpyxl')
