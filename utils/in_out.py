@@ -2,7 +2,7 @@ try:
     from utils.base_packages import *
 except ModuleNotFoundError:
     from base_packages import *
-
+import numpy as np
 
 def pad_rhythm(rhythm, missing=None):
     """
@@ -445,3 +445,25 @@ def qrs_adjust_detector(ecg, qrs, fs, inputsign, tol=0.05, debug=0, n_windows=1,
     else:
         ann = qrs_adjust(ecg, qrs, fs, inputsign, tol=tol, debug=debug)
     return ann
+
+
+def group_af_events(start_events, end_events, rhythms, diff=10):
+    """
+    This function groups events that occur within a close temporal proximity to a single event.
+    It ensures that all closely occurring events are consolidated into a single group for easier analysis and
+    interpretation.
+    :param start_events: time array of the start time of all windows.
+    :param end_events: time array of the end time of all windows.
+    :param rhythms: bool array with True for AF and False for non-AF.
+    :param diff: events with less then 10 seconds difference count as same event.
+    """
+    final_rhythms = np.array(rhythms.astype(int))
+    mask_rhythms = final_rhythms > 0  # We do not keep NSR as rhythm
+    start_events, end_events = start_events[mask_rhythms], end_events[mask_rhythms]
+    final_rhythms = final_rhythms[mask_rhythms]
+    events = pd.DataFrame({'start_events': start_events, 'end_events': end_events, 'rhythms': final_rhythms})
+    events = (events.groupby((events.start_events - events.end_events.shift() > diff).cumsum()).agg(
+        {'start_events': 'min', 'end_events': 'max', 'rhythms': 'first'})[
+        ['start_events', 'end_events', 'rhythms']])
+    final_rhythms_str = np.array(['AFIB' for i in np.array(events.rhythms)])
+    return events, final_rhythms_str

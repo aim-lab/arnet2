@@ -229,7 +229,6 @@ class SHDB_Parser(BaseParser):
         for pat in patient_list:
             if os.path.exists(self.main_path / pat / ('circadian_dict.npy')):
                 self.__dict__['circadian_dict'][pat] = np.load(self.main_path / pat / ('circadian_dict.npy'),
-
                                                                allow_pickle=True).item()
 
     def read_ann(self, id, start=None, end=None):
