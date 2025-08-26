@@ -13,3 +13,7 @@ inputs/
 ref/
 reports/
 error_analysis/
+
+# IntelliJ IDEA
+.idea/
+*.iml
