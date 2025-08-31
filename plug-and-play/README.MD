@@ -67,18 +67,20 @@ This section covers how to reproduce the training and prediction steps.
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
-python3 run_ArNet2.py --input_file /path/to/your/input_file.csv --output_name /path/to/save/output_file.csv [--config /path/to/config_file.yml]
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv --output_name /path/to/save/output_file.csv [--config /path/to/config_file.yml]
 ```
 Where:
 
+- `--mode`: Run the code with pretrained model defined in config to generate predictions.
 - `--input_file`: Path to the **input data file** (CSV/Excel format).
-- `--output_name`: Path where the **output predictions** will be saved as a CSV file.
+- `--output_name`: **output predictions** filename under which the predictions will be saved.
+- `--save_output_path`: Path where the **output predictions** will be saved as a CSV file.
 - `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
 
 Example usage:
 
 ```angular2html
-python3 run_ArNet2.py --input_file ./data/df_test.csv --output_name ./results/df_out.csv
+python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_name ./results/df_out.csv
 ```
 
 This will:
@@ -123,8 +125,24 @@ By running this notebook, you'll generate a `.pickle` file containing the pre-pr
 ### 3.3 Run training
 
 To train the ArNet2 model, execute the following command:
-```angular2html
+```
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv --output_name /path/to/save/output_file.csv [--config /path/to/config_file.yml]
+```
+Where:
 
+- `--mode`: Run the code to train a model.
+- `--input_file`: Path to the **input data file** (pickle format).
+- `--model_name`: The filename under which the **trained model** will be saved.
+- `--save_model_path`: Path where the **trained model** will be saved as a pkl file.
+- `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
+
+Example usage:
+
+```angular2html
+python3 run_ArNet2.py --mode train --input_file ./data/train_data.pickle --model_name ArNet2
 ```
 
+This will:
 
+- Train a model using an input data from `./data/train_data.pickle`.
+- And save the trained model to `./model/ArNet2_{datetime-string}.pkl`.
