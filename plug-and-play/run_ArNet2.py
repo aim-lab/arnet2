@@ -80,6 +80,33 @@ def load_data(input_file):
 
     return data
 
+def save_model(final_dict, model, path, algo):
+    """
+    Save a trained model to a specified path.
+
+    Args:
+        final_dict (dict): Model dictionary containing the hyperparameters and evaluation metrics.
+        model: The trained ArNet2 model.
+        path (str): Path to save the model.
+        algo (str): Algorithm name to save the model (e.g., "ArNet2").
+
+    Returns:
+        None
+    """
+    # Check if the directory exists, create it otherwise
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    # Save the model in a subdirectory
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    model_file = f"{path}/{algo}_{timestamp}.pkl"
+    print(f"Trained model saved to {model_file}")
+    # Save model
+    with open(model_file, 'wb') as file:
+        final_dict['classifier'] = model.get_state_dict()
+        pickle.dump(final_dict, file)
+
 
 def load_model(path, algo, path_feature_extractor=None):
     """
@@ -292,9 +319,7 @@ def main():
         # Update model dictionary with metrics
         model_dict = update_model_dict(X_train, y_train, probas, decision_th, model_dict, set_name='train')
 
-        # Save the model in a subdirectory
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        model_utils.save_model(model_dict, model, args.save_model_path, f'ArNet2_{timestamp}')
+        save_model(model_dict, model, args.save_model_path, 'ArNet2')
 
     elif args.mode == 'predict':
         print("Predicting...")
