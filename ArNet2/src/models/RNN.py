@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Dropout, GRU, Input, Bidirectional
 
-from datagen import DataGenerator
+from ArNet2.src.models.datagen import DataGenerator
 
 
 class RNN:

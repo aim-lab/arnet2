@@ -4,15 +4,15 @@ import pickle
 import numpy as np
 import h5py
 
-from xgboost import XGBClassifier
+# from xgboost import XGBClassifie'r
 from OneDCNN import OneDCNN
 from ResNet import ResNet
-from ArNet2.src.models.ArNet2 import ArNet2
+from core import ArNet2
 from CRNN import CRNN
 from RNN import RNN
 
 class_funcs = {
-    'XGB': XGBClassifier,
+    # 'XGB': XGBClassifier,
     '1D-CNN': OneDCNN,
     'ResNet': ResNet,
     'ArNet2': ArNet2,

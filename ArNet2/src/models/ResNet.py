@@ -5,7 +5,6 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Conv1D, Dropout, BatchNormalization, Activation, MaxPooling1D, Lambda, Add, \
     GRU, TimeDistributed, Input, Flatten
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from imblearn.over_sampling import SMOTE
 
 import utils.consts as cts
 
@@ -15,10 +14,6 @@ class ResNet:
     def __init__(self, window_size=60, n_blocks=6, n_filters_start=64, filter_length=10, activation='relu',
                  dropout_conv=0.2, n_hidden_start=512, dropout_fcn=0.5, learning_rate=0.001, af_weight=3,
                  batch_size=1024):
-        tf.compat.v1.keras.backend.clear_session()
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction = 0.5
-        tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
         self.n_features = 1
         self.patience = 20  # High to allow running for at least 20 epochs.
         self.window_size = window_size
@@ -212,161 +207,13 @@ class ResNet:
             self.loss_train = self.history.history['loss']
             self.n_epochs_train = len(self.loss_train)
 
-    def fit_smote(self, X, y, sample_weight=None, validation_data=None, n_epochs=30):
-
-        def loss(model, x, y, training, sample_weight=None):
-            # training=training is needed only if there are layers with different
-            # behavior during training versus inference (e.g. Dropout).
-            y_ = model(x, training=training)
-            return loss_object(y_true=y, y_pred=y_, sample_weight=sample_weight)
-
-        def grad(model, inputs, targets, sample_weight=None):
-            with tf.GradientTape() as tape:
-                loss_value = loss(model, inputs, targets, training=True, sample_weight=sample_weight)
-            return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
-        X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
-
-        loss_object = tf.keras.losses.BinaryCrossentropy()
-        # accuracy_object = tf.keras.metrics.Accuracy()
-        # auc_object = tf.keras.metrics.AUC()
-        optimizer = tf.keras.optimizers.Adam(lr=self.params["conv_learning_rate"],
-                                             clipnorm=self.params.get("clipnorm", 1))
-
-        # Keep results for plotting
-        train_loss_results = []
-        train_accuracy_results = []
-
-        batch_losses = []
-        # batch_accuracies = []
-        # batch_aucs = []
-        for epoch in range(n_epochs):
-            epoch_starttime = np.datetime64('now')
-            epoch_loss_avg = tf.keras.metrics.Mean()
-            epoch_accuracy = tf.keras.metrics.Accuracy()
-            epoch_auc = tf.keras.metrics.AUC()
-            train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
-            train_dataset = train_dataset.shuffle(X.shape[0] // 10, seed=epoch * cts.SEED).batch(self.batch_size,
-                                                                                                 drop_remainder=True)  # change of seed so that each epoch has a new shuffle, but controlled by the based SEED for reproducibility
-
-            # Training loop
-            for i, (xx, yy) in enumerate(train_dataset):
-                # Optimize the model
-                loss_value, grads = grad(self.model, xx, yy, sample_weight=sample_weight)
-                optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-
-                # Track progress
-                epoch_loss_avg.update_state(loss_value)  # Add current batch loss
-                # Compare predicted label to actual label
-                # training=True is needed only if there are layers with different
-                # behavior during training versus inference (e.g. Dropout).
-                epoch_accuracy.update_state(yy, self.model(xx, training=True))
-                epoch_auc.update_state(yy, self.model(xx, training=True))
-                if i % 100 == 0:
-                    print("Epoch: {:03d} Batch: {:03d} Loss: {:.3f}, Accuracy: {:.3%}, AUC: {:.3%}".format(epoch, i,
-                                                                                                           epoch_loss_avg.result(),
-                                                                                                           epoch_accuracy.result(),
-                                                                                                           epoch_auc.result()))
-
-            # Training loop adding SMOTE
-            print("SMOTE POST-TRAINING...")
-            tf.compat.v1.keras.backend.clear_session()
-            # Oversample the feature layer outputs
-            pre_smote_model = Model(inputs=self.model.input, outputs=self.model.get_layer('flatten').output)
-            from sklearn.utils import shuffle
-            X_shuffled, y_shuffled = shuffle(X, y, random_state=cts.SEED)
-            len_X = X.shape[0]
-            generated_features = []
-            y_generated = []
-            for i in range(11):
-                print(i)
-                X_batch, y_batch = X_shuffled[i * (len_X // 10): (i + 1) * (len_X // 10)], y_shuffled[
-                                                                                           i * (len_X // 10): (
-                                                                                                                          i + 1) * (
-                                                                                                                          len_X // 10)]
-                if np.sum(y_batch) <= len(X_batch) // 50:
-                    print("no enough AF examples in this batch, continue")
-                    continue
-                pre_smote_features_batch = pre_smote_model.predict(X_batch, batch_size=self.batch_size)
-                oversample = SMOTE(sampling_strategy='auto', k_neighbors=5, random_state=cts.SEED)
-                generated_features_batch, y_generated_batch = oversample.fit_resample(pre_smote_features_batch, y_batch)
-                # generated_features_batch, y_generated_batch = post_smote_features_batch[pre_smote_features_batch.shape[0]:], y_smote_batch[pre_smote_features_batch.shape[0]:]  # keep only the generated samples
-                generated_features.append(generated_features_batch)
-                y_generated.append(y_generated_batch)
-                tf.compat.v1.keras.backend.clear_session()
-            generated_features = np.concatenate(generated_features)
-            y_generated = np.concatenate(y_generated)
-            generated_dataset = tf.data.Dataset.from_tensor_slices((generated_features, y_generated))
-            generated_dataset = generated_dataset.shuffle(generated_features.shape[0] // 10,
-                                                          seed=epoch * cts.SEED).batch(self.batch_size,
-                                                                                       drop_remainder=True)
-
-            input = tf.keras.layers.Input((generated_features.shape[1]))
-            l = self.model.layers[-4:]  # from dense_1 to output
-            output = input
-            for lay in l:
-                output = lay(output)
-            post_smote_model = Model(inputs=input, outputs=output)
-
-            for i, (xx, yy) in enumerate(generated_dataset):
-                # Optimize the model
-                loss_value, grads = grad(post_smote_model, xx, yy, sample_weight=sample_weight)
-                optimizer.apply_gradients(zip(grads, post_smote_model.trainable_variables))
-
-                # Track progress
-                epoch_loss_avg.update_state(loss_value)  # Add current batch loss
-                # Compare predicted label to actual label
-                # training=True is needed only if there are layers with different
-                # behavior during training versus inference (e.g. Dropout).
-                epoch_accuracy.update_state(yy, post_smote_model(xx, training=True))
-                epoch_auc.update_state(yy, post_smote_model(xx, training=True))
-                if i % 100 == 0:
-                    print(
-                        "Epoch: {:03d} SMOTE POST-TRAINING Batch: {:03d} Loss: {:.3f}, Accuracy: {:.3%}, AUC: {:.3%}".format(
-                            epoch, i,
-                            epoch_loss_avg.result(),
-                            epoch_accuracy.result(),
-                            epoch_auc.result()))
-
-            # End epoch
-            train_loss_results.append(epoch_loss_avg.result())
-            train_accuracy_results.append(epoch_accuracy.result())
-
-            epoch_endtime = np.datetime64('now')
-            print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}, AUC: {:.3%} --- {}".format(epoch,
-                                                                                            epoch_loss_avg.result(),
-                                                                                            epoch_accuracy.result(),
-                                                                                            epoch_auc.result(),
-                                                                                            str(
-                                                                                                epoch_endtime - epoch_starttime)))
-
-        # self.history = self.model.fit(train_dataset, epochs=n_epochs)
-
-        # if validation_data is not None:
-        #     X_valid, y_valid, sample_weight_valid = validation_data
-        #     X_valid = X_valid.reshape(X_valid.shape[0], X_valid.shape[1], 1).astype('float32')
-        #     self.history = self.model.fit(X, y, sample_weight=sample_weight, batch_size=self.batch_size,
-        #                                   validation_data=(X_valid, y_valid, sample_weight_valid), epochs=n_epochs,
-        #                                   callbacks=[
-        #                                       # ReduceLROnPlateau(factor=0.1, patience=2, min_lr=self.params["conv_learning_rate"] * 0.001),
-        #                                       # EarlyStopping(monitor='val_auc', mode='max', patience=self.patience, min_delta=1e-3, restore_best_weights=True, verbose=1)
-        #                                   ])
-        #     self.loss_train = self.history.history['loss']
-        #     self.loss_valid = self.history.history['val_loss']
-        #     self.n_epochs_train = len(self.loss_train)
-        #
-        # else:
-        #     self.history = self.model.fit(X, y, sample_weight=sample_weight, batch_size=self.batch_size,
-        #                                   epochs=n_epochs)
-        #     self.loss_train = self.history.history['loss']
-        #     self.n_epochs_train = len(self.loss_train)
 
     def predict(self, X, th=0.5):
         X = X.reshape(X.shape[0], X.shape[1], 1)
         return self.model.predict(X, batch_size=self.batch_size).reshape(-1) > th
 
     def predict_layer(self, X, layer_name='dense_1'):
-        X = X.reshape(X.shape[0], X.shape[1], 1)
+        X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
         intermediate_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
         intermediate_output = intermediate_layer_model.predict(X, batch_size=self.batch_size)
         return intermediate_output
