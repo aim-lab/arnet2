@@ -86,7 +86,7 @@ def save_model(final_dict, model, path, algo):
 
     Args:
         final_dict (dict): Model dictionary containing the hyperparameters and evaluation metrics.
-        model: The trained ArNet2 model.
+        model (dict): The trained ArNet2 model.
         path (str): Path to save the model.
         algo (str): Algorithm name to save the model (e.g., "ArNet2").
 
@@ -105,7 +105,7 @@ def save_model(final_dict, model, path, algo):
     # Save model
     with open(model_file, 'wb') as file:
         final_dict['classifier'] = model.get_state_dict()
-        pickle.dump(final_dict, file)
+        pickle.dump(final_dict, model_file)
 
 
 def load_model(path, algo, path_feature_extractor=None):
@@ -138,8 +138,8 @@ def prepare_data_for_prediction(raw_rr, raw_ts, win=60):
     Prepare the raw RR intervals and timestamps into windows for prediction.
 
     Args:
-        raw_rr (numpy.ndarray): Raw RR intervals.
-        raw_ts (numpy.ndarray): Raw timestamps corresponding to the RR intervals.
+        raw_rr (np.ndarray): Raw RR intervals.
+        raw_ts (np.ndarray): Raw timestamps corresponding to the RR intervals.
         win (int, optional): Size of the window to split the data into. Defaults to 60.
 
     Returns:
@@ -167,8 +167,8 @@ def define_decision_threshold(probas, y):
     Define the decision threshold for classification based on the F-beta score.
 
     Args:
-        probas (numpy.ndarray): Predicted probabilities for each sample.
-        y (numpy.ndarray): True labels for each sample.
+        probas (np.ndarray): Predicted probabilities for each sample.
+        y (np.ndarray): True labels for each sample.
 
     Returns:
         float: The optimal decision threshold.
@@ -182,9 +182,9 @@ def update_model_dict(X, y, probas, decision_th, model_dict, set_name='train'):
     Update the model dictionary with evaluation metrics.
 
     Args:
-        X (numpy.ndarray): Input features.
-        y (numpy.ndarray): True labels.
-        probas (numpy.ndarray): Predicted probabilities.
+        X (np.ndarray): Input features.
+        y (np.ndarray): True labels.
+        probas (np.ndarray): Predicted probabilities.
         decision_th (float): Decision threshold.
         model_dict (dict): Dictionary holding the model and hyperparameters.
         set_name (str, optional): The dataset name ('train' or 'test'). Defaults to 'train'.
@@ -210,8 +210,8 @@ def train_model(X_train, y_train, config, n_epochs=5):
     Train the ArNet2 model on the given training data.
 
     Args:
-        X_train (numpy.ndarray): Input features for training.
-        y_train (numpy.ndarray): True labels for training.
+        X_train (np.ndarray): Input features for training.
+        y_train (np.ndarray): True labels for training.
         config (dict): Configuration dictionary with model parameters.
         n_epochs (int, optional): Number of epochs to train the model. Defaults to 5.
 
@@ -241,10 +241,10 @@ def predict_with_model(model, X_test):
 
     Args:
         model: The trained ArNet2 model.
-        X_test (numpy.ndarray): Input features for testing.
+        X_test (np.ndarray): Input features for testing.
 
     Returns:
-        numpy.ndarray: Predicted probabilities for each test sample.
+        np.ndarray: Predicted probabilities for each test sample.
     """
     probas = model.predict_proba(X_test)[:, 1]
     return probas
@@ -255,11 +255,11 @@ def create_prediction_df(X, probas, y_pred, start_win, end_win):
     Create a DataFrame for the predictions.
 
     Args:
-        X (numpy.ndarray): Input features.
-        probas (numpy.ndarray): Predicted probabilities.
-        y_pred (numpy.ndarray): Predicted labels.
-        start_win (numpy.ndarray): Start times for the windows.
-        end_win (numpy.ndarray): End times for the windows.
+        X (np.ndarray): Input features.
+        probas (np.ndarray): Predicted probabilities.
+        y_pred (np.ndarray): Predicted labels.
+        start_win (np.ndarray): Start times for the windows.
+        end_win (np.ndarray): End times for the windows.
 
     Returns:
         pandas.DataFrame: DataFrame containing the predictions.
