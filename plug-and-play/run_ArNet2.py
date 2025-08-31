@@ -28,7 +28,7 @@ def parse_args():
 
     # Config file argument (optional)
     parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
-    parser.add_argument('--save_model_path', type=str, default='./models', help='Path to save the trained model')
+    parser.add_argument('--save_model_path', type=str, default='./model', help='Path to save the trained model')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
     parser.add_argument('--output_name', type=str, default='predictions', help='Name for the output file')
     parser.add_argument('--model_name', type=str, default='ArNet2', help='Model name to save and load')
@@ -290,7 +290,7 @@ def main():
         decision_th = define_decision_threshold(probas, y_train)
 
         # Update model dictionary with metrics
-        update_model_dict(X_train, y_train, probas, decision_th, model_dict, set_name='train')
+        model_dict = update_model_dict(X_train, y_train, probas, decision_th, model_dict, set_name='train')
 
         # Save the model in a subdirectory
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
