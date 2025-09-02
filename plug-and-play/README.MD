@@ -67,14 +67,14 @@ This section covers how to reproduce the training and prediction steps.
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv --output_name /path/to/save/output_file.csv [--config /path/to/config_file.yml]
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
 ```
 Where:
 
 - `--mode`: Run the code with pretrained model defined in config to generate predictions.
 - `--input_file`: Path to the **input data file** (CSV/Excel format).
-- `--output_name`: **output predictions** filename under which the predictions will be saved.
-- `--save_output_path`: Path where the **output predictions** will be saved as a CSV file.
+- `--output_name` *(optional)*: **output predictions** filename under which the predictions will be saved.
+- `--save_output_path` *(optional)*: Path where the **output predictions** will be saved as a CSV file.
 - `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
 
 Example usage:
@@ -119,14 +119,14 @@ Where:
 
 To train the ArNet2 model, execute the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv --output_name /path/to/save/output_file.csv [--config /path/to/config_file.yml]
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--model_name ArNet2 --config /path/to/config_file.yml --save_model_path /path/to/save/model]
 ```
 Where:
 
 - `--mode`: Run the code to train a model.
 - `--input_file`: Path to the **input data file** (pickle format).
-- `--model_name`: The filename under which the **trained model** will be saved.
-- `--save_model_path`: Path where the **trained model** will be saved as a pkl file.
+- `--model_name`*(optional)*: The filename under which the **trained model** will be saved.
+- `--save_model_path` *(optional)*: Path where the **trained model** will be saved as a pkl file.
 - `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
 
 Example usage:
