@@ -1,0 +1,26 @@
+[project]
+name = "ArNet2"
+version = "1.1.0"
+description = "ArNet2 enviroment supporing TF 2.12.1"
+authors = [
+    {name = "Shany (Biton) Brimer",email = "shanybiton@gmail.com"}
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+ipython = "^7.34"
+numpy = ">=1.22,<1.24"
+jupyter = "^1.0.0"
+scikit-learn = "1.2.2"
+pandas = ">=1.5.0,<2.0.3"
+tensorflow-io-gcs-filesystem = { version = "0.37.1"}
+tensorflow = "2.12.1"
+wfdb = "<4.3.0"
+typing-extensions = "^4.4"
+jupyterlab = ">=4.4.6,<5.0.0"
+jupyter-lsp = ">=2.3.0,<3.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
