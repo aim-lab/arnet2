@@ -54,7 +54,7 @@ To ensure that Python can access `ArNet2` directory during runtime, you need to 
 Run the following command in your terminal to set the `PYTHONPATH` variable with the necessary directory:
 
 ```angular2html
-export PYTHONPATH="/root/folder/of/repo/ArNet2/src/models:$PYTHONPATH"
+export PYTHONPATH="/root/folder/of/repo/:/root/folder/of/repo/ArNet2/src/models:$PYTHONPATH"
 ```
 
 Note: Replace `/root/folder/of/repo` with the actual path to the repo directory

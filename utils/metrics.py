@@ -124,13 +124,13 @@ def mean_abs_afb_error(X, y, y_true):
     :param y_true: The actual labels.
     :returns best_th: The threshold which optimizes the F_beta score.
     """
-    pat_list = np.unique(X[:, -1])
+    pat_list = np.unique(X[:, -1].astype(str))
     mean_abs_error_af_burden = 0
     for i, pat in enumerate(pat_list):
-        X_pat = X[X[:, -1] == pat]
-        y_pat = y[X[:, -1] == pat]
-        y_pred_pat = y_true[X[:, -1] == pat]
-        rr = X_pat[:, :-3]
+        X_pat = X[X[:, -1] == pat].astype(str)
+        y_pat = y[X[:, -1] == pat].astype(np.float32)
+        y_pred_pat = y_true[X[:, -1] == pat].astype(np.float32)
+        rr = X_pat[:, :-3].astype(np.float32)
         true_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pat) / np.sum(rr))
         pred_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pred_pat) / np.sum(rr))
         error_af_burden = pred_af_burden - true_af_burden

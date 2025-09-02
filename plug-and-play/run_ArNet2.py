@@ -51,6 +51,7 @@ def load_config(config_path):
 
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)  # Load the YAML configuration
+
     return config
 
 
@@ -105,7 +106,7 @@ def save_model(final_dict, model, path, algo):
     # Save model
     with open(model_file, 'wb') as file:
         final_dict['classifier'] = model.get_state_dict()
-        pickle.dump(final_dict, model_file)
+        pickle.dump(final_dict, file)
 
 
 def load_model(path, algo, path_feature_extractor=None):
