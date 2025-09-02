@@ -132,12 +132,12 @@ Where:
 Example usage:
 
 ```angular2html
-python3 run_ArNet2.py --mode train --input_file ./data/train_data.pickle --model_name ArNet2
+python3 run_ArNet2.py --mode train --input_file ./data/training_data.pickle --model_name ArNet2
 ```
 
 This will:
 
-- Train a model using an input data from `./data/train_data.pickle`.
+- Train a model using an input data from `./data/training_data.pickle`.
 - And save the trained model to `./model/ArNet2_{datetime-string}.pkl`.
 
 ## Example Notebooks
