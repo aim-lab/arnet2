@@ -115,13 +115,6 @@ Where:
 - `win_start`: The start time of the window.
 - `win_end`: The end time of the window.
 
-For ease of use, we have provided a Jupyter notebook that demonstrates how to prepare the data for training.
-You can find the notebook here:
-
-- Data Preparation Example Notebook
-
-By running this notebook, you'll generate a `.pickle` file containing the pre-processed data, which is ready for training with the ArNet2 model.
-
 ### 3.3 Run training
 
 To train the ArNet2 model, execute the following command:
@@ -146,3 +139,13 @@ This will:
 
 - Train a model using an input data from `./data/train_data.pickle`.
 - And save the trained model to `./model/ArNet2_{datetime-string}.pkl`.
+
+## Example Notebooks
+
+Example notebooks for training and prediction can be found under the notebooks directory:
+
+- [Training Notebook](./notebooks/train_example.ipynb)
+
+- [Prediction Notebook](./notebooks/predict_example.ipynb)
+
+These notebooks demonstrate how to prepare the data, train the model, and run predictions using the trained model.
