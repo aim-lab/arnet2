@@ -43,7 +43,7 @@ Python Version: 3.8, 3.9, or 3.10
 To verify the installation:
 ```angular2html
 import tensorflow as tf
-print(tf.__version__)  # Should print 2.12.0
+print(tf.__version__)  # Should print 2.12.*
 print(tf.config.list_physical_devices('GPU'))  # Should list available GPUs
 ```
 
