@@ -7,7 +7,7 @@ ArNet2 is an algorithm designed for detecting Atrial Fibrillation (AF) events ba
 ## 1. Installation
 Follow these steps to set up your environment and install dependencies.
 
-### 1.1 Create Conda Environment from `environment.yml`
+### 1.1 Create Conda Environment + Poetry
 
 1. Navigate to the project directory where the environment.yml file is located.
 
@@ -114,6 +114,8 @@ Where:
 - `patient_id`: The patient ID to which the window belongs. This is important for leveraging the temporal relationships between windows.
 - `win_start`: The start time of the window.
 - `win_end`: The end time of the window.
+
+See example `./data/training_data.pickle`
 
 ### 3.3 Run training
 
