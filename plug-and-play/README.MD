@@ -84,7 +84,8 @@ python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_na
 ```
 
 This will:
-
+- 
+- `--mode`: Run the code to predict.
 - Take input data from `./data/df_test.csv`.
 - Save the output predictions to `./results/df_out.csv`.
 - Use the custom configuration file `./config/custom_config.yml`.
@@ -121,7 +122,7 @@ See example `./data/training_data.pickle`
 
 To train the ArNet2 model, execute the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--model_name ArNet2 --config /path/to/config_file.yml --save_model_path /path/to/save/model]
+python3 run_ArNet2.py --mode train --input_file /path/to/your/input_file.csv [--model_name ArNet2 --config /path/to/config_file.yml --save_model_path /path/to/save/model]
 ```
 Where:
 
