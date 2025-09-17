@@ -13,9 +13,9 @@ from tensorflow.keras.regularizers import L1L2
 
 # Relative imports
 import utils.consts as cts
-from OneDCNN import OneDCNN
-from ResNet import ResNet
-from datagen import DataGenerator
+from ArNet2.src.models.OneDCNN import OneDCNN
+from ArNet2.src.models.ResNet import ResNet
+from ArNet2.src.models.datagen import DataGenerator
 
 
 def fbeta_score(y_true, y_pred, beta, eps=1e-9):
