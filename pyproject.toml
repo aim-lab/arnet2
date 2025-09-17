@@ -14,7 +14,7 @@ numpy = ">=1.22,<1.24"
 jupyter = "^1.0.0"
 scikit-learn = "1.2.2"
 pandas = ">=1.5.0,<2.0.3"
-tensorflow-io-gcs-filesystem = { version = "0.37.1"}
+tensorflow-io-gcs-filesystem = { version = "0.37.1", markers = "platform_system != 'Windows'" }
 tensorflow = "2.12.1"
 wfdb = "<4.3.0"
 typing-extensions = "^4.4"
