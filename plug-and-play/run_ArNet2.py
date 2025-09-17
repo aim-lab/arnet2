@@ -6,8 +6,8 @@ import pandas as pd
 import pickle
 import datetime
 
-import model_utils as model_utils
-from core import ArNet2
+import ArNet2.src.models.model_utils as model_utils
+from ArNet2.src.models.core import ArNet2
 import utils.consts as cts
 import utils.metrics as metrics
 
