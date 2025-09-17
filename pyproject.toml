@@ -1,9 +1,9 @@
-[project]
+[tool.poetry]
 name = "ArNet2"
 version = "1.1.0"
-description = "ArNet2 enviroment supporing TF 2.12.1"
+description = "ArNet2 environment supporting TF 2.12.1"
 authors = [
-    {name = "Shany (Biton) Brimer",email = "shanybiton@gmail.com"}
+    "Shany (Biton) Brimer <shanybiton@gmail.com>"
 ]
 readme = "README.md"
 
