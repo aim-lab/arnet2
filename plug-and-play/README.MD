@@ -80,7 +80,7 @@ Where:
 Example usage:
 
 ```angular2html
-python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_name ./results/df_out.csv
+python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_name predictions
 ```
 
 This will:
