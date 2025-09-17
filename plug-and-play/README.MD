@@ -17,7 +17,7 @@ conda create -n arnet2 python=3.10 -y
 ```
 3. Activate the environment:
 ```
-conda activate arne2
+conda activate arnet2
 ```
 
 ### 1.2 Install Additional Dependencies Using Poetry
