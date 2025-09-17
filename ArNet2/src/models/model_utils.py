@@ -5,11 +5,11 @@ import numpy as np
 import h5py
 
 # from xgboost import XGBClassifie'r
-from OneDCNN import OneDCNN
-from ResNet import ResNet
-from core import ArNet2
-from CRNN import CRNN
-from RNN import RNN
+from ArNet2.src.models.OneDCNN import OneDCNN
+from ArNet2.src.models.ResNet import ResNet
+from ArNet2.src.models.core import ArNet2
+from ArNet2.src.models.CRNN import CRNN
+from ArNet2.src.models.RNN import RNN
 
 class_funcs = {
     # 'XGB': XGBClassifier,
