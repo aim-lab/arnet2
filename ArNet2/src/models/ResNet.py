@@ -161,7 +161,7 @@ class ResNet:
 
     def add_compile(self, model, **params):
         optimizer = tf.keras.optimizers.Adam(
-            lr=params["conv_learning_rate"],
+            learning_rate=params["conv_learning_rate"],
             clipnorm=params.get("clipnorm", 1))
 
         model.compile(loss='binary_crossentropy',
