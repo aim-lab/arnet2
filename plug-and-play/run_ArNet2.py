@@ -134,13 +134,14 @@ def load_model(path, algo, path_feature_extractor=None):
     return model_dict
 
 
-def prepare_data_for_prediction(raw_rr, raw_ts, win=60):
+def prepare_data_for_prediction(raw_rr, raw_ts, rec_id, win=60):
     """
     Prepare the raw RR intervals and timestamps into windows for prediction.
 
     Args:
         raw_rr (np.ndarray): Raw RR intervals.
         raw_ts (np.ndarray): Raw timestamps corresponding to the RR intervals.
+        rec_id (np.ndarray): Recording id from which the raw_rr and raw_ts are derived corresponding to the RR intervals.
         win (int, optional): Size of the window to split the data into. Defaults to 60.
 
     Returns:
@@ -150,17 +151,61 @@ def prepare_data_for_prediction(raw_rr, raw_ts, win=60):
     n_windows = len(raw_rr) // win
     rr = raw_rr[:n_windows * win].reshape(-1, win)
     ts = raw_ts[:n_windows * win].reshape(-1, win)
+    ids = np.repeat(rec_id, len(rr))
+
     start_win = ts[:, 0]
     end_win = ts[:, -1]
 
     # Create placeholders for the global labels and other features
     glob_lab = np.ones(len(rr))
-    prec_windows = np.arange(len(rr))
-    ids = np.ones(len(rr))
+    prec_windows = np.arange(len(rr), dtype=int)
 
     # Concatenate the features into a single array
     X = np.concatenate((rr, prec_windows.reshape(-1, 1), glob_lab.reshape(-1, 1), ids.reshape(-1, 1)), axis=1)
     return X, start_win, end_win
+
+
+def process_data_for_all_ids(data, win=60):
+    """
+    Process the data for all unique rec_ids and prepare it for prediction.
+
+    Args:
+        data (pd.DataFrame): The dataframe containing 'rr', 'time', and 'rec_id' columns.
+        win (int, optional): Size of the window to split the data into. Defaults to 60.
+
+    Returns:
+        X_full: An array of all windowed data.
+        start_win_dict: Dictionary of windowed start indices with rec_id as keys.
+        end_win_dict: Dictionary of windowed end indices with rec_id as keys.
+    """
+    # Initialize list to store the results for all rec_ids
+    X_parts = []
+    start_win_dict, end_win_dict = {}, {}
+
+    # Iterate over each unique rec_id
+    for rec_id in np.unique(data[data.columns[2]].to_numpy(dtype=str)):
+        # Extract the subset of data belonging to the current rec_id
+        subset = data[data.iloc[:, 2].astype(str) == rec_id]
+
+        # raw arrays
+        raw_rr = subset.iloc[:, 0].to_numpy(dtype='float64')
+        raw_ts = subset.iloc[:, 1].to_numpy(dtype='float64')
+
+        # if not enough samples to make at least one window, skip
+        if len(raw_rr) < win:
+            continue
+
+        # Call the prepare_data_for_prediction function for the current rec_id subset
+        X, start_win, end_win = prepare_data_for_prediction(raw_rr, raw_ts, rec_id, win)
+
+        # Store the results (X, start_win, end_win) for each rec_id
+        if X.size:
+            X_parts.append(X)
+            start_win_dict[rec_id] = start_win
+            end_win_dict[rec_id] = end_win
+    X_full = np.vstack(X_parts) if X_parts else np.empty((0, win + 3), dtype=object)
+
+    return X_full, start_win_dict, end_win_dict
 
 
 def define_decision_threshold(probas, y):
@@ -251,7 +296,7 @@ def predict_with_model(model, X_test):
     return probas
 
 
-def create_prediction_df(X, probas, y_pred, start_win, end_win):
+def create_prediction_df(X, probas, y_pred, start_win_dict, end_win_dict):
     """
     Create a DataFrame for the predictions.
 
@@ -259,19 +304,45 @@ def create_prediction_df(X, probas, y_pred, start_win, end_win):
         X (np.ndarray): Input features.
         probas (np.ndarray): Predicted probabilities.
         y_pred (np.ndarray): Predicted labels.
-        start_win (np.ndarray): Start times for the windows.
-        end_win (np.ndarray): End times for the windows.
+        start_win_dict (dict): Dict mapping rec_id -> array of start times.
+        end_win_dict (dict): Dict mapping rec_id -> array of end times.
 
     Returns:
         pandas.DataFrame: DataFrame containing the predictions.
     """
-    df_pred = pd.DataFrame(columns=['rr_id', 'start_time', 'end_time', 'proba', 'pred'])
-    df_pred['rr_id'] = X[:, 1]
-    df_pred['start_time'] = start_win
-    df_pred['end_time'] = end_win
-    df_pred['proba'] = probas
-    df_pred['pred'] = y_pred
-    return df_pred
+    dfs = []
+
+    # Ensure rec_ids are strings for consistency
+    rec_ids = np.array(X[:, -1], dtype=str)
+    unique_ids = np.unique(rec_ids)
+
+    for rec_id in np.unique(rec_ids):
+        # mask for this rec_id
+        mask = rec_ids == rec_id
+
+        # skip if no start/end window info
+        if rec_id not in start_win_dict or rec_id not in end_win_dict:
+            continue
+
+        start_win = start_win_dict[rec_id]
+        end_win = end_win_dict[rec_id]
+
+        # ensure lengths match
+        n_windows = min(len(start_win), mask.sum())
+        if n_windows == 0:
+            continue
+
+        df_pred = pd.DataFrame({
+            'rec_id': [rec_id] * n_windows,
+            'prec_window': X[mask, -3],
+            'start_time': start_win[:n_windows],
+            'end_time': end_win[:n_windows],
+            'proba': probas[mask][:n_windows],
+            'pred': y_pred[mask][:n_windows],
+        })
+        dfs.append(df_pred)
+
+    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 
 def save_output(df_pred, save_path, output_name):
@@ -326,9 +397,8 @@ def main():
         print("Predicting...")
 
         # Prepare data for prediction
-        raw_rr = data[data.columns[0]].to_numpy(dtype='float64')
-        raw_ts = data[data.columns[1]].to_numpy(dtype='float64')
-        X, start_win, end_win = prepare_data_for_prediction(raw_rr, raw_ts)
+
+        X, start_win, end_win = process_data_for_all_ids(data)
 
         # Load the trained model
         model_dict = load_model(path=config['path']['arnet2'], algo='ArNet2',
