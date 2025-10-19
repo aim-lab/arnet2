@@ -4,60 +4,6 @@ This README provides the necessary steps to set up the environment, install depe
 
 ArNet2 is an algorithm designed for detecting Atrial Fibrillation (AF) events based on long-term beat-to-beat intervals.
 
-## 1. Installation
-Follow these steps to set up your environment and install dependencies.
-
-### 1.1 Create Conda Environment + Poetry
-
-1. Navigate to the project directory where the environment.yml file is located.
-
-2. Create the Conda environment:
-```
-conda create -n arnet2 python=3.10 -y
-```
-3. Activate the environment:
-```
-conda activate arnet2
-```
-
-### 1.2 Install Additional Dependencies Using Poetry
-1. Install Poetry (if not already installed):
-```
-pip install poetry
-```
-2. Navigate to the project directory where the `pyproject.toml` file is located.
-3. Install dependencies:
-```
-poetry install
-```
-
-### 1.3 Verify TensorFlow and CUDA Compatibility
-
-Ensure that your system meets the following requirements for TensorFlow 2.12 with GPU support:
-
-Python Version: 3.8, 3.9, or 3.10
-
-- TensorFlow Version: 2.12.*
-- CUDA Version: 12.*
-
-To verify the installation:
-```angular2html
-import tensorflow as tf
-print(tf.__version__)  # Should print 2.12.*
-print(tf.config.list_physical_devices('GPU'))  # Should list available GPUs
-```
-
-## 2. Setting `PYTHONPATH`
-
-To ensure that Python can access `ArNet2` directory during runtime, you need to set the `PYTHONPATH` environment variable.
-
-Run the following command in your terminal to set the `PYTHONPATH` variable with the necessary directory:
-
-```angular2html
-export PYTHONPATH="/root/folder/of/repo/:/root/folder/of/repo/ArNet2/src/models:$PYTHONPATH"
-```
-
-Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
 
 ## 3. Reproducibility and Usage
 
