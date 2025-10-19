@@ -183,9 +183,9 @@ def process_data_for_all_ids(data, win=60):
     start_win_dict, end_win_dict = {}, {}
 
     # Iterate over each unique rec_id
-    for rec_id in np.unique(data[data.columns[2]].to_numpy(dtype=str)):
+    for rec_id in data[data.columns[2]].unique():
         # Extract the subset of data belonging to the current rec_id
-        subset = data[data.iloc[:, 2].astype(str) == rec_id]
+        subset = data[data.iloc[:, 2] == rec_id]
 
         # raw arrays
         raw_rr = subset.iloc[:, 0].to_numpy(dtype='float64')
@@ -196,7 +196,7 @@ def process_data_for_all_ids(data, win=60):
             continue
 
         # Call the prepare_data_for_prediction function for the current rec_id subset
-        X, start_win, end_win = prepare_data_for_prediction(raw_rr, raw_ts, rec_id, win)
+        X, start_win, end_win = prepare_data_for_prediction(raw_rr, raw_ts, rec_id.astype(str), win)
 
         # Store the results (X, start_win, end_win) for each rec_id
         if X.size:
