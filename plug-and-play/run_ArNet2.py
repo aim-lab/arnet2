@@ -55,6 +55,77 @@ def load_config(config_path):
     return config
 
 
+def validate_rr_csv(filepath):
+    """
+    Validate an RR-interval CSV file for prediction.
+
+    Conditions:
+    1. Must have exactly 3 columns.
+    2. First column ('rr_data'):
+       - Must not contain nulls.
+       - Must be numeric.
+       - All values <= 100 (since >100s RR interval is unrealistic).
+    3. Second column ('rr_time'):
+       - Must contain float or numeric values.
+    4. Third column ('patient_id'):
+       - Can be string or numeric.
+
+    Args:
+        filepath (str): Path to the CSV file.
+
+    Returns:
+        bool: True if the file passes validation, False otherwise.
+    """
+    try:
+        df = pd.read_csv(filepath)
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return False
+
+    # --- Check column count ---
+    if df.shape[1] != 3:
+        print(f"Invalid number of columns ({df.shape[1]}). Expected 3 columns.")
+        return False
+
+    # Extract column names
+    col1, col2, col3 = df.columns[:3]
+
+    # --- Check 1st column: rr_data ---
+    rr_data = df[col1]
+    if rr_data.isnull().any():
+        print("Missing values in RR data column.")
+        return False
+
+    if not np.issubdtype(rr_data.dtype, np.number):
+        # Try to convert
+        try:
+            rr_data = rr_data.astype(float)
+        except Exception:
+            print("RR data column is not numeric.")
+            return False
+
+    if (rr_data > 100).any():
+        print("RR data contains values > 100 seconds (unrealistic).")
+        return False
+
+    # --- Check 2nd column: rr_time ---
+    rr_time = df[col2]
+    try:
+        rr_time.astype(float)
+    except Exception:
+        print("RR time column contains non-numeric values.")
+        return False
+
+    # --- Check 3rd column: patient_id ---
+    patient_id = df[col3]
+    if not (patient_id.apply(lambda x: isinstance(x, (str, int, float)) or pd.isna(x))).all():
+        print("patient_id column must contain string or numeric values.")
+        return False
+
+    print(f"File '{filepath}' passed validation.")
+    return True
+
+
 def load_data(input_file):
     """
     Load the input data file (CSV/Excel/Pickle) for either training or prediction.
@@ -374,6 +445,8 @@ def main():
 
     # Load the data file
     data = load_data(args.input_file)
+
+    validate_rr_csv(args.input_file)
 
     if args.mode == 'train':
         print("Training model...")
