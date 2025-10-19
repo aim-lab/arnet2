@@ -314,18 +314,18 @@ def create_prediction_df(X, probas, y_pred, start_win_dict, end_win_dict):
 
     # Ensure rec_ids are strings for consistency
     rec_ids = np.array(X[:, -1], dtype=str)
-    unique_ids = np.unique(rec_ids)
 
     for rec_id in np.unique(rec_ids):
         # mask for this rec_id
         mask = rec_ids == rec_id
 
         # skip if no start/end window info
-        if rec_id not in start_win_dict or rec_id not in end_win_dict:
+        key_dtype = type(next(iter(start_win_dict)))
+        if rec_id.astype(key_dtype) not in start_win_dict.keys() or rec_id.astype(key_dtype) not in end_win_dict.keys():
             continue
 
-        start_win = start_win_dict[rec_id]
-        end_win = end_win_dict[rec_id]
+        start_win = start_win_dict[rec_id.astype(key_dtype)]
+        end_win = end_win_dict[rec_id.astype(key_dtype)]
 
         # ensure lengths match
         n_windows = min(len(start_win), mask.sum())
