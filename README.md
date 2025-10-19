@@ -12,7 +12,7 @@ It includes preprocessing scripts, model training pipelines, and inference tools
 
 ## 2. Repository Structure 
 ```
-project-root/
+Shany_Repo/
 │
 ├── ArNet2/          # Core implementation of the ArNet2 architecture and model dependencies
 ├── parsing/         # Unified source code for database parsing used in this project
