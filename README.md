@@ -11,6 +11,7 @@ It includes preprocessing scripts, model training pipelines, and inference tools
 
 
 ## 2. Repository Structure 
+```
 project-root/
 │
 ├── ArNet2/          # Core implementation of the ArNet2 architecture and model dependencies
@@ -21,6 +22,7 @@ project-root/
 ├── README.md        # Project overview and usage documentation (this file)
 ├── pyproject.toml   # Poetry environment and dependency configuration
 └── LICENSE          # License information (CC BY-NC 4.0)
+```
 
 ## 3. Installation
 Follow these steps to set up your environment and install dependencies.
