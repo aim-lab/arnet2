@@ -94,7 +94,8 @@ This will:
 
 #### 3.2.1 Prediction Data 
 
-For prediction, you only need a CSV file with the RR intervals (beats) and their relative time. See example `./data/df_test.csv`
+For prediction, you only need a CSV file with the RR intervals (beats), their relative time
+and third column with a string or numeric identifier for the recording or patient. See example `./data/df_test.csv`
 The algorithm will then split the data into 60-beat windows, and use this to make predictions.
 
 #### 3.2.2 Training Data
