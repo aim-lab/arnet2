@@ -446,8 +446,6 @@ def main():
     # Load the data file
     data = load_data(args.input_file)
 
-    validate_rr_csv(args.input_file)
-
     if args.mode == 'train':
         print("Training model...")
 
@@ -468,6 +466,8 @@ def main():
 
     elif args.mode == 'predict':
         print("Predicting...")
+
+        validate_rr_csv(args.input_file)
 
         # Prepare data for prediction
 
