@@ -44,16 +44,21 @@ During training, the true AFB is used for selection. However, during inference, 
 
 This section covers how to reproduce the training and prediction steps.
 
-### 1 Running prediction
+### Model Usage Options: Window Classification vs. Full Architecture
+
+### 1. Running prediction
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--mode_type full|window --output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
 ```
 Where:
 
 - `--mode`: Run the code with pretrained model defined in config to generate predictions.
 - `--input_file`: Path to the **input data file** (CSV/Excel format).
+- `mode_type`: Choose whether to use the full architecture or just window classification:
+  - `full`: Uses both Part 1 & 2 for full temporal sequence modeling (default option).
+  - `window`: Uses only Part 1, running classification per 60-beat window independently (suitable for short signals).
 - `--output_name` *(optional)*: **output predictions** filename under which the predictions will be saved.
 - `--save_output_path` *(optional)*: Path where the **output predictions** will be saved as a CSV file.
 - `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
@@ -70,16 +75,40 @@ This will:
 - Take input data from `./data/df_test.csv`.
 - Save the output predictions to `./results/df_out.csv`.
 - Use the custom configuration file `./config/custom_config.yml`.
- 
-### 2 Preparing Data for Training and Prediction
 
-#### 2.1 Prediction Data 
+### 2. Model Usage Options: Window Classification vs. Full Architecture
+
+ArNet2 provides flexibility in how it can be used based on the length of your ECG recordings. By setting the `--mode_type` argument, you can choose between two modes:
+
+#### 2.1 Window Classification (Part 1 only):
+
+- **Use Case**: Ideal for short ECG recordings where each recording is represented by a 60-beat window. This approach uses only Part 1 of the model to perform a binary classification (AF vs. non-AF) on each window independently.
+
+- **How It Works**:
+
+  **Input**: A 60-beat window of RR intervals.
+  **Output**: A classification (AF or non-AF) for each 60-beat window.
+
+Best For: Short signals, where the temporal context of past windows is not needed.
+
+#### 2.2 Full Architecture (Parts 1 & 2):
+
+- **Use Case**: Suitable for longer ECG recordings or continuous data where temporal dependencies across windows can be used to improve detection. This method utilizes Part 2, which captures time-related patterns.
+
+- **How It Works**:
+
+  **Input**: Multiple, preceding 60-beat windows, where each window is classified first by Part 1, and then the temporal context of the windows is modeled by the Part 2.
+  **Output**: A classification (AF or non-AF) for each 60-beat window.
+
+### 3. Preparing Data for Training and Prediction
+
+#### 3.1 Prediction Data 
 
 For prediction, you only need a CSV file with the RR intervals (beats), their relative time
 and third column with a string or numeric identifier for the recording or patient. See example `./data/df_test.csv`
 The algorithm will then split the data into 60-beat windows, and use this to make predictions.
 
-#### 2.2 Training Data
+#### 3.2 Training Data
 
 For training, the input data should already be split into 60-beat windows, with the following additional columns:
 
@@ -100,7 +129,7 @@ Where:
 
 See example `./data/training_data.pickle`
 
-### 3 Run training
+### 4. Run training
 
 To train the ArNet2 model, execute the following command:
 ```
