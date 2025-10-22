@@ -84,6 +84,7 @@ ArNet2 provides flexibility in how it can be used based on the length of your EC
 - **How It Works**:
 
   **Input**: A 60-beat window of RR intervals.
+
   **Output**: A classification (AF or non-AF) for each 60-beat window.
 
 Best For: Short signals, where the temporal context of past windows is not needed.
@@ -95,6 +96,7 @@ Best For: Short signals, where the temporal context of past windows is not neede
 - **How It Works**:
 
   **Input**: Multiple, preceding 60-beat windows, where each window is classified first by Part 1, and then the temporal context of the windows is modeled by the Part 2.
+
   **Output**: A classification (AF or non-AF) for each 60-beat window.
 
 ### 3. Preparing Data for Training and Prediction
