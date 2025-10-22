@@ -87,7 +87,7 @@ ArNet2 provides flexibility in how it can be used based on the length of your EC
 
   **Output**: A classification (AF or non-AF) for each 60-beat window.
 
-Best For: Short signals, where the temporal context of past windows is not needed.
+- **Minimal Signal Length**: A minimum of 60 beats (approximately 48 seconds) of signal is required for Part 1 to run. If shorter signals are available, they may be padded or truncated accordingly.
 
 #### 2.2 Full Architecture (Parts 1 & 2):
 
@@ -98,6 +98,8 @@ Best For: Short signals, where the temporal context of past windows is not neede
   **Input**: Multiple, preceding 60-beat windows, where each window is classified first by Part 1, and then the temporal context of the windows is modeled by the Part 2.
 
   **Output**: A classification (AF or non-AF) for each 60-beat window.
+
+- **Minimal Signal Length**: The signal must be at least 10 preceding 60-beat windows, or 480.3 seconds (8 minutes) long, for Part 2 to effectively leverage time dependencies. For shorter signals, empty arrays will be initialized to replace the missing preceding windows.
 
 ### 3. Preparing Data for Training and Prediction
 
