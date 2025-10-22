@@ -2,7 +2,7 @@
 
 This README outlines the steps to set up the environment, install dependencies, and run inference using the ArNet2 algorithm for Atrial Fibrillation (AF) detection.
 
-ArNet2 is a deep learning algorithm developed to detect AF events from long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
+ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
 For more details and to cite this work, please refer to our paper:
 
@@ -14,7 +14,6 @@ Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atria
 This repository contains the implementation of ArNet2, a DL model for AF
 detection using RR intervals from ECG recordings (Holter or 12-lead). 
 It includes preprocessing scripts, model training pipelines, and inference tools.
-
 
 ## 2. Repository Structure 
 ```
@@ -87,9 +86,7 @@ Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
 
 ## 5. Usage
 
-**Run ArNet2**
-
-Follow readme under plug-and-play
+- **Run ArNet2 for AF detection**: Follow (readme)[https://github.com/aim-lab/Shany_Repo/tree/main/plug-and-play](https://github.com/aim-lab/Shany_Repo/blob/main/plug-and-play/README.MD)] under plug-and-play.
 
 ## License
 
