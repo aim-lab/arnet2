@@ -68,7 +68,6 @@ python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_na
 ```
 
 This will:
-- 
 - `--mode`: Run the code to predict.
 - Take input data from `./data/df_test.csv`.
 - Save the output predictions to `./results/df_out.csv`.
