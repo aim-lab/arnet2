@@ -1,15 +1,20 @@
-# ArNet2: Atrial Fibrillation Detection from Long-Term Beat-to-Beat Intervals
+# Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
 
-This README provides the necessary steps to set up the environment, install dependencies, and reproduce the results for the ArNet2 AF detection pipeline.
+This README outlines the steps to set up the environment, install dependencies, and run inference using the ArNet2 algorithm for Atrial Fibrillation (AF) detection.
 
-ArNet2 is an algorithm designed for detecting Atrial Fibrillation (AF) events based on long-term beat-to-beat intervals.
+ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
+For more details and to cite this work, please refer to our paper:
 
-## 3. Reproducibility and Usage
+```
+Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
+```
+
+## Reproducibility and Usage
 
 This section covers how to reproduce the training and prediction steps.
 
-### 3.1 Running prediction
+### 1 Running prediction
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
@@ -35,16 +40,16 @@ This will:
 - Take input data from `./data/df_test.csv`.
 - Save the output predictions to `./results/df_out.csv`.
 - Use the custom configuration file `./config/custom_config.yml`.
-- 
-- ### 3.2 Preparing Data for Training and Prediction
+ 
+### 2 Preparing Data for Training and Prediction
 
-#### 3.2.1 Prediction Data 
+#### 2.1 Prediction Data 
 
 For prediction, you only need a CSV file with the RR intervals (beats), their relative time
 and third column with a string or numeric identifier for the recording or patient. See example `./data/df_test.csv`
 The algorithm will then split the data into 60-beat windows, and use this to make predictions.
 
-#### 3.2.2 Training Data
+#### 2.2 Training Data
 
 For training, the input data should already be split into 60-beat windows, with the following additional columns:
 
@@ -65,7 +70,7 @@ Where:
 
 See example `./data/training_data.pickle`
 
-### 3.3 Run training
+### 3 Run training
 
 To train the ArNet2 model, execute the following command:
 ```
