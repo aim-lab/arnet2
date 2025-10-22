@@ -1,8 +1,14 @@
-# ArNet2: Atrial Fibrillation Detection and phenotyping from Long-Term Beat-to-Beat Intervals
+# Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
 
-This README provides the necessary steps to set up the environment, install dependencies, and reproduce the results for the ArNet2 AF detection pipeline.
+This README outlines the steps to set up the environment, install dependencies, and run inference using the ArNet2 algorithm for Atrial Fibrillation (AF) detection.
 
-ArNet2 is an algorithm designed for detecting Atrial Fibrillation (AF) events based on long-term beat-to-beat intervals.
+ArNet2 is a deep learning algorithm developed to detect AF events from long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
+
+For more details and to cite this work, please refer to our paper:
+
+```
+Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
+```
 
 ## 1. Project Overview
 This repository contains the implementation of ArNet2, a DL model for AF
