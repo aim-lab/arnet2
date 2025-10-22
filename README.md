@@ -86,7 +86,7 @@ Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
 
 ## 5. Usage
 
-- **Run ArNet2 for AF detection**: Follow (readme)[https://github.com/aim-lab/Shany_Repo/tree/main/plug-and-play](https://github.com/aim-lab/Shany_Repo/blob/main/plug-and-play/README.MD)] under plug-and-play.
+- **Run ArNet2 for AF detection**: Follow [readme](https://github.com/aim-lab/Shany_Repo/blob/main/plug-and-play/README.MD) under plug-and-play.
 
 ## License
 
