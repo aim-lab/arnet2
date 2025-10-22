@@ -22,7 +22,7 @@ ArNet2 algorithm work in two parts:
 
 The output of the first part is a binary classification (AF or non-AF) for each input window.
 
-### Part 2: Recurrent Neural Network (RNN) (Fgure part b)
+### Part 2: Recurrent Neural Network (RNN) (Figure part c)
 
 - **Sequence Modeling**: The second part of the model consists of a sequence encoder made of four identical GRU (Gated Recurrent Units) layers. These layers account for time dependencies and select relevant past information to accurately predict AF.
 
