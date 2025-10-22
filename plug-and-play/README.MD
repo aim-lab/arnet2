@@ -4,11 +4,39 @@ This README outlines the steps to seproduce the results for the ArNet2 AF detect
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
-For more details and to cite this work, please refer to our paper:
+For more details and to cite this work, please refer to our paper [1]
 
-```
-Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
-```
+## Model Overview
+ArNet2 is a deep learning algorithm designed to detect AF from long-term beat-to-beat (RR interval) data. For the purpose of AF detection in long-term cardiac monitoring and AF burden (AFB) estimation, ArNet2 focuses on generalization performance to ensure robustness across different patient groups and conditions. This approach builds on our previous work developing the original ArNet model [2].
+
+### 1 Architecture
+ArNet2 algorithm work in two parts:
+
+Part 1: Residual Embedding Layer
+
+- **Input**: A 60-beat window of RR intervals.
+
+- **Embedding**: The first part of the model consists of residual blocks adopted from He et al., which create an embedding by learning a representation of the ECG window.
+
+- **Feature Extraction**: The embedded features are then passed to the first fully connected layer for extraction.
+
+The output of the first part is a binary classification (AF or non-AF) for each input window.
+
+Part 2: Recurrent Neural Networks (RNN)
+
+- **Sequence Modeling**: The second part of the model consists of a sequence encoder made of four identical GRU (Gated Recurrent Units) layers. These layers account for time dependencies and select relevant past information to accurately predict AF.
+
+- **Input**: The embedded features of the selected window for classification, concatenated with the embedded features of the 9 preceding windows from Part 1.
+
+- **AF Severity Classification**: Each GRU is trained for different AF severity levels: non-AF, AFmild, AFmod, and AFsev [1]. , and the relevant GRU layer is selected based on the patient's AFB.
+
+- **Output**: A probability label of AF for each window, with the classification made based on the selected GRU.
+
+During training, the true AFB is used for selection. However, during inference, the estimated AFB from the first step is used to guide the selection of the relevant GRU layer.
+
+<p align="center"> <img src="ArNet.pdf" alt="ArNet2 Model Architecture" width="600"/> </p>
+
+Figure: Overview of the ArNet2 model architecture for AF detection.
 
 ## Reproducibility and Usage
 
@@ -100,7 +128,18 @@ This will:
 Example notebooks for training and prediction can be found under the notebooks directory:
 
 - [Training Notebook](./notebooks/train_example.ipynb)
-
 - [Prediction Notebook](./notebooks/predict_example.ipynb)
 
 These notebooks demonstrate how to prepare the data, train the model, and run predictions using the trained model.
+
+## Citation
+```
+[1] Biton, Shany, et al. 
+"Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." 
+NPJ Digital Medicine 6.1 (2023): 44.
+
+[2] Chocron, Armand, et al. 
+"Remote atrial fibrillation burden estimation using deep recurrent neural network." 
+IEEE Transactions on Biomedical Engineering 68.8 (2020): 2447-2455.
+```
+
