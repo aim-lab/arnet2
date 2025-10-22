@@ -34,8 +34,10 @@ Part 2: Recurrent Neural Networks (RNN)
 
 During training, the true AFB is used for selection. However, during inference, the estimated AFB from the first step is used to guide the selection of the relevant GRU layer.
 
-![ArNet2](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41746-023-00791-1/MediaObjects/41746_2023_791_Fig2_HTML.png?as=webp)
-Figure: Overview of the ArNet2 model architecture for AF detection.
+<p align="center">
+  <img src="https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41746-023-00791-1/MediaObjects/41746_2023_791_Fig2_HTML.png?as=webp" alt="ArNet2" width="600"/>
+</p>
+*Figure: Overview of the ArNet2 model architecture for AF detection.*
 
 ## Reproducibility and Usage
 
