@@ -44,8 +44,6 @@ During training, the true AFB is used for selection. However, during inference, 
 
 This section covers how to reproduce the training and prediction steps.
 
-### Model Usage Options: Window Classification vs. Full Architecture
-
 ### 1. Running prediction
 
 To run the trained ArNet2 model for prediction, run the following command:
