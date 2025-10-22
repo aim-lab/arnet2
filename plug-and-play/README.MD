@@ -1,4 +1,4 @@
-# Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
+# ArNet2: Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
 
 This README outlines the steps to seproduce the results for the ArNet2 AF detection pipeline.
 
