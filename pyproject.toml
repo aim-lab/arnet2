@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "ArNet2"
+version = "1.1.0"
+description = "ArNet2 environment supporting TF 2.12.1"
+authors = [
+    "Shany (Biton) Brimer <shanybiton@gmail.com>"
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+ipython = "^7.34"
+numpy = ">=1.22,<1.24"
+jupyter = "^1.0.0"
+scikit-learn = "1.2.2"
+pandas = ">=1.5.0,<2.0.3"
+# TensorFlow-io-gcs-filesystem : 0.37 not supported on native Windows; pin 0.31 on win32
+tensorflow-io-gcs-filesystem = [
+    { version = "0.37.1", markers = "sys_platform != 'win32'" },
+    { version = "0.31.0", markers = "sys_platform == 'win32'" }
+]
+
+# TensorFlow: 2.12 not supported on native Windows; pin 2.10 on win32
+tensorflow = [
+    { version = "2.12.1", markers = "sys_platform != 'win32'" },
+    { version = "2.10.*", markers = "sys_platform == 'win32'" }
+]
+wfdb = "<4.3.0"
+typing-extensions = "^4.4"
+jupyterlab = ">=4.4.6,<5.0.0"
+jupyter-lsp = ">=2.3.0,<3.0.0"
+tqdm = "^4.67.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -70,12 +70,11 @@ class DataGenerator(Sequence):
         if self.type == 'Conc':
             X = np.concatenate(tuple([x.reshape(1, -1) for x in X]), axis=0)  # Row Stack
         elif self.type == 'LSTM':
-            X = np.concatenate(tuple([x.reshape(1, self.history, -1) for x in X]),
-                               axis=0)  # Row Stack for LSTM: (Samples, Timesteps, Features)
+            X = np.stack([x.reshape(self.history, -1) for x in X], axis=0).astype(
+                'float32')  # Row Stack for LSTM: (Samples, Timesteps, Features)
         elif self.type == 'ResCRNN':
-            X = np.concatenate(tuple([x.reshape(1, -1) for x in X]),
-                               axis=0)  # Row Stack for LSTM: (Samples, Timesteps * Features)
-            X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
+            X = np.stack([x.reshape(-1, 1) for x in X], axis=0).astype(
+                'float32')  # Row Stack for LSTM: (Samples, Timesteps * Features)
         if self.to_fit:
             y = self.orig_labels[indexes]
             if self.weights is not None:

@@ -1,6 +1,3 @@
-"""
-ArNet2: not cleaned because hopefully doomed to disappear.
-"""
 
 # General imports
 import os
@@ -16,9 +13,9 @@ from tensorflow.keras.regularizers import L1L2
 
 # Relative imports
 import utils.consts as cts
-from OneDCNN import OneDCNN
-from ResNet import ResNet
-from datagen import DataGenerator
+from ArNet2.src.models.OneDCNN import OneDCNN
+from ArNet2.src.models.ResNet import ResNet
+from ArNet2.src.models.datagen import DataGenerator
 
 
 def fbeta_score(y_true, y_pred, beta, eps=1e-9):
@@ -63,38 +60,52 @@ class ArNet2:
 
     def __init__(self, path_feature_extractor, window_size=60, time_history=10, extract_level='dense_1', n_units=8,
                  dropout=0.1, learning_rate=0.001, af_weight=3, batch_size=1024, n_patients=None,
-                 n_jobs=1, n_additional_feat=0):
-        tf.compat.v1.keras.backend.clear_session()
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction = 1
-        tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+                 n_additional_feat=0):
+        tf.keras.backend.clear_session()
+        gpus = tf.config.list_physical_devices('GPU')
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
         self.n_patients = n_patients
         self.patience = 10
         self.window_size = window_size
         self.time_history = time_history
         self.extract_level = extract_level
+
         self.feature_extractor = load_feature_extractor(path=path_feature_extractor)
         self.single_input_size = self.feature_extractor.model.get_layer(extract_level).output_shape[
                                      1] + n_additional_feat
         self.total_input_size = self.single_input_size * time_history
+
         self.n_units = n_units
         self.dropout = dropout
         self.learning_rate = learning_rate
         self.af_weight = af_weight
         self.batch_size = batch_size
-        self.labels = np.array([cts.PATIENT_LABEL_NON_AF, cts.PATIENT_LABEL_AF_MILD, cts.PATIENT_LABEL_AF_MODERATE,
-                                cts.PATIENT_LABEL_AF_SEVERE])
+
+        self.labels = np.array([
+            cts.PATIENT_LABEL_NON_AF,
+            cts.PATIENT_LABEL_AF_MILD,
+            cts.PATIENT_LABEL_AF_MODERATE,
+            cts.PATIENT_LABEL_AF_SEVERE
+        ])
+
         self.init_weights = {}
         self.models = {}
         self.histories = {}
         for lab in self.labels:
-            model = Sequential()
-            # model.add(Bidirectional(GRU(self.n_units, activation='relu'), input_shape=(None, self.single_input_size)))
-            model.add(GRU(self.n_units, activation='relu', input_shape=(None, self.single_input_size)))
-            model.add(Dense(self.n_units//2, activation='relu'))
-            model.add(Dropout(self.dropout))
-            model.add(Dense(1, activation='sigmoid'))
-            model.compile(optimizer=tf.keras.optimizers.Adam(lr=learning_rate), loss='binary_crossentropy', metrics=['accuracy', 'AUC'])
+            model = Sequential([
+                GRU(self.n_units, activation='relu', input_shape=(None, self.single_input_size)),
+                Dense(self.n_units // 2, activation='relu'),
+                Dropout(self.dropout),
+                Dense(1, activation='sigmoid')
+            ])
+
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+                loss='binary_crossentropy',
+                metrics=['accuracy', tf.keras.metrics.AUC()]
+            )
             self.models[lab] = model
             self.init_weights[lab] = copy.deepcopy(model.get_weights())
         self.losses_train = {}
@@ -109,13 +120,19 @@ class ArNet2:
         if not warm_start:
             for lab, model in self.models.items():
                 model.set_weights(self.init_weights[lab])
-                model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss='binary_crossentropy', metrics=['accuracy', 'AUC'])
-        X, prec_windows, global_label, ids = X[:, :-3].astype('float32'), X[:, -3].astype('float32'), X[:, -2].astype(
+                model.compile(
+                    optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+                    loss='binary_crossentropy',
+                    metrics=['accuracy', tf.keras.metrics.AUC()]
+                )
+            X, prec_windows, global_label, ids = X[:, :-3].astype('float32'), X[:, -3].astype('float32'), X[:, -2].astype(
             'float32'), X[:, -1]
         features_X = self.feature_extractor.predict_layer(X, layer_name=self.extract_level)
         features_X = np.concatenate((features_X, prec_windows.reshape(-1, 1)), axis=1)
+
         if n_epochs_flex is None:
             n_epochs_flex = [n_epochs] * len(self.labels)
+
         sample_weight = np.array([self.af_weight if lab == True else 1 for lab in y])
 
         for lab, n_epochs_lab in zip(self.labels, n_epochs_flex):
@@ -124,8 +141,10 @@ class ArNet2:
             # mask = global_label == global_label
             if not np.any(mask):
                 continue
+
             training_generator = DataGenerator(features_X, y, sample_weight, batch_size=self.batch_size,
                                                history=self.time_history, type='LSTM', add_data=add_X, mask=mask)
+
             if validation_data is not None:
                 X_valid, y_valid = validation_data
                 sample_weight_valid = np.array([self.af_weight if lab == True else 1 for lab in y_valid])
@@ -137,12 +156,15 @@ class ArNet2:
                 mask_valid = global_label_valid == lab
                 if not np.any(mask_valid):
                     continue
+
                 features_X_valid = self.feature_extractor.predict_layer(X_valid, layer_name=self.extract_level)
                 features_X_valid = np.concatenate((features_X_valid, prec_windows_valid.reshape(-1, 1)), axis=1)
+
                 valid_generator = DataGenerator(features_X_valid, y_valid, sample_weight_valid, batch_size=self.batch_size,
                                                 history=self.time_history, type='LSTM', add_data=add_X_valid,
                                                 mask=mask_valid)
-                self.histories[lab] = self.models[lab].fit_generator(training_generator,
+
+                self.histories[lab] = self.models[lab].fit(training_generator,
                                                               validation_data=valid_generator, epochs=n_epochs_lab,
                                                               workers=5,
                                                               callbacks=[
@@ -153,7 +175,7 @@ class ArNet2:
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
 
             else:
-                self.histories[lab] = self.models[lab].fit_generator(training_generator, epochs=n_epochs_lab)
+                self.histories[lab] = self.models[lab].fit(training_generator, epochs=n_epochs_lab)
                 self.losses_train[lab] = self.histories[lab].history['loss']
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
         order_losses = [cts.PATIENT_LABEL_AF_MODERATE, cts.PATIENT_LABEL_AF_MILD, cts.PATIENT_LABEL_AF_SEVERE,
@@ -166,17 +188,7 @@ class ArNet2:
                         lab]  # Selecting the moderates to set up the optimal number of epochs.
             except KeyError:
                 continue
-        # break
-        # # order_losses = [cts.PATIENT_LABEL_AF_MODERATE, cts.PATIENT_LABEL_AF_MILD, cts.PATIENT_LABEL_AF_SEVERE,
-        # #                 cts.PATIENT_LABEL_NON_AF]
-        # # for lab in order_losses:
-        # #     try:
-        # #         self.loss_train = self.losses_train[lab]
-        # #         if len(self.losses_valid) > 0:
-        # #             self.loss_valid = self.losses_valid[
-        # #                 lab]  # Selecting the moderates to set up the optimal number of epochs.
-        # #     except KeyError:
-        # #         continue
+
 
     def predict_proba(self, X, add_X=None):
         """
@@ -188,15 +200,15 @@ class ArNet2:
         glob_lab = self.predict_global_label(X, ids)
         features_X = self.feature_extractor.predict_layer(X, layer_name=self.extract_level)
         features_X = np.concatenate((features_X, prec_windows.reshape(-1, 1)), axis=1)
+
         for lab in self.labels:
             mask = glob_lab == lab
-            # mask = glob_lab == glob_lab
             if not np.any(mask):
                 continue
             test_generator = DataGenerator(features_X, batch_size=self.batch_size,
                                            history=self.time_history, to_fit=False, shuffle=False, type='LSTM',
                                            add_data=add_X, mask=mask)
-            res[mask] = self.models[lab].predict_generator(test_generator).reshape(-1)
+            res[mask] = self.models[lab].predict(test_generator).reshape(-1)
             # break
         res = res.reshape(-1, 1)
         res = np.concatenate((1 - res, res), axis=1)  # For sklearn compatibility

@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Dense, Conv1D, Dropout, BatchNormalization, 
     GRU, TimeDistributed, Input, Flatten, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
-from datagen import DataGenerator
+from ArNet2.src.models.datagen import DataGenerator
 
 
 class CRNN:

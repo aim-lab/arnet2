@@ -1,7 +1,6 @@
 # ignore ALL .log files
 *.MAT
 *.pickle
-*.pkl
 *.xlsx
 *.txt
 *.npy
@@ -13,3 +12,7 @@ inputs/
 ref/
 reports/
 error_analysis/
+
+# IntelliJ IDEA
+.idea/
+*.iml
