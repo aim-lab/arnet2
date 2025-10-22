@@ -4,7 +4,7 @@ This README outlines the steps to seproduce the results for the ArNet2 AF detect
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
-For more details and to cite this work, please refer to our paper [1]
+For more details and to cite this work, please refer to our paper [1].
 
 ## Model Overview
 ArNet2 is a deep learning algorithm designed to detect AF from long-term beat-to-beat (RR interval) data. For the purpose of AF detection in long-term cardiac monitoring and AF burden (AFB) estimation, ArNet2 focuses on generalization performance to ensure robustness across different patient groups and conditions. This approach builds on our previous work developing the original ArNet model [2].
