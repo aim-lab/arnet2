@@ -89,4 +89,4 @@ Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0). [LICENSE](https://github.com/aim-lab/Shany_Repo/blob/main/LICENCE.md).
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0). For more details check the [LICENSE](https://github.com/aim-lab/Shany_Repo/blob/main/LICENCE.md).
