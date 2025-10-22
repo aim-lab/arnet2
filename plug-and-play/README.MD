@@ -12,7 +12,7 @@ ArNet2 is a deep learning algorithm designed to detect AF from long-term beat-to
 ### 1 Architecture
 ArNet2 algorithm work in two parts:
 
-Part 1: Residual Embedding Layer
+### Part 1: Residual Embedding Layer (Figure part a)
 
 - **Input**: A 60-beat window of RR intervals.
 
@@ -22,7 +22,7 @@ Part 1: Residual Embedding Layer
 
 The output of the first part is a binary classification (AF or non-AF) for each input window.
 
-Part 2: Recurrent Neural Networks (RNN)
+### Part 2: Recurrent Neural Network (RNN) (Fgure part b)
 
 - **Sequence Modeling**: The second part of the model consists of a sequence encoder made of four identical GRU (Gated Recurrent Units) layers. These layers account for time dependencies and select relevant past information to accurately predict AF.
 
