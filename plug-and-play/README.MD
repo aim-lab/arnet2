@@ -30,7 +30,7 @@ The output of the first part is a binary classification (AF or non-AF) for each 
 
 - **AF Severity Classification**: Each GRU is trained for different AF severity levels: non-AF, AFmild, AFmod, and AFsev [1]. , and the relevant GRU layer is selected based on the patient's AFB.
 
-- **Output**: A probability label of AF for each window, with the classification made based on the selected GRU.
+- **Output**: A binary label classification of AF or non-AF for each window, with the classification made based on the selected GRU.
 
 During training, the true AFB is used for selection. However, during inference, the estimated AFB from the first step is used to guide the selection of the relevant GRU layer.
 
