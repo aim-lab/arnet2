@@ -25,8 +25,13 @@ def parse_args():
     parser.add_argument('--input_file', type=str, required=True, help='Path to the input data file (CSV/Excel format)')
     parser.add_argument('--mode', type=str, choices=['train', 'predict'], required=True,
                         help='Mode to run: "train" for training the model, "predict" for generating predictions')
-
     # Config file argument (optional)
+    parser.add_argument(
+        '--inference_mode',
+        type=str,
+        choices=['full', 'window'],
+        default='long',
+        help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
     parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
     parser.add_argument('--save_model_path', type=str, default='./model', help='Path to save the trained model')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
@@ -352,18 +357,33 @@ def train_model(X_train, y_train, config, n_epochs=5):
     return model, model_dict
 
 
-def predict_with_model(model, X_test):
+def predict_with_model(model, X_test, inference_mode: str = "long"):
     """
-    Generate predictions using the trained ArNet2 model.
+    Generate predictions with ArNet2 in two modes:
+      - 'full'   : full long-term beat-to-beat model on the entire X (default)
+      - 'window' : single-window (60-beat) model on RR-only columns
 
     Args:
         model: The trained ArNet2 model.
         X_test (np.ndarray): Input features for testing.
+        inference_mode (str): 'full' or 'window'.
 
     Returns:
         np.ndarray: Predicted probabilities for each test sample.
     """
-    probas = model.predict_proba(X_test)[:, 1]
+    mode = inference_mode.lower()
+    if mode not in {"full", "window"}:
+        raise ValueError(f"inference_mode must be 'full' or 'window', got {inference_mode!r}")
+
+    if inference_mode == "full":
+        probas = model.predict_proba(X_test)[:, 1]
+        return probas
+
+    rr_only = X_test[:, :-3].astype("float32", copy=False)
+
+    head = getattr(model, "feature_extractor", model)
+    probas = head.predict_proba(rr_only)[:, 1]
+
     return probas
 
 
@@ -479,8 +499,10 @@ def main():
         model = model_dict['classifier']
 
         # Predict
-        probas = predict_with_model(model, X)
-        y_pred = probas > model_dict['best_th']
+        probas = predict_with_model(model, X, args.inference_mode)
+        # Conditional thresholding
+        threshold = model_dict['best_th'] if args.inference_mode == 'full' else 0.5
+        y_pred = probas > threshold
 
         # Create prediction DataFrame and save it
         prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)

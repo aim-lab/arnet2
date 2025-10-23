@@ -48,13 +48,13 @@ This section covers how to reproduce the training and prediction steps.
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--mode_type full|window --output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
+python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--inference_mode full|window --output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
 ```
 Where:
 
 - `--mode`: Run the code with pretrained model defined in config to generate predictions.
 - `--input_file`: Path to the **input data file** (CSV/Excel format).
-- `mode_type`: Choose whether to use the full architecture or just window classification:
+- `inference_mode`: Choose whether to use the full architecture or just window classification:
   - `full`: Uses both Part 1 & 2 for full temporal sequence modeling (default option).
   - `window`: Uses only Part 1, running classification per 60-beat window independently (suitable for short signals).
 - `--output_name` *(optional)*: **output predictions** filename under which the predictions will be saved.
@@ -75,7 +75,7 @@ This will:
 
 ### 2. Model Usage Options: Window Classification vs. Full Architecture
 
-ArNet2 provides flexibility in how it can be used based on the length of your ECG recordings. By setting the `--mode_type` argument, you can choose between two modes:
+ArNet2 provides flexibility in how it can be used based on the length of your ECG recordings. By setting the `--inference_mode` argument, you can choose between two modes:
 
 #### 2.1 Window Classification (Part 1 only):
 
