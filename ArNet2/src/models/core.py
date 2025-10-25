@@ -10,12 +10,15 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, GRU, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.regularizers import L1L2
+from tensorflow.python.ops.numpy_ops import np_config
+
+np_config.enable_numpy_behavior()
 
 # Relative imports
 import utils.consts as cts
 from ArNet2.src.models.OneDCNN import OneDCNN
 from ArNet2.src.models.ResNet import ResNet
-from ArNet2.src.models.datagen import DataGenerator
+from ArNet2.src.models.datagen import TFDataGenerator
 
 
 def fbeta_score(y_true, y_pred, beta, eps=1e-9):
@@ -114,6 +117,22 @@ class ArNet2:
         self.loss_valid = None
         self.n_epochs_train = {}
 
+    def _make_tf_dataset(self, orig_data, orig_labels=None, weights=None,
+                         to_fit=True, shuffle=True, add_data=None, mask=None):
+        gen = TFDataGenerator(
+            orig_data=orig_data,  # [N, F+1], last col = prec_windows
+            orig_labels=orig_labels,  # [N] or None
+            weights=weights,  # [N] or None
+            to_fit=to_fit,
+            batch_size=self.batch_size,
+            history=self.time_history,
+            shuffle=shuffle,
+            dg_type='LSTM',  # same as before
+            add_data=add_data,
+            mask=mask
+        )
+        return gen.as_dataset()
+
     def fit(self, X, y, validation_data=None, warm_start=False, n_epochs=5, n_epochs_flex=None,
             add_X=None, add_X_valid=None):
 
@@ -142,8 +161,15 @@ class ArNet2:
             if not np.any(mask):
                 continue
 
-            training_generator = DataGenerator(features_X, y, sample_weight, batch_size=self.batch_size,
-                                               history=self.time_history, type='LSTM', add_data=add_X, mask=mask)
+            training_ds = self._make_tf_dataset(
+                orig_data=features_X,  # [N, F+1], last col = prec_windows
+                orig_labels=y,
+                weights=sample_weight,
+                to_fit=True,
+                shuffle=True,
+                add_data=add_X,
+                mask=mask
+            )
 
             if validation_data is not None:
                 X_valid, y_valid = validation_data
@@ -160,22 +186,29 @@ class ArNet2:
                 features_X_valid = self.feature_extractor.predict_layer(X_valid, layer_name=self.extract_level)
                 features_X_valid = np.concatenate((features_X_valid, prec_windows_valid.reshape(-1, 1)), axis=1)
 
-                valid_generator = DataGenerator(features_X_valid, y_valid, sample_weight_valid, batch_size=self.batch_size,
-                                                history=self.time_history, type='LSTM', add_data=add_X_valid,
-                                                mask=mask_valid)
+                valid_ds = self._make_tf_dataset(
+                    orig_data=features_X_valid,
+                    orig_labels=y_valid,
+                    weights=sample_weight_valid,
+                    to_fit=True,
+                    shuffle=False,
+                    add_data=add_X_valid,
+                    mask=mask_valid
+                )
 
-                self.histories[lab] = self.models[lab].fit(training_generator,
-                                                              validation_data=valid_generator, epochs=n_epochs_lab,
-                                                              workers=5,
-                                                              callbacks=[
-                                                                  EarlyStopping(patience=self.patience, min_delta=1e-3,
-                                                                                restore_best_weights=True)])
+                self.histories[lab] = self.models[lab].fit(
+                    training_ds,
+                    validation_data=valid_ds,
+                    epochs=n_epochs_lab,
+                    callbacks=[EarlyStopping(patience=self.patience, min_delta=1e-3,
+                                             restore_best_weights=True)]
+                )
                 self.losses_train[lab] = self.histories[lab].history['loss']
                 self.losses_valid[lab] = self.histories[lab].history['val_loss']
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
 
             else:
-                self.histories[lab] = self.models[lab].fit(training_generator, epochs=n_epochs_lab)
+                self.histories[lab] = self.models[lab].fit(training_ds, epochs=n_epochs_lab)
                 self.losses_train[lab] = self.histories[lab].history['loss']
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
         order_losses = [cts.PATIENT_LABEL_AF_MODERATE, cts.PATIENT_LABEL_AF_MILD, cts.PATIENT_LABEL_AF_SEVERE,
@@ -205,10 +238,15 @@ class ArNet2:
             mask = glob_lab == lab
             if not np.any(mask):
                 continue
-            test_generator = DataGenerator(features_X, batch_size=self.batch_size,
-                                           history=self.time_history, to_fit=False, shuffle=False, type='LSTM',
-                                           add_data=add_X, mask=mask)
-            res[mask] = self.models[lab].predict(test_generator).reshape(-1)
+            test_ds = self._make_tf_dataset(
+                orig_data=features_X,  # [N, F+1], last col = prec_windows
+                to_fit=False,
+                shuffle=False,
+                add_data=add_X,
+                mask=mask
+            )
+            res[mask] = self.models[lab].predict(test_ds).reshape(-1)
+
             # break
         res = res.reshape(-1, 1)
         res = np.concatenate((1 - res, res), axis=1)  # For sklearn compatibility

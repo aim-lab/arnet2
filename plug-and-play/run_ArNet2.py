@@ -30,7 +30,7 @@ def parse_args():
         '--inference_mode',
         type=str,
         choices=['full', 'window'],
-        default='long',
+        default='full',
         help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
     parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
     parser.add_argument('--save_model_path', type=str, default='./model', help='Path to save the trained model')
@@ -498,6 +498,18 @@ def main():
                                 path_feature_extractor=config['path']['resnet'])
         model = model_dict['classifier']
 
+        # import tensorflow as tf
+        # loaded = tf.saved_model.load("exported_model")
+        # infer = loaded.signatures["serving_default"]
+        # out = infer(
+        #     x=X[:, :-3].astype('float32'),
+        #     prec_windows=X[:, -3].astype('float32'),
+        #     glob_lab=X[:, -2].astype('float32'),
+        #     ids=X[:, -1],
+        #     threshold=tf.constant(0.5)
+        # )
+        # probas = out["probs"]
+        # y_pred = out['pred']
         # Predict
         probas = predict_with_model(model, X, args.inference_mode)
         # Conditional thresholding
