@@ -207,10 +207,9 @@ class ResNet:
             self.loss_train = self.history.history['loss']
             self.n_epochs_train = len(self.loss_train)
 
-
     def predict(self, X, th=0.5):
-        X = X.reshape(X.shape[0], X.shape[1], 1)
-        return self.model.predict(X, batch_size=self.batch_size).reshape(-1) > th
+        probs = self.predict_proba_tf(X)[:, 1]  # tf.Tensor [N]
+        return (probs > tf.constant(th, tf.float32)).numpy().reshape(-1)
 
     def predict_layer(self, X, layer_name='dense_1'):
         X = tf.convert_to_tensor(X, dtype=tf.float32)
