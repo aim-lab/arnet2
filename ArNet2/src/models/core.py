@@ -267,7 +267,9 @@ class ArNet2:
         """
         Predict binary AF.
         """
-        return self.predict_proba(X, ids, add_X)[:, 1] > th
+        p = self.predict_proba_tf(X, add_X)[:, 1]
+        return (p > tf.constant(th, tf.float32)).numpy().reshape(-1)
+
 
     def predict_global_label(self, X, ids):
         """
