@@ -213,10 +213,14 @@ class ResNet:
         return self.model.predict(X, batch_size=self.batch_size).reshape(-1) > th
 
     def predict_layer(self, X, layer_name='dense_1'):
-        X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
-        intermediate_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
-        intermediate_output = intermediate_layer_model.predict(X, batch_size=self.batch_size)
-        return intermediate_output
+        X = tf.convert_to_tensor(X, dtype=tf.float32)
+        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])
+
+        # Build once per call; if you call often, cache this submodel on self.
+        intermediate_layer_model = Model(inputs=self.model.input,
+                      outputs=self.model.get_layer(layer_name).output)
+        intermediate_output = intermediate_layer_model(X, training=False)
+        return tf.convert_to_tensor(intermediate_output, dtype=tf.float32).numpy()
 
     def predict_proba(self, X):
         X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
