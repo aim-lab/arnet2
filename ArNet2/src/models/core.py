@@ -276,9 +276,12 @@ class ArNet2:
         """
         # Inputs to tensors
         X_tf = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, 60]
-        ids_tf = tf.as_string(tf.convert_to_tensor(ids))  # [N] string
 
-        # --- P(AF) per row using TF path from your feature extractor ---
+        ids_tf = tf.convert_to_tensor(ids)  # could be tf.string already, or numeric
+        if ids_tf.dtype != tf.string:
+            ids_tf = tf.as_string(ids_tf)
+
+            # --- P(AF) per row using TF path from your feature extractor ---
         if hasattr(self.feature_extractor, "predict_proba_tf"):
             # Preferred: uses your new TF-only method
             probs2 = self.feature_extractor.predict_proba_tf(X_tf)  # [N, 2]
