@@ -222,35 +222,46 @@ class ArNet2:
             except KeyError:
                 continue
 
+    @tf.function  # traceable/serving-friendly
+    def predict_proba_tf(self, X, add_X=None):
+        """
+        Pure-TF inference. X layout: [:, :60]=rr, [:, -3]=prec_windows, [:, -2]=glob_lab(ignored), [:, -1]=ids
+        Returns tf.float32 [N, 2] = [1-p, p]
+        """
+        X = tf.convert_to_tensor(X)  # mixed types → we slice per-column
+        rr = tf.cast(X[:, :-3], tf.float32)  # [N, 60]
+        prec_win = tf.cast(X[:, -3], tf.int32)  # [N]
+        ids = X[:, -1]  # [N] (string or convertible)
+
+        # Recompute global label (TF-only)
+        row_lab = tf.convert_to_tensor(self.predict_global_label(rr, ids))  # returns numpy today
+        row_lab = tf.cast(row_lab, tf.float32)  # [N]
+
+        # Per-window features (extract_level) + append prec_windows column
+        feat = self._feat_model(rr, training=False)  # [N, F0]
+        feat = tf.concat([feat, tf.cast(prec_win[:, None], tf.float32)], axis=1)  # [N, F0+1]
+        if add_X is not None:
+            feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)  # [N, F']
+
+        # Pack sequences like training
+        feat_seq = self._pack_sequences_lstm_tf(feat, prec_win)  # [N, H, F']
+
+        # Run heads once each, select by computed label
+        N = tf.shape(feat_seq)[0]
+        probs = tf.zeros([N], tf.float32)
+        for lab in self.labels:
+            out = self.models[lab](feat_seq, training=False)  # [N,1]
+            out = tf.squeeze(out, axis=-1)  # [N]
+            mask = tf.equal(row_lab, tf.cast(lab, tf.float32))
+            probs = tf.where(mask, out, probs)
+
+        return tf.stack([1.0 - probs, probs], axis=1)  # [N,2]
 
     def predict_proba(self, X, add_X=None):
         """
-        Predict probability of AF
+        Predict probability of AF.
         """
-        X, prec_windows, glob_lab, ids = X[:, :-3].astype('float32'), X[:, -3].astype('float32'), X[:, -2].astype(
-            'float32'), X[:, -1]
-        res = np.zeros(len(X))
-        glob_lab = self.predict_global_label(X, ids)
-        features_X = self.feature_extractor.predict_layer(X, layer_name=self.extract_level)
-        features_X = np.concatenate((features_X, prec_windows.reshape(-1, 1)), axis=1)
-
-        for lab in self.labels:
-            mask = glob_lab == lab
-            if not np.any(mask):
-                continue
-            test_ds = self._make_tf_dataset(
-                orig_data=features_X,  # [N, F+1], last col = prec_windows
-                to_fit=False,
-                shuffle=False,
-                add_data=add_X,
-                mask=mask
-            )
-            res[mask] = self.models[lab].predict(test_ds).reshape(-1)
-
-            # break
-        res = res.reshape(-1, 1)
-        res = np.concatenate((1 - res, res), axis=1)  # For sklearn compatibility
-        return res
+        return self.predict_proba_tf(X, add_X).numpy()
 
     def predict(self, X, ids, th=0.5, add_X=None):
         """
