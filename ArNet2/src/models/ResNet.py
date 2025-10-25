@@ -184,6 +184,27 @@ class ResNet:
             self.add_compile(model, **params)
         return model
 
+    @tf.function  # makes it traceable/serving-friendly
+    def predict_proba_tf(self, X):
+        """
+        Pure-TF forward pass that returns probabilities in [N, 2] ( [1-p, p] ).
+        """
+        X = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, T]
+        # match your original input shape: add channel dim = 1
+        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])  # [N, T, 1]
+
+        y = self.model(X, training=False)  # Keras call, no .predict
+
+        # Normalize to positive-class probabilities
+        y = tf.convert_to_tensor(y, dtype=tf.float32)
+        if y.shape.rank == 2 and y.shape[-1] == 2:
+            p1 = tf.nn.softmax(y, axis=-1)[:, 1]  # two-unit head
+        else:
+            p1 = tf.nn.sigmoid(tf.squeeze(y, axis=-1))  # one-unit sigmoid/logit
+
+        probs = tf.stack([1.0 - p1, p1], axis=1)  # [N, 2]
+        return probs
+
     def fit(self, X, y, validation_data=None, n_epochs=30):
         X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
         sample_weight = np.array([self.af_weight if lab == True else 1 for lab in y])
