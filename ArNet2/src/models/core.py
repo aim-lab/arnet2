@@ -260,26 +260,70 @@ class ArNet2:
 
     def predict_global_label(self, X, ids):
         """
-        Use whole 1D-CNN to predict the AF global label, before giving the extracted features to the adapted GRU.
+        Pure-TF replacement of the pandas/NumPy version.
+        Use whole 1D-CNN/ResNet to predict the AF global label,
+        before giving the extracted features to the adapted GRU.
+
+        Logic (unchanged):
+          y_pred = feature_extractor P(AF) per row
+          len_rr = sum of RR window per row
+          time_in_af_pred = y_pred * len_rr
+          group by id: sum(len_rr), sum(time_in_af_pred)
+          burden = sum(time_in_af_pred) / sum(len_rr)
+          thresholds -> global labels (severe > moderate > mild > non)
+        Returns:
+          np.ndarray [N] of int labels (codes from cts.PATIENT_LABEL_*)
         """
-        y_pred = self.feature_extractor.predict_proba(X)[:, 1]
-        id_df = pd.DataFrame({'id': ids, 'len_rr': np.sum(X, axis=1), 'y_pred': y_pred})
-        id_df['time_in_af_pred'] = id_df['y_pred'] * id_df['len_rr']
-        id_df['time_in_af_pred'] = id_df['time_in_af_pred'].astype(float)
-        id_df['len_rr'] = id_df['len_rr'].astype(float)
-        res = id_df.groupby('id').agg('sum')
-        times_in_af = {pat: res.loc[pat]['time_in_af_pred'] for pat in np.unique(ids)}
-        af_burdens = {pat: times_in_af[pat] / res.loc[pat]['len_rr'] for pat in np.unique(ids)}
-        glob_labs_dict = {pat: cts.PATIENT_LABEL_NON_AF for pat in af_burdens.keys()}
-        for pat in af_burdens.keys():
-            if af_burdens[pat] > cts.AF_SEVERE_THRESHOLD:
-                glob_labs_dict[pat] = cts.PATIENT_LABEL_AF_SEVERE
-            elif af_burdens[pat] > cts.AF_MODERATE_THRESHOLD:
-                glob_labs_dict[pat] = cts.PATIENT_LABEL_AF_MODERATE
-            elif times_in_af[pat] > cts.AF_MILD_THRESHOLD:
-                glob_labs_dict[pat] = cts.PATIENT_LABEL_AF_MILD
-        global_labs = np.array([glob_labs_dict[pat] for pat in ids])
-        return global_labs
+        # Inputs to tensors
+        X_tf = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, 60]
+        ids_tf = tf.as_string(tf.convert_to_tensor(ids))  # [N] string
+
+        # --- P(AF) per row using TF path from your feature extractor ---
+        if hasattr(self.feature_extractor, "predict_proba_tf"):
+            # Preferred: uses your new TF-only method
+            probs2 = self.feature_extractor.predict_proba_tf(X_tf)  # [N, 2]
+            y_pred = probs2[:, 1]  # [N]
+        else:
+            # Fallback: call the Keras model directly and normalize to probs
+            fe_out = self.feature_extractor.model(X_tf, training=False)  # [N,1] or [N,2]
+            fe_out = tf.convert_to_tensor(fe_out, dtype=tf.float32)
+            if fe_out.shape.rank == 2 and fe_out.shape[-1] == 2:
+                y_pred = tf.nn.softmax(fe_out, axis=-1)[:, 1]
+            else:
+                y_pred = tf.nn.sigmoid(tf.squeeze(fe_out, axis=-1))
+
+        # --- Row-wise sums ---
+        len_rr = tf.reduce_sum(X_tf, axis=1)  # [N]
+        time_in_af = y_pred * len_rr  # [N]
+
+        # --- "group by id" via tf.unique + unsorted_segment_sum ---
+        unique_ids, row_to_bucket = tf.unique(ids_tf)  # unique_ids [B], row_to_bucket [N] (int32 in [0,B))
+        B = tf.shape(unique_ids)[0]  # number of groups
+
+        sum_len_rr = tf.math.unsorted_segment_sum(len_rr, row_to_bucket, num_segments=B)  # [B]
+        sum_time = tf.math.unsorted_segment_sum(time_in_af, row_to_bucket, num_segments=B)  # [B]
+
+        burden = sum_time / (sum_len_rr + 1e-9)  # [B]
+
+        # --- Thresholds -> per-bucket label codes (priority: severe > moderate > mild > non) ---
+        severe = burden > tf.constant(cts.AF_SEVERE_THRESHOLD, tf.float32)
+        moderate = burden > tf.constant(cts.AF_MODERATE_THRESHOLD, tf.float32)
+        mild = sum_time > tf.constant(cts.AF_MILD_THRESHOLD, tf.float32)
+
+        lab_non = tf.fill([B], tf.cast(cts.PATIENT_LABEL_NON_AF, tf.int32))
+        lab_mild = tf.fill([B], tf.cast(cts.PATIENT_LABEL_AF_MILD, tf.int32))
+        lab_moder = tf.fill([B], tf.cast(cts.PATIENT_LABEL_AF_MODERATE, tf.int32))
+        lab_severe = tf.fill([B], tf.cast(cts.PATIENT_LABEL_AF_SEVERE, tf.int32))
+
+        bucket_label = tf.where(severe, lab_severe,
+                                tf.where(moderate, lab_moder,
+                                         tf.where(mild, lab_mild, lab_non)))  # [B] int32
+
+        # Map bucket labels back to rows
+        row_labels = tf.gather(bucket_label, row_to_bucket)  # [N] int32
+
+        # Keep the original return type (NumPy) for compatibility with the rest of the class
+        return row_labels.numpy()
 
     def get_state_dict(self):
         """
