@@ -41,6 +41,9 @@ class ResNet:
         self.model = self.build_network(**self.params)
         # print(self.model.summary())
 
+        # Create the intermediate layer model once and reuse it
+        self.intermediate_layer_model = None
+
         self.loss_train = None
         self.loss_valid = None
         self.n_epochs_train = 0
