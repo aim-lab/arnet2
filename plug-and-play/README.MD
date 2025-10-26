@@ -58,6 +58,7 @@ Where:
   - `window`: Uses only Part 1, running classification per 60-beat window independently (suitable for short signals).
 - `--output_name` *(optional)*: **output predictions** filename under which the predictions will be saved.
 - `--save_output_path` *(optional)*: Path where the **output predictions** will be saved as a CSV file.
+- `--saved_model` *(optional)*: Path where the .bp saved model is located.
 
 Example usage:
 

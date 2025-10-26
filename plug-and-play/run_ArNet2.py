@@ -26,6 +26,7 @@ def parse_args():
         choices=['full', 'window'],
         default='full',
         help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
+    parser.add_argument('--saved_model', type=str, default='./exported_model', help='Path to the .bp saved model')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
     parser.add_argument('--output_name', type=str, default='predictions', help='Name for the output file')
 
@@ -359,7 +360,7 @@ def main():
     X, start_win, end_win = process_data_for_all_ids(data)
 
     # Load the trained model
-    loaded = tf.saved_model.load("exported_model")
+    loaded = tf.saved_model.load(args.saved_model)
 
     # Predict
     probas, y_pred = predict_with_model(model=loaded, X=X, inference_mode=args.inference_mode)
