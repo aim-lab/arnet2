@@ -236,17 +236,24 @@ class ArNet2:
         Returns:
           tf.float32 [N, 2] with columns [1 - p, p]
         """
-        X = tf.convert_to_tensor(X)  # mixed types → we slice per-column
-        rr = tf.cast(X[:, :-3], tf.float32)  # [N, 60]
-        prec_win = tf.cast(X[:, -3], tf.int32)  # [N]
-        ids = X[:, -1]  # [N] (string or convertible)
+        # Slice columns into tensors (avoid mixed dtypes in a single tensor)
+        rr = tf.strings.to_number(X[:, :-3], tf.float32)  # [:, :60] as float32
+        prec_win = tf.strings.to_number(X[:, -3], tf.int32)  # [:, -3] as int32 (prec_windows column)
+        ids = X[:, -1]  # [:, -1] is IDs (keep as string)
 
-        # Recompute global label (TF-only)
-        row_lab = tf.convert_to_tensor(self.predict_global_label(rr, ids))  # returns numpy today
-        row_lab = tf.cast(row_lab, tf.float32)  # [N]
+        # Recompute global label purely in TF
+        row_lab = self.predict_global_label_tf(rr, ids)  # [N] int32
 
-        # Per-window features (extract_level) + append prec_windows column
-        feat = self._feat_model(rr, training=False)  # [N, F0]
+        # Compute per-window features at extract_level (TF-only path)
+        if hasattr(self.feature_extractor, "predict_layer"):
+            feat = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)  # [N, F0]
+        else:
+            base_inp = self.feature_extractor.model.input
+            base_out = self.feature_extractor.model.get_layer(self.extract_level).output
+            feat_model = tf.keras.Model(base_inp, base_out)
+            feat = feat_model(rr, training=False)  # [N, F0]
+
+        # Append prec_windows as the last feature column (as your generator expects)
         feat = tf.concat([feat, tf.cast(prec_win[:, None], tf.float32)], axis=1)  # [N, F0+1]
         if add_X is not None:
             feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)  # [N, F']
