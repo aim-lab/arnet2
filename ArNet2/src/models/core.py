@@ -315,37 +315,24 @@ class ArNet2:
         p = self.predict_proba_tf(X, add_X)[:, 1]
         return (p > tf.constant(th, tf.float32)).numpy().reshape(-1)
 
+    # Inside ArNet2 class
 
-    def predict_global_label(self, X, ids):
+    @tf.function
+    def predict_global_label_tf(self, X, ids):
         """
-        Pure-TF replacement of the pandas/NumPy version.
-        Use whole 1D-CNN/ResNet to predict the AF global label,
-        before giving the extracted features to the adapted GRU.
-
-        Logic (unchanged):
-          y_pred = feature_extractor P(AF) per row
-          len_rr = sum of RR window per row
-          time_in_af_pred = y_pred * len_rr
-          group by id: sum(len_rr), sum(time_in_af_pred)
-          burden = sum(time_in_af_pred) / sum(len_rr)
-          thresholds -> global labels (severe > moderate > mild > non)
-        Returns:
-          np.ndarray [N] of int labels (codes from cts.PATIENT_LABEL_*)
+        Pure-TF version. Returns tf.int32 tensor [N] of label codes.
         """
-        # Inputs to tensors
-        X_tf = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, 60]
+        X_tf = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, 60] (or your window size)
 
-        ids_tf = tf.convert_to_tensor(ids)  # could be tf.string already, or numeric
+        ids_tf = tf.convert_to_tensor(ids)
         if ids_tf.dtype != tf.string:
-            ids_tf = tf.as_string(ids_tf)
+            ids_tf = tf.as_string(ids_tf)  # [N] string
 
-            # --- P(AF) per row using TF path from your feature extractor ---
+        # P(AF) per row via TF path on feature extractor
         if hasattr(self.feature_extractor, "predict_proba_tf"):
-            # Preferred: uses your new TF-only method
             probs2 = self.feature_extractor.predict_proba_tf(X_tf)  # [N, 2]
             y_pred = probs2[:, 1]  # [N]
         else:
-            # Fallback: call the Keras model directly and normalize to probs
             fe_out = self.feature_extractor.model(X_tf, training=False)  # [N,1] or [N,2]
             fe_out = tf.convert_to_tensor(fe_out, dtype=tf.float32)
             if fe_out.shape.rank == 2 and fe_out.shape[-1] == 2:
@@ -353,20 +340,16 @@ class ArNet2:
             else:
                 y_pred = tf.nn.sigmoid(tf.squeeze(fe_out, axis=-1))
 
-        # --- Row-wise sums ---
         len_rr = tf.reduce_sum(X_tf, axis=1)  # [N]
         time_in_af = y_pred * len_rr  # [N]
 
-        # --- "group by id" via tf.unique + unsorted_segment_sum ---
-        unique_ids, row_to_bucket = tf.unique(ids_tf)  # unique_ids [B], row_to_bucket [N] (int32 in [0,B))
-        B = tf.shape(unique_ids)[0]  # number of groups
+        unique_ids, row_to_bucket = tf.unique(ids_tf)  # [B], [N]
+        B = tf.shape(unique_ids)[0]
 
         sum_len_rr = tf.math.unsorted_segment_sum(len_rr, row_to_bucket, num_segments=B)  # [B]
         sum_time = tf.math.unsorted_segment_sum(time_in_af, row_to_bucket, num_segments=B)  # [B]
-
         burden = sum_time / (sum_len_rr + 1e-9)  # [B]
 
-        # --- Thresholds -> per-bucket label codes (priority: severe > moderate > mild > non) ---
         severe = burden > tf.constant(cts.AF_SEVERE_THRESHOLD, tf.float32)
         moderate = burden > tf.constant(cts.AF_MODERATE_THRESHOLD, tf.float32)
         mild = sum_time > tf.constant(cts.AF_MILD_THRESHOLD, tf.float32)
@@ -380,11 +363,15 @@ class ArNet2:
                                 tf.where(moderate, lab_moder,
                                          tf.where(mild, lab_mild, lab_non)))  # [B] int32
 
-        # Map bucket labels back to rows
         row_labels = tf.gather(bucket_label, row_to_bucket)  # [N] int32
+        return row_labels
 
-        # Keep the original return type (NumPy) for compatibility with the rest of the class
-        return row_labels.numpy()
+    def predict_global_label(self, X, ids):
+        """
+        Backward-compatible wrapper returning numpy(), for places that expect numpy.
+        Do NOT call this inside @tf.function.
+        """
+        return self.predict_global_label_tf(X, ids).numpy()
 
     def get_state_dict(self):
         """
