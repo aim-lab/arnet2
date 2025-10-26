@@ -222,11 +222,19 @@ class ArNet2:
             except KeyError:
                 continue
 
-    @tf.function  # traceable/serving-friendly
+    @tf.function
     def predict_proba_tf(self, X, add_X=None):
         """
-        Pure-TF inference. X layout: [:, :60]=rr, [:, -3]=prec_windows, [:, -2]=glob_lab(ignored), [:, -1]=ids
-        Returns tf.float32 [N, 2] = [1-p, p]
+        Pure-TF inference with batch-wise handling and padding the last batch.
+
+        X layout:
+          [:, :60]   -> rr (float)
+          [:, -3]    -> prec_windows (int)
+          [:, -2]    -> glob_lab (ignored; recomputed here)
+          [:, -1]    -> ids (string)
+
+        Returns:
+          tf.float32 [N, 2] with columns [1 - p, p]
         """
         X = tf.convert_to_tensor(X)  # mixed types → we slice per-column
         rr = tf.cast(X[:, :-3], tf.float32)  # [N, 60]
@@ -243,25 +251,55 @@ class ArNet2:
         if add_X is not None:
             feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)  # [N, F']
 
-        # Pack sequences like training
-        feat_seq = self._pack_sequences_lstm_tf(feat, prec_win)  # [N, H, F']
+        # Handle padding of the last batch (pad to match batch size)
+        N = tf.shape(feat)[0]
 
-        # Run heads once each, select by computed label
-        N = tf.shape(feat_seq)[0]
         probs = tf.zeros([N], tf.float32)
-        for lab in self.labels:
-            out = self.models[lab](feat_seq, training=False)  # [N,1]
-            out = tf.squeeze(out, axis=-1)  # [N]
-            mask = tf.equal(row_lab, tf.cast(lab, tf.float32))
-            probs = tf.where(mask, out, probs)
 
-        return tf.stack([1.0 - probs, probs], axis=1)  # [N,2]
+        # For each label bucket, build a masked dataset with TFDataGenerator and run the matching head
+        for lab in self.labels:
+            mask_bool = tf.equal(row_lab, tf.cast(lab, tf.int32))  # [N] bool
+            if not tf.reduce_any(mask_bool):
+                continue
+
+            # Build dataset for this masked slice
+            ds = self._make_tf_dataset(
+                orig_data=feat,  # [N, F'+1], last col is prec_windows as required by your TFDataGenerator
+                orig_labels=None,
+                weights=None,
+                to_fit=False,
+                shuffle=False,
+                add_data=None if add_X is None else add_X,
+                mask=mask_bool
+            )
+
+            # Run the corresponding GRU head over the dataset and collect outputs
+            ta = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True, clear_after_read=False)
+            idx = tf.constant(0, tf.int32)
+
+            preds_lab = tf.zeros([0], dtype=tf.float32)  # start empty vector
+
+            for xb in ds:  # xb: [batch, H, F']
+                yb = self.models[lab](xb, training=False)  # [batch,1]
+                yb = tf.squeeze(yb, axis=-1)  # [batch]
+                preds_lab = tf.concat([preds_lab, yb], axis=0)
+
+            # Scatter the K predictions back into the full N-vector
+            idx_full = tf.reshape(tf.where(mask_bool), [-1])  # [K]
+            probs = tf.tensor_scatter_nd_update(probs,
+                                                indices=tf.expand_dims(idx_full, 1),
+                                                updates=preds_lab)
+
+
+        return tf.stack([1.0 - probs, probs], axis=1)  # [N, 2]
 
     def predict_proba(self, X, add_X=None):
         """
-        Predict probability of AF.
+        Backward-compatible wrapper that returns NumPy like your original.
         """
-        return self.predict_proba_tf(X, add_X).numpy()
+        # Ensure X is a TF tensor for predict_proba_tf
+        X_tf = tf.convert_to_tensor(X, dtype=tf.string)  # Initially, X is of type string
+        return self.predict_proba_tf(X_tf, add_X).numpy()
 
     def predict(self, X, ids, th=0.5, add_X=None):
         """
