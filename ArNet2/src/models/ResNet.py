@@ -243,14 +243,16 @@ class ResNet:
         return (probs > tf.constant(th, tf.float32)).numpy().reshape(-1)
 
     def predict_layer(self, X, layer_name='dense_1'):
+        """ Get the output of an intermediate layer in the model """
         X = tf.convert_to_tensor(X, dtype=tf.float32)
-        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])
+        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])  # Ensure the correct shape
 
-        # Build once per call; if you call often, cache this submodel on self.
-        intermediate_layer_model = Model(inputs=self.model.input,
-                      outputs=self.model.get_layer(layer_name).output)
+        # Get the pre-built intermediate model
+        intermediate_layer_model = self._build_intermediate_layer_model(layer_name)
+
+        # Use the pre-built intermediate model to get the layer output
         intermediate_output = intermediate_layer_model(X, training=False)
-        return tf.convert_to_tensor(intermediate_output, dtype=tf.float32).numpy()
+        return tf.convert_to_tensor(intermediate_output, dtype=tf.float32)
 
     def predict_proba(self, X):
         """
