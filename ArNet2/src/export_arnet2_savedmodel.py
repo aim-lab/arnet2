@@ -105,6 +105,27 @@ class ArNet2Wrapper(tf.Module):
             tf.constant(self.default_threshold, dtype=tf.float32),
         )
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec([None, 60], tf.float32, name="x"),
+            tf.TensorSpec([], tf.float32,     name="threshold"),
+
+        ]
+    )
+    def predict_windows(self, x, threshold):
+        if hasattr(self.arnet2.feature_extractor, "predict_proba_tf"):
+            probs2 = self.arnet2.feature_extractor.predict_proba_tf(x)  # [N,2]
+            probs  = probs2[:, 1]
+        else:
+            # Fallback: use FE Keras model directly
+            logits = self.arnet2.feature_extractor.model(x, training=False)  # [N,1] or [N,2]
+            logits = tf.convert_to_tensor(logits, tf.float32)
+            if logits.shape.rank == 2 and logits.shape[-1] == 2:
+                probs = tf.nn.softmax(logits, axis=-1)[:, 1]
+            else:
+                probs = tf.nn.sigmoid(tf.squeeze(logits, axis=-1))
+        pred = tf.cast(probs > threshold, tf.int32)     # [N] 0/1
+        return {"probs": probs, "pred": pred}
 
 def main():
     args = parse_args()
@@ -131,14 +152,18 @@ def main():
             tf.TensorSpec([None, 60], tf.float32, name="x"),
             tf.TensorSpec([None], tf.int32, name="prec_windows"),
             tf.TensorSpec([None], tf.float32, name="glob_lab"),
-            tf.TensorSpec([None], tf.string,  name="ids"),
-            tf.TensorSpec([], tf.float32,     name="threshold"),
+            tf.TensorSpec([None], tf.string, name="ids"),
+            tf.TensorSpec([], tf.float32, name="threshold"),
         ),
         "predict_fixed": wrapper.predict_fixed.get_concrete_function(
             tf.TensorSpec([None, 60], tf.float32, name="x"),
             tf.TensorSpec([None], tf.int32, name="prec_windows"),
             tf.TensorSpec([None], tf.float32, name="glob_lab"),
-            tf.TensorSpec([None], tf.string,  name="ids"),
+            tf.TensorSpec([None], tf.string, name="ids"),
+        ),
+        "predict_windows": wrapper.predict_windows.get_concrete_function(
+            tf.TensorSpec([None, 60], tf.float32, name="x"),
+            tf.TensorSpec([], tf.float32, name="threshold"),
         ),
     }
 
