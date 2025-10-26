@@ -5,9 +5,8 @@ import os
 import pandas as pd
 import pickle
 import datetime
+import tensorflow as tf
 
-import ArNet2.src.models.model_utils as model_utils
-from ArNet2.src.models.core import ArNet2
 import utils.consts as cts
 import utils.metrics as metrics
 
@@ -23,8 +22,6 @@ def parse_args():
 
     # Input and Output arguments
     parser.add_argument('--input_file', type=str, required=True, help='Path to the input data file (CSV/Excel format)')
-    parser.add_argument('--mode', type=str, choices=['train', 'predict'], required=True,
-                        help='Mode to run: "train" for training the model, "predict" for generating predictions')
     # Config file argument (optional)
     parser.add_argument(
         '--inference_mode',
@@ -33,10 +30,8 @@ def parse_args():
         default='full',
         help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
     parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
-    parser.add_argument('--save_model_path', type=str, default='./model', help='Path to save the trained model')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
     parser.add_argument('--output_name', type=str, default='predictions', help='Name for the output file')
-    parser.add_argument('--model_name', type=str, default='ArNet2', help='Model name to save and load')
 
     return parser.parse_args()
 
@@ -157,58 +152,6 @@ def load_data(input_file):
 
     return data
 
-def save_model(final_dict, model, path, algo):
-    """
-    Save a trained model to a specified path.
-
-    Args:
-        final_dict (dict): Model dictionary containing the hyperparameters and evaluation metrics.
-        model (dict): The trained ArNet2 model.
-        path (str): Path to save the model.
-        algo (str): Algorithm name to save the model (e.g., "ArNet2").
-
-    Returns:
-        None
-    """
-    # Check if the directory exists, create it otherwise
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    # Save the model in a subdirectory
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    model_file = f"{path}/{algo}_{timestamp}.pkl"
-    print(f"Trained model saved to {model_file}")
-    # Save model
-    with open(model_file, 'wb') as file:
-        final_dict['classifier'] = model.get_state_dict()
-        pickle.dump(final_dict, file)
-
-
-def load_model(path, algo, path_feature_extractor=None):
-    """
-    Load a trained model from a specified path.
-
-    Args:
-        path (str): Path to the saved model.
-        algo (str): Algorithm name to load the model (e.g., "ArNet2").
-        path_feature_extractor (str, optional): Path to the feature extractor model.
-
-    Returns:
-        model_dict: Loaded model dictionary containing the classifier and hyperparameters.
-    """
-    with open(path, 'rb') as file:
-        model_dict = pickle.load(file)
-        if algo != 'XGB':
-            hypercomb = model_dict["hyperparameters"]
-            if algo == "ArNet2":
-                model = ArNet2(**hypercomb, path_feature_extractor=path_feature_extractor)
-            else:
-                model = ArNet2(**hypercomb)
-            model.set_state_dict(model_dict['classifier'])
-            model_dict['classifier'] = model
-    return model_dict
-
 
 def prepare_data_for_prediction(raw_rr, raw_ts, patient_id, win=60):
     """
@@ -284,21 +227,6 @@ def process_data_for_all_ids(data, win=60):
     return X_full, start_win_dict, end_win_dict
 
 
-def define_decision_threshold(probas, y):
-    """
-    Define the decision threshold for classification based on the F-beta score.
-
-    Args:
-        probas (np.ndarray): Predicted probabilities for each sample.
-        y (np.ndarray): True labels for each sample.
-
-    Returns:
-        float: The optimal decision threshold.
-    """
-    best_th = metrics.maximize_f_beta(probas, y)
-    return best_th
-
-
 def update_model_dict(X, y, probas, decision_th, model_dict, set_name='train'):
     """
     Update the model dictionary with evaluation metrics.
@@ -327,37 +255,7 @@ def update_model_dict(X, y, probas, decision_th, model_dict, set_name='train'):
     return model_dict
 
 
-def train_model(X_train, y_train, config, n_epochs=5):
-    """
-    Train the ArNet2 model on the given training data.
-
-    Args:
-        X_train (np.ndarray): Input features for training.
-        y_train (np.ndarray): True labels for training.
-        config (dict): Configuration dictionary with model parameters.
-        n_epochs (int, optional): Number of epochs to train the model. Defaults to 5.
-
-    Returns:
-        model: The trained model.
-        model_dict: The model dictionary containing the classifier and hyperparameters.
-    """
-    # Initialize the model
-    algo_py = 'ArNet2'
-    feature_extractor_path = config['path']['resnet']
-
-    # Initialize ArNet2 model
-    model = model_utils.class_funcs[algo_py](**cts.hypercomb[algo_py], path_feature_extractor=feature_extractor_path)
-
-    # Train the model
-    model.fit(X_train, y_train, n_epochs=n_epochs)
-
-    # Save model and hyperparameters
-    model_dict = {'hyperparameters': cts.hypercomb[algo_py]}
-
-    return model, model_dict
-
-
-def predict_with_model(model, X_test, inference_mode: str = "long"):
+def predict_with_model(model, X_test, inference_mode: str = "full"):
     """
     Generate predictions with ArNet2 in two modes:
       - 'full'   : full long-term beat-to-beat model on the entire X (default)
@@ -376,15 +274,28 @@ def predict_with_model(model, X_test, inference_mode: str = "long"):
         raise ValueError(f"inference_mode must be 'full' or 'window', got {inference_mode!r}")
 
     if inference_mode == "full":
-        probas = model.predict_proba(X_test)[:, 1]
-        return probas
+        infer = loaded.signatures["predict_fixed"]
 
-    rr_only = X_test[:, :-3].astype("float32", copy=False)
+        out = infer(
+            x=X[:, :-3].astype('float32'),
+            prec_windows=X[:, -3].astype('int32'),
+            glob_lab=X[:, -2].astype('float32'),
+            ids=X[:, -1],
+        )
+        probas = out["probs"]
+        y_pred = out['pred']
+        return probas, y_pred
 
-    head = getattr(model, "feature_extractor", model)
-    probas = head.predict_proba(rr_only)[:, 1]
+    infer = loaded.signatures["predict_windows"]
 
-    return probas
+    out = infer(
+        x=X[:, :-3].astype('float32'),
+        threshold=tf.constant(0.5),
+    )
+    probas = out["probs"]
+    y_pred = out['pred']
+
+    return probas, y_pred
 
 
 def create_prediction_df(X, probas, y_pred, start_win_dict, end_win_dict):
@@ -466,59 +377,22 @@ def main():
     # Load the data file
     data = load_data(args.input_file)
 
-    if args.mode == 'train':
-        print("Training model...")
+    print("Predicting...")
 
-        # Extract training data
-        X_train, y_train, _ = data
+    validate_rr_csv(args.input_file)
 
-        # Train the model
-        model, model_dict = train_model(X_train, y_train, config)
-        probas = predict_with_model(model, X_train)
+    # Prepare data for prediction
+    X, start_win, end_win = process_data_for_all_ids(data)
 
-        # Define decision threshold
-        decision_th = define_decision_threshold(probas, y_train)
+    # Load the trained model
+    loaded = tf.saved_model.load("exported_model")
 
-        # Update model dictionary with metrics
-        model_dict = update_model_dict(X_train, y_train, probas, decision_th, model_dict, set_name='train')
+    # Predict
+    predict_with_model(loaded, X_test=X, inference_mode=args.inference_mode)
 
-        save_model(model_dict, model, args.save_model_path, 'ArNet2')
-
-    elif args.mode == 'predict':
-        print("Predicting...")
-
-        validate_rr_csv(args.input_file)
-
-        # Prepare data for prediction
-
-        X, start_win, end_win = process_data_for_all_ids(data)
-
-        # Load the trained model
-        # model_dict = load_model(path=config['path']['arnet2'], algo='ArNet2',
-        #                         path_feature_extractor=config['path']['resnet'])
-        # model = model_dict['classifier']
-        #
-        # import tensorflow as tf
-        # loaded = tf.saved_model.load("exported_model")
-        # infer = loaded.signatures["predict_fixed"]
-        # out = infer(
-        #     x=X[:, :-3].astype('float32'),
-        #     prec_windows=X[:, -3].astype('int32'),
-        #     glob_lab=X[:, -2].astype('float32'),
-        #     ids=X[:, -1],
-        # )
-        # probas = out["probs"]
-        # y_pred = out['pred']
-
-        # Predict
-        probas = predict_with_model(model, X, args.inference_mode)
-        # Conditional thresholding
-        threshold = model_dict['best_th'] if args.inference_mode == 'full' else 0.5
-        y_pred = probas > threshold
-
-        # # Create prediction DataFrame and save it
-        prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
-        save_output(prediction_df, args.save_output_path, args.output_name)
+    # # Create prediction DataFrame and save it
+    prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
+    save_output(prediction_df, args.save_output_path, args.output_name)
 
 
 if __name__ == '__main__':
