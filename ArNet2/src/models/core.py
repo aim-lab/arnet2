@@ -117,6 +117,31 @@ class ArNet2:
         self.loss_valid = None
         self.n_epochs_train = {}
 
+    def _parse_mixed_X(self, X):
+        """
+        Accepts X as either:
+          • tf/numpy string matrix [N, 63] (your old mixed layout), OR
+          • numeric matrix where [:, :-3] are rr, [-3] is prec_windows, [-1] are ids (numeric).
+
+        Returns:
+          rr:       tf.float32 [N, 60]
+          prec_win: tf.int32   [N]
+          ids:      tf.string  [N]
+        """
+        X = tf.convert_to_tensor(X)  # keep dtype as-is first
+
+        if X.dtype == tf.string:
+            rr = tf.strings.to_number(X[:, :-3], tf.float32)
+            prec_win = tf.cast(tf.strings.to_number(X[:, -3], tf.float32), tf.int32)
+            ids = X[:, -1]
+        else:
+            rr = tf.cast(X[:, :-3], tf.float32)
+            prec_win = tf.cast(X[:, -3], tf.int32)
+            # ids could be numeric; normalize to string so downstream stays pure TF
+            ids = tf.as_string(X[:, -1])
+
+        return rr, prec_win, ids
+
     def _make_tf_dataset(self, orig_data, orig_labels=None, weights=None,
                          to_fit=True, shuffle=True, add_data=None, mask=None):
         gen = TFDataGenerator(
@@ -225,53 +250,38 @@ class ArNet2:
     @tf.function
     def predict_proba_tf(self, X, add_X=None):
         """
-        Pure-TF inference with batch-wise handling and padding the last batch.
+        Pure-TF inference.
 
         X layout:
-          [:, :60]   -> rr (float)
-          [:, -3]    -> prec_windows (int)
-          [:, -2]    -> glob_lab (ignored; recomputed here)
-          [:, -1]    -> ids (string)
-
-        Returns:
-          tf.float32 [N, 2] with columns [1 - p, p]
+          [:, :60] -> rr
+          [:, -3]  -> prec_windows
+          [:, -2]  -> glob_lab (ignored)
+          [:, -1]  -> ids (string or numeric)
+        Returns tf.float32 [N, 2] = [1-p, p].
         """
-        # Slice columns into tensors (avoid mixed dtypes in a single tensor)
-        rr = tf.strings.to_number(X[:, :-3], tf.float32)  # [:, :60] as float32
-        prec_win = tf.strings.to_number(X[:, -3], tf.int32)  # [:, -3] as int32 (prec_windows column)
-        ids = X[:, -1]  # [:, -1] is IDs (keep as string)
+        # --- unified parsing: works for string-mixed OR numeric X
+        rr, prec_win, ids = self._parse_mixed_X(X)  # rr:[N,60] float32, prec_win:[N] int32, ids:[N] string
 
-        # Recompute global label purely in TF
+        # global labels (TF-only)
         row_lab = self.predict_global_label_tf(rr, ids)  # [N] int32
 
-        # Compute per-window features at extract_level (TF-only path)
-        if hasattr(self.feature_extractor, "predict_layer"):
-            feat = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)  # [N, F0]
-        else:
-            base_inp = self.feature_extractor.model.input
-            base_out = self.feature_extractor.model.get_layer(self.extract_level).output
-            feat_model = tf.keras.Model(base_inp, base_out)
-            feat = feat_model(rr, training=False)  # [N, F0]
-
-        # Append prec_windows as the last feature column (as your generator expects)
+        # features at extract_level (TF-safe)
+        feat = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)  # [N, F0]
         feat = tf.concat([feat, tf.cast(prec_win[:, None], tf.float32)], axis=1)  # [N, F0+1]
         if add_X is not None:
-            feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)  # [N, F']
+            feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)
 
-        # Handle padding of the last batch (pad to match batch size)
         N = tf.shape(feat)[0]
-
         probs = tf.zeros([N], tf.float32)
 
-        # For each label bucket, build a masked dataset with TFDataGenerator and run the matching head
+        # Per-label masked inference via your TFDataGenerator; concatenate batches
         for lab in self.labels:
-            mask_bool = tf.equal(row_lab, tf.cast(lab, tf.int32))  # [N] bool
+            mask_bool = tf.equal(row_lab, tf.cast(lab, tf.int32))
             if not tf.reduce_any(mask_bool):
                 continue
 
-            # Build dataset for this masked slice
             ds = self._make_tf_dataset(
-                orig_data=feat,  # [N, F'+1], last col is prec_windows as required by your TFDataGenerator
+                orig_data=feat,
                 orig_labels=None,
                 weights=None,
                 to_fit=False,
@@ -280,40 +290,36 @@ class ArNet2:
                 mask=mask_bool
             )
 
-            # Run the corresponding GRU head over the dataset and collect outputs
-            ta = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True, clear_after_read=False)
-            idx = tf.constant(0, tf.int32)
-
-            preds_lab = tf.zeros([0], dtype=tf.float32)  # start empty vector
-
-            for xb in ds:  # xb: [batch, H, F']
+            preds_lab = tf.zeros([0], dtype=tf.float32)  # grow as 1-D vector
+            for xb in ds:  # xb: [batch, H, F]
                 yb = self.models[lab](xb, training=False)  # [batch,1]
                 yb = tf.squeeze(yb, axis=-1)  # [batch]
                 preds_lab = tf.concat([preds_lab, yb], axis=0)
 
-            # Scatter the K predictions back into the full N-vector
             idx_full = tf.reshape(tf.where(mask_bool), [-1])  # [K]
-            probs = tf.tensor_scatter_nd_update(probs,
-                                                indices=tf.expand_dims(idx_full, 1),
-                                                updates=preds_lab)
+            probs = tf.tensor_scatter_nd_update(
+                probs,
+                indices=tf.expand_dims(idx_full, 1),
+                updates=preds_lab
+            )
 
-
-        return tf.stack([1.0 - probs, probs], axis=1)  # [N, 2]
+        return tf.stack([1.0 - probs, probs], axis=1)
 
     def predict_proba(self, X, add_X=None):
         """
         Backward-compatible wrapper that returns NumPy like your original.
+        Accepts either string-mixed [N,63] or numeric matrix with the same column layout.
         """
-        # Ensure X is a TF tensor for predict_proba_tf
-        X_tf = tf.convert_to_tensor(X, dtype=tf.string)  # Initially, X is of type string
+        # Do NOT force dtype here—let predict_proba_tf parse robustly.
+        X_tf = tf.convert_to_tensor(X)
         return self.predict_proba_tf(X_tf, add_X).numpy()
 
-    def predict(self, X, ids, th=0.5, add_X=None):
+    def predict(self, X, ids=None, th=0.5, add_X=None):
         """
-        Predict binary AF.
+        Binary AF prediction (NumPy output). 'ids' kept for API parity; not used.
         """
-        p = self.predict_proba_tf(X, add_X)[:, 1]
-        return (p > tf.constant(th, tf.float32)).numpy().reshape(-1)
+        p = self.predict_proba(X, add_X)[:, 1]  # NumPy [N]
+        return (p > float(th)).astype(np.int32).reshape(-1)
 
     # Inside ArNet2 class
 
