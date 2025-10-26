@@ -22,37 +22,16 @@ def parse_args():
 
     # Input and Output arguments
     parser.add_argument('--input_file', type=str, required=True, help='Path to the input data file (CSV/Excel format)')
-    # Config file argument (optional)
     parser.add_argument(
         '--inference_mode',
         type=str,
         choices=['full', 'window'],
         default='full',
         help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
-    parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
     parser.add_argument('--output_name', type=str, default='predictions', help='Name for the output file')
 
     return parser.parse_args()
-
-
-def load_config(config_path):
-    """
-    Load the configuration file from the specified path.
-
-    Args:
-        config_path (str): Path to the configuration file.
-
-    Returns:
-        config (dict): Loaded configuration as a dictionary.
-    """
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file '{config_path}' not found.")
-
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)  # Load the YAML configuration
-
-    return config
 
 
 def validate_rr_csv(filepath):
@@ -255,7 +234,7 @@ def update_model_dict(X, y, probas, decision_th, model_dict, set_name='train'):
     return model_dict
 
 
-def predict_with_model(model, X_test, inference_mode: str = "full"):
+def predict_with_model(model, X, inference_mode: str = "full"):
     """
     Generate predictions with ArNet2 in two modes:
       - 'full'   : full long-term beat-to-beat model on the entire X (default)
@@ -263,7 +242,7 @@ def predict_with_model(model, X_test, inference_mode: str = "full"):
 
     Args:
         model: The trained ArNet2 model.
-        X_test (np.ndarray): Input features for testing.
+        X (np.ndarray): Input features for testing.
         inference_mode (str): 'full' or 'window'.
 
     Returns:
@@ -274,7 +253,7 @@ def predict_with_model(model, X_test, inference_mode: str = "full"):
         raise ValueError(f"inference_mode must be 'full' or 'window', got {inference_mode!r}")
 
     if inference_mode == "full":
-        infer = loaded.signatures["predict_fixed"]
+        infer = model.signatures["predict_fixed"]
 
         out = infer(
             x=X[:, :-3].astype('float32'),
@@ -286,7 +265,7 @@ def predict_with_model(model, X_test, inference_mode: str = "full"):
         y_pred = out['pred']
         return probas, y_pred
 
-    infer = loaded.signatures["predict_windows"]
+    infer = model.signatures["predict_windows"]
 
     out = infer(
         x=X[:, :-3].astype('float32'),
@@ -371,9 +350,6 @@ def main():
     # Parse command line arguments
     args = parse_args()
 
-    # Load the configuration file
-    config = load_config(args.config)
-
     # Load the data file
     data = load_data(args.input_file)
 
@@ -388,7 +364,7 @@ def main():
     loaded = tf.saved_model.load("exported_model")
 
     # Predict
-    predict_with_model(loaded, X_test=X, inference_mode=args.inference_mode)
+    probas, y_pred = predict_with_model(model=loaded, X=X, inference_mode=args.inference_mode)
 
     # # Create prediction DataFrame and save it
     prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
