@@ -187,6 +187,13 @@ class ResNet:
             self.add_compile(model, **params)
         return model
 
+    def _build_intermediate_layer_model(self, layer_name):
+        """ Build the intermediate layer model, but only once. """
+        if self.intermediate_layer_model is None:
+            self.intermediate_layer_model = tf.keras.Model(inputs=self.model.input,
+                                                           outputs=self.model.get_layer(layer_name).output)
+        return self.intermediate_layer_model
+
     @tf.function  # makes it traceable/serving-friendly
     def predict_proba_tf(self, X):
         """
