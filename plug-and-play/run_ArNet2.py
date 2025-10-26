@@ -494,29 +494,29 @@ def main():
         X, start_win, end_win = process_data_for_all_ids(data)
 
         # Load the trained model
-        model_dict = load_model(path=config['path']['arnet2'], algo='ArNet2',
-                                path_feature_extractor=config['path']['resnet'])
-        model = model_dict['classifier']
-
+        # model_dict = load_model(path=config['path']['arnet2'], algo='ArNet2',
+        #                         path_feature_extractor=config['path']['resnet'])
+        # model = model_dict['classifier']
+        #
         # import tensorflow as tf
         # loaded = tf.saved_model.load("exported_model")
-        # infer = loaded.signatures["serving_default"]
+        # infer = loaded.signatures["predict_fixed"]
         # out = infer(
         #     x=X[:, :-3].astype('float32'),
-        #     prec_windows=X[:, -3].astype('float32'),
+        #     prec_windows=X[:, -3].astype('int32'),
         #     glob_lab=X[:, -2].astype('float32'),
         #     ids=X[:, -1],
-        #     threshold=tf.constant(0.5)
         # )
         # probas = out["probs"]
         # y_pred = out['pred']
+
         # Predict
         probas = predict_with_model(model, X, args.inference_mode)
         # Conditional thresholding
         threshold = model_dict['best_th'] if args.inference_mode == 'full' else 0.5
         y_pred = probas > threshold
 
-        # Create prediction DataFrame and save it
+        # # Create prediction DataFrame and save it
         prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
         save_output(prediction_df, args.save_output_path, args.output_name)
 
