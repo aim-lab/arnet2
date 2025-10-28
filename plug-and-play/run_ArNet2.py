@@ -34,7 +34,6 @@ def parse_args():
         help='Select which trained model to use: full: for full ArNet2 temporal sequence modeling (default option) or window: for running part 1 only.')
     parser.add_argument('--config', type=str, default='./config/config.yml', help='Path to the configuration file')
     parser.add_argument('--save_model_path', type=str, default='./model', help='Path to save the trained model')
-    parser.add_argument('--saved_model', type=str, default='./exported_model', help='Path to the .bp saved model')
     parser.add_argument('--save_output_path', type=str, default='./results', help='Path to save the prediction results')
     parser.add_argument('--output_name', type=str, default='predictions', help='Name for the output file')
     parser.add_argument('--model_name', type=str, default='ArNet2', help='Model name to save and load')
@@ -499,25 +498,14 @@ def main():
                                 path_feature_extractor=config['path']['resnet'])
         model = model_dict['classifier']
 
-        # import tensorflow as tf
-        # loaded = tf.saved_model.load(args.saved_model)
-        # infer = loaded.signatures["predict_fixed"]
-        # out = infer(
-        #     x=X[:, :-3].astype('float32'),
-        #     prec_windows=X[:, -3].astype('int32'),
-        #     glob_lab=X[:, -2].astype('float32'),
-        #     ids=X[:, -1],
-        # )
-        # probas = out["probs"]
-        # y_pred = out['pred']
-
         # Predict
         probas = predict_with_model(model, X, args.inference_mode)
+
         # Conditional thresholding
         threshold = model_dict['best_th'] if args.inference_mode == 'full' else 0.5
         y_pred = probas > threshold
-        #
-        # # Create prediction DataFrame and save it
+
+        # Create prediction DataFrame and save it
         prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
         save_output(prediction_df, args.save_output_path, args.output_name)
 
