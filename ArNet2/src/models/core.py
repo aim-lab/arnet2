@@ -132,15 +132,17 @@ class ArNet2:
 
         if X.dtype == tf.string:
             rr = tf.strings.to_number(X[:, :-3], tf.float32)
+            global_label = tf.cast(tf.strings.to_number(X[:, -2], tf.float32), tf.int32)
             prec_win = tf.cast(tf.strings.to_number(X[:, -3], tf.float32), tf.int32)
             ids = X[:, -1]
         else:
             rr = tf.cast(X[:, :-3], tf.float32)
             prec_win = tf.cast(X[:, -3], tf.int32)
+            global_label =  tf.cast(X[:, -2], tf.int32)
             # ids could be numeric; normalize to string so downstream stays pure TF
             ids = tf.as_string(X[:, -1])
 
-        return rr, prec_win, ids
+        return rr, prec_win, global_label, ids
 
     def _make_tf_dataset(self, orig_data, orig_labels=None, weights=None,
                          to_fit=True, shuffle=True, add_data=None, mask=None):
@@ -156,7 +158,7 @@ class ArNet2:
             add_data=add_data,
             mask=mask
         )
-        return gen.as_dataset()
+        return gen  # Return generator object, not dataset
 
     def fit(self, X, y, validation_data=None, warm_start=False, n_epochs=5, n_epochs_flex=None,
             add_X=None, add_X_valid=None):
@@ -169,58 +171,70 @@ class ArNet2:
                     loss='binary_crossentropy',
                     metrics=['accuracy', tf.keras.metrics.AUC()]
                 )
-            X, prec_windows, global_label, ids = X[:, :-3].astype('float32'), X[:, -3].astype('float32'), X[:, -2].astype(
-            'float32'), X[:, -1]
-        features_X = self.feature_extractor.predict_layer(X, layer_name=self.extract_level)
-        features_X = np.concatenate((features_X, prec_windows.reshape(-1, 1)), axis=1)
+        
+        # Convert inputs to TF tensors
+        X_tf = tf.convert_to_tensor(X)
+        y_tf = tf.convert_to_tensor(y, dtype=tf.float32)
+        
+        # Parse mixed X format
+        rr, prec_windows, global_label, ids = self._parse_mixed_X(X_tf)
+        
+        # Extract features using batched prediction
+        features_X = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)
+        features_X = tf.concat([features_X, tf.cast(prec_windows[:, None], tf.float32)], axis=1)
 
         if n_epochs_flex is None:
             n_epochs_flex = [n_epochs] * len(self.labels)
 
-        sample_weight = np.array([self.af_weight if lab == True else 1 for lab in y])
+        # Convert sample weights to TF tensor
+        sample_weight = tf.where(y_tf == 1.0, tf.constant(self.af_weight, dtype=tf.float32), tf.constant(1.0, dtype=tf.float32))
 
         for lab, n_epochs_lab in zip(self.labels, n_epochs_flex):
             print("Training GRU for label: " + str(lab))
-            mask = global_label == lab
-            # mask = global_label == global_label
-            if not np.any(mask):
+            mask = tf.equal(global_label, tf.cast(lab, tf.int32))
+            
+            if not tf.reduce_any(mask):
                 continue
 
-            training_ds = self._make_tf_dataset(
+            training_gen = self._make_tf_dataset(
                 orig_data=features_X,  # [N, F+1], last col = prec_windows
-                orig_labels=y,
+                orig_labels=y_tf,
                 weights=sample_weight,
                 to_fit=True,
                 shuffle=True,
                 add_data=add_X,
                 mask=mask
             )
+            training_ds = training_gen.as_dataset()
 
             if validation_data is not None:
                 X_valid, y_valid = validation_data
-                sample_weight_valid = np.array([self.af_weight if lab == True else 1 for lab in y_valid])
-                X_valid, prec_windows_valid, global_label_valid, ids_valid = X_valid[:, :-3].astype('float32'), \
-                                                                             X_valid[:, -3].astype('float32'), \
-                                                                             X_valid[:, -2].astype('float32'), \
-                                                                             X_valid[:, -1]
-                # global_label_valid = self.predict_global_label(X_valid, ids_valid)
-                mask_valid = global_label_valid == lab
-                if not np.any(mask_valid):
+                X_valid_tf = tf.convert_to_tensor(X_valid)
+                y_valid_tf = tf.convert_to_tensor(y_valid, dtype=tf.float32)
+                
+                sample_weight_valid = tf.where(y_valid_tf == 1.0, tf.constant(self.af_weight, dtype=tf.float32), tf.constant(1.0, dtype=tf.float32))
+                
+                X_valid_parsed, prec_windows_valid, global_label_valid, ids_valid = self._parse_mixed_X(X_valid_tf)
+
+                mask_valid = tf.equal(global_label_valid, tf.cast(lab, tf.int32))
+                if not tf.reduce_any(mask_valid):
                     continue
 
-                features_X_valid = self.feature_extractor.predict_layer(X_valid, layer_name=self.extract_level)
-                features_X_valid = np.concatenate((features_X_valid, prec_windows_valid.reshape(-1, 1)), axis=1)
-
-                valid_ds = self._make_tf_dataset(
+                features_X_valid = self.feature_extractor.predict_layer(X_valid_parsed, layer_name=self.extract_level)
+                features_X_valid = tf.concat([features_X_valid, tf.cast(prec_windows_valid[:, None], tf.float32)], axis=1)
+                
+                valid_gen = self._make_tf_dataset(
                     orig_data=features_X_valid,
-                    orig_labels=y_valid,
+                    orig_labels=y_valid_tf,
                     weights=sample_weight_valid,
                     to_fit=True,
                     shuffle=False,
                     add_data=add_X_valid,
                     mask=mask_valid
                 )
+                valid_ds = valid_gen.as_dataset()
 
+                # Accept (X, y) or (X, y, w) from dataset
                 self.histories[lab] = self.models[lab].fit(
                     training_ds,
                     validation_data=valid_ds,
@@ -233,7 +247,10 @@ class ArNet2:
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
 
             else:
-                self.histories[lab] = self.models[lab].fit(training_ds, epochs=n_epochs_lab)
+                self.histories[lab] = self.models[lab].fit(
+                    training_ds,
+                    epochs=n_epochs_lab
+                )
                 self.losses_train[lab] = self.histories[lab].history['loss']
                 self.n_epochs_train[lab] = len(self.losses_train[lab])
         order_losses = [cts.PATIENT_LABEL_AF_MODERATE, cts.PATIENT_LABEL_AF_MILD, cts.PATIENT_LABEL_AF_SEVERE,
@@ -259,7 +276,7 @@ class ArNet2:
         Returns tf.float32 [N, 2] = [1-p, p].
         """
         # --- unified parsing: works for string-mixed OR numeric X
-        rr, prec_win, ids = self._parse_mixed_X(X)  # rr:[N,60] float32, prec_win:[N] int32, ids:[N] string
+        rr, prec_win, _, ids = self._parse_mixed_X(X)  # rr:[N,60] float32, prec_win:[N] int32, ids:[N] string
 
         # global labels (batched)
         row_lab = self.predict_global_label_tf(rr, ids)  # [N] int32
@@ -279,7 +296,7 @@ class ArNet2:
             if not tf.reduce_any(mask_bool):
                 continue
 
-            ds = self._make_tf_dataset(
+            ds_gen = self._make_tf_dataset(
                 orig_data=feat,
                 orig_labels=None,
                 weights=None,
@@ -288,6 +305,7 @@ class ArNet2:
                 add_data=None if add_X is None else add_X,
                 mask=mask_bool
             )
+            ds = ds_gen.as_dataset()
 
             preds_lab = tf.zeros([0], dtype=tf.float32)  # grow as 1-D vector
             for xb in ds:  # xb: [batch, H, F]

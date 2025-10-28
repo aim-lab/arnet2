@@ -139,11 +139,13 @@ class TFDataGenerator:
         ds_x = ds.map(make_seq, num_parallel_calls=tf.data.AUTOTUNE)
 
         if self.to_fit and orig_labels is not None:
-            ds_y = tf.data.Dataset.from_tensor_slices(tf.convert_to_tensor(orig_labels))
-            ds = tf.data.Dataset.zip((ds_x, ds_y))
+            ds_y = tf.data.Dataset.from_tensor_slices(tf.cast(tf.convert_to_tensor(orig_labels), tf.float32))
             if weights is not None:
-                ds_w = tf.data.Dataset.from_tensor_slices(tf.convert_to_tensor(weights))
-                ds = tf.data.Dataset.zip((ds, ds_w))  # yields ((X, y), w)
+                ds_w = tf.data.Dataset.from_tensor_slices(tf.cast(tf.convert_to_tensor(weights), tf.float32))
+                # Keras expects: dataset yields (X, y, sample_weight) when using fit() with dataset
+                ds = tf.data.Dataset.zip((ds_x, ds_y, ds_w))
+            else:
+                ds = tf.data.Dataset.zip((ds_x, ds_y))
         else:
             ds = ds_x
 
