@@ -194,26 +194,31 @@ class ResNet:
                                                            outputs=self.model.get_layer(layer_name).output)
         return self.intermediate_layer_model
 
-    @tf.function  # makes it traceable/serving-friendly
     def predict_proba_tf(self, X):
         """
-        Pure-TF forward pass that returns probabilities in [N, 2] ( [1-p, p] ).
+        Forward pass with internal batching to avoid OOM. Returns tf.float32 [N, 2].
         """
-        X = tf.convert_to_tensor(X, dtype=tf.float32)  # [N, T]
-        # match your original input shape: add channel dim = 1
-        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])  # [N, T, 1]
+        X = tf.convert_to_tensor(X, dtype=tf.float32)
+        N = tf.shape(X)[0]
+        bs = tf.convert_to_tensor(self.batch_size, dtype=tf.int32)
+        outputs = []
+        start = tf.constant(0, dtype=tf.int32)
 
-        y = self.model(X, training=False)  # Keras call, no .predict
+        while tf.less(start, N):
+            end = tf.minimum(start + bs, N)
+            xb = X[start:end]
+            xb = tf.reshape(xb, [tf.shape(xb)[0], tf.shape(xb)[1], 1])
+            yb = self.model(xb, training=False)
+            yb = tf.convert_to_tensor(yb, dtype=tf.float32)
+            if yb.shape.rank == 2 and yb.shape[-1] == 2:
+                p1b = tf.nn.softmax(yb, axis=-1)[:, 1]
+            else:
+                p1b = tf.nn.sigmoid(tf.squeeze(yb, axis=-1))
+            probsb = tf.stack([1.0 - p1b, p1b], axis=1)
+            outputs.append(probsb)
+            start = end
 
-        # Normalize to positive-class probabilities
-        y = tf.convert_to_tensor(y, dtype=tf.float32)
-        if y.shape.rank == 2 and y.shape[-1] == 2:
-            p1 = tf.nn.softmax(y, axis=-1)[:, 1]  # two-unit head
-        else:
-            p1 = tf.nn.sigmoid(tf.squeeze(y, axis=-1))  # one-unit sigmoid/logit
-
-        probs = tf.stack([1.0 - p1, p1], axis=1)  # [N, 2]
-        return probs
+        return tf.concat(outputs, axis=0) if outputs else tf.zeros([0, 2], dtype=tf.float32)
 
     def fit(self, X, y, validation_data=None, n_epochs=30):
         X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
@@ -243,16 +248,24 @@ class ResNet:
         return (probs > tf.constant(th, tf.float32)).numpy().reshape(-1)
 
     def predict_layer(self, X, layer_name='dense_1'):
-        """ Get the output of an intermediate layer in the model """
+        """Get intermediate layer output with internal batching."""
         X = tf.convert_to_tensor(X, dtype=tf.float32)
-        X = tf.reshape(X, [tf.shape(X)[0], tf.shape(X)[1], 1])  # Ensure the correct shape
-
-        # Get the pre-built intermediate model
         intermediate_layer_model = self._build_intermediate_layer_model(layer_name)
 
-        # Use the pre-built intermediate model to get the layer output
-        intermediate_output = intermediate_layer_model(X, training=False)
-        return tf.convert_to_tensor(intermediate_output, dtype=tf.float32)
+        N = tf.shape(X)[0]
+        bs = tf.convert_to_tensor(self.batch_size, dtype=tf.int32)
+        outputs = []
+        start = tf.constant(0, dtype=tf.int32)
+
+        while tf.less(start, N):
+            end = tf.minimum(start + bs, N)
+            xb = X[start:end]
+            xb = tf.reshape(xb, [tf.shape(xb)[0], tf.shape(xb)[1], 1])
+            yb = intermediate_layer_model(xb, training=False)
+            outputs.append(tf.convert_to_tensor(yb, dtype=tf.float32))
+            start = end
+
+        return tf.concat(outputs, axis=0) if outputs else tf.zeros([0,], dtype=tf.float32)
 
     def predict_proba(self, X):
         """

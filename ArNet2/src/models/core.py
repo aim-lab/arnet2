@@ -247,7 +247,6 @@ class ArNet2:
             except KeyError:
                 continue
 
-    @tf.function
     def predict_proba_tf(self, X, add_X=None):
         """
         Pure-TF inference.
@@ -262,11 +261,11 @@ class ArNet2:
         # --- unified parsing: works for string-mixed OR numeric X
         rr, prec_win, ids = self._parse_mixed_X(X)  # rr:[N,60] float32, prec_win:[N] int32, ids:[N] string
 
-        # global labels (TF-only)
+        # global labels (batched)
         row_lab = self.predict_global_label_tf(rr, ids)  # [N] int32
 
         # features at extract_level (TF-safe)
-        feat = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)  # [N, F0]
+        feat = self.feature_extractor.predict_layer(rr, layer_name=self.extract_level)  # [N, F0], batched inside ResNet
         feat = tf.concat([feat, tf.cast(prec_win[:, None], tf.float32)], axis=1)  # [N, F0+1]
         if add_X is not None:
             feat = tf.concat([feat, tf.cast(add_X, tf.float32)], axis=1)
@@ -323,7 +322,6 @@ class ArNet2:
 
     # Inside ArNet2 class
 
-    @tf.function
     def predict_global_label_tf(self, X, ids):
         """
         Pure-TF version. Returns tf.int32 tensor [N] of label codes.
@@ -336,7 +334,7 @@ class ArNet2:
 
         # P(AF) per row via TF path on feature extractor
         if hasattr(self.feature_extractor, "predict_proba_tf"):
-            probs2 = self.feature_extractor.predict_proba_tf(X_tf)  # [N, 2]
+            probs2 = self.feature_extractor.predict_proba_tf(X_tf)  # [N, 2], batched inside ResNet
             y_pred = probs2[:, 1]  # [N]
         else:
             fe_out = self.feature_extractor.model(X_tf, training=False)  # [N,1] or [N,2]
