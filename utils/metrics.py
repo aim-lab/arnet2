@@ -122,7 +122,7 @@ def mean_abs_afb_error(X, y, y_true):
     :param X: The raw data on which the classifier has been trained.
     :param y: The predicted labels.
     :param y_true: The actual labels.
-    :returns best_th: The threshold which optimizes the F_beta score.
+    :returns mean_abs_error_af_burden: The threshold which optimizes the F_beta score.
     """
     pat_list = np.unique(X[:, -1].astype(str))
     mean_abs_error_af_burden = 0
