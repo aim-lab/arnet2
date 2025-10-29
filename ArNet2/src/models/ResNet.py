@@ -200,11 +200,16 @@ class ResNet:
         """
         X = tf.convert_to_tensor(X, dtype=tf.float32)
         N = tf.shape(X)[0]
-        bs = tf.convert_to_tensor(self.batch_size, dtype=tf.int32)
-        outputs = []
-        start = tf.constant(0, dtype=tf.int32)
-
-        while tf.less(start, N):
+        bs = self.batch_size
+        
+        # Calculate number of batches
+        num_batches = tf.cast(tf.math.ceil(tf.cast(N, tf.float32) / tf.cast(bs, tf.float32)), tf.int32)
+        
+        # Use TensorArray with known size for better performance
+        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, element_shape=tf.TensorShape([None, 2]))
+        
+        def body(i, ta):
+            start = i * bs
             end = tf.minimum(start + bs, N)
             xb = X[start:end]
             xb = tf.reshape(xb, [tf.shape(xb)[0], tf.shape(xb)[1], 1])
@@ -215,10 +220,18 @@ class ResNet:
             else:
                 p1b = tf.nn.sigmoid(tf.squeeze(yb, axis=-1))
             probsb = tf.stack([1.0 - p1b, p1b], axis=1)
-            outputs.append(probsb)
-            start = end
-
-        return tf.concat(outputs, axis=0) if outputs else tf.zeros([0, 2], dtype=tf.float32)
+            ta = ta.write(i, probsb)
+            return i + 1, ta
+        
+        def cond(i, ta):
+            return tf.less(i, num_batches)
+        
+        _, result_ta = tf.while_loop(cond, body, [0, output_ta])
+        
+        # Stack creates [num_batches, batch_size, 2], then reshape to [total_samples, 2]
+        stacked = result_ta.stack()  # [num_batches, ?, 2]
+        # Concatenate along batch dimension to get all samples
+        return tf.reshape(stacked, [-1, 2])[:N]  # Trim to exact N samples
 
     def fit(self, X, y, validation_data=None, n_epochs=30):
         X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
@@ -253,19 +266,32 @@ class ResNet:
         intermediate_layer_model = self._build_intermediate_layer_model(layer_name)
 
         N = tf.shape(X)[0]
-        bs = tf.convert_to_tensor(self.batch_size, dtype=tf.int32)
-        outputs = []
-        start = tf.constant(0, dtype=tf.int32)
-
-        while tf.less(start, N):
+        bs = self.batch_size
+        
+        # Calculate number of batches
+        num_batches = tf.cast(tf.math.ceil(tf.cast(N, tf.float32) / tf.cast(bs, tf.float32)), tf.int32)
+        
+        # Get output shape from layer for element_shape
+        out_dim = intermediate_layer_model.output_shape[-1]
+        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, element_shape=tf.TensorShape([None, out_dim]))
+        
+        def body(i, ta):
+            start = i * bs
             end = tf.minimum(start + bs, N)
             xb = X[start:end]
             xb = tf.reshape(xb, [tf.shape(xb)[0], tf.shape(xb)[1], 1])
             yb = intermediate_layer_model(xb, training=False)
-            outputs.append(tf.convert_to_tensor(yb, dtype=tf.float32))
-            start = end
-
-        return tf.concat(outputs, axis=0) if outputs else tf.zeros([0,], dtype=tf.float32)
+            ta = ta.write(i, tf.convert_to_tensor(yb, dtype=tf.float32))
+            return i + 1, ta
+        
+        def cond(i, ta):
+            return tf.less(i, num_batches)
+        
+        _, result_ta = tf.while_loop(cond, body, [0, output_ta])
+        
+        # Stack creates [num_batches, batch_size, out_dim], then reshape to [total_samples, out_dim]
+        stacked = result_ta.stack()  # [num_batches, ?, out_dim]
+        return tf.reshape(stacked, [-1, out_dim])[:N]  # Trim to exact N samples
 
     def predict_proba(self, X):
         """
