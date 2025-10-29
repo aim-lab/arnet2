@@ -188,3 +188,25 @@ def afb_f_beta_curve(y_pred, y_true, ids, rr_len, pat_labels, beta=1):
     if np.any(np.isnan(fbeta)):
         fbeta[np.isnan(fbeta)] = sys.float_info.epsilon
     return thresholds, precision[:-1], recall[:-1], fbeta[:-1]
+
+def compute_af_event_statistics(rec_length, events):
+    """
+    Computes statistical metrics for AF events.
+    
+    :param rec_length: Overall time of recording in seconds.
+    :param events: DataFrame of AF events with 'Beginning' and 'End' columns.
+    :returns: Tuple of (n_events, max_event_duration, min_event_duration, af_burden).
+    """
+    if len(events) == 0:
+        return 4*[0]
+    events['duration'] = events['End'] - events['Beginning']
+    n_events = len(events)
+    max_event = max(events["duration"])
+    min_event = min(events["duration"])
+    afb = events['duration'].sum() / rec_length
+    print(f'Number of AF events: {n_events},\n'
+          f'Longest event: {round(max_event, 2)} sec,\n'
+          f'Shortest event: {round(min_event, 2)} sec,\n'
+          f'AF-burden: {round(100*afb, 2)}%')
+
+    return n_events, max_event, min_event, afb
