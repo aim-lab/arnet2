@@ -91,6 +91,8 @@ class TFDataGenerator:
 
         if mask is not None:
             mask_t = tf.convert_to_tensor(mask)
+            # Ensure mask is 1D for boolean_mask in graph mode
+            mask_t = tf.reshape(mask_t, [-1])
             feats = tf.boolean_mask(feats, mask_t)
             precw = tf.boolean_mask(precw, mask_t)
             if orig_labels is not None:

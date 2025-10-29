@@ -205,8 +205,10 @@ class ResNet:
         # Calculate number of batches
         num_batches = tf.cast(tf.math.ceil(tf.cast(N, tf.float32) / tf.cast(bs, tf.float32)), tf.int32)
         
-        # Use TensorArray with known size for better performance
-        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, element_shape=tf.TensorShape([None, 2]))
+        # Use TensorArray with infer_shape=False to allow variable batch sizes
+        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, 
+                                   infer_shape=False,
+                                   clear_after_read=False)
         
         def body(i, ta):
             start = i * bs
@@ -228,10 +230,8 @@ class ResNet:
         
         _, result_ta = tf.while_loop(cond, body, [0, output_ta])
         
-        # Stack creates [num_batches, batch_size, 2], then reshape to [total_samples, 2]
-        stacked = result_ta.stack()  # [num_batches, ?, 2]
-        # Concatenate along batch dimension to get all samples
-        return tf.reshape(stacked, [-1, 2])[:N]  # Trim to exact N samples
+        # Use concat() method which handles variable shapes
+        return result_ta.concat()
 
     def fit(self, X, y, validation_data=None, n_epochs=30):
         X = X.reshape(X.shape[0], X.shape[1], 1).astype('float32')
@@ -271,9 +271,10 @@ class ResNet:
         # Calculate number of batches
         num_batches = tf.cast(tf.math.ceil(tf.cast(N, tf.float32) / tf.cast(bs, tf.float32)), tf.int32)
         
-        # Get output shape from layer for element_shape
-        out_dim = intermediate_layer_model.output_shape[-1]
-        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, element_shape=tf.TensorShape([None, out_dim]))
+        # Use TensorArray with infer_shape=False to allow variable batch sizes
+        output_ta = tf.TensorArray(dtype=tf.float32, size=num_batches, 
+                                   infer_shape=False,
+                                   clear_after_read=False)
         
         def body(i, ta):
             start = i * bs
@@ -289,9 +290,8 @@ class ResNet:
         
         _, result_ta = tf.while_loop(cond, body, [0, output_ta])
         
-        # Stack creates [num_batches, batch_size, out_dim], then reshape to [total_samples, out_dim]
-        stacked = result_ta.stack()  # [num_batches, ?, out_dim]
-        return tf.reshape(stacked, [-1, out_dim])[:N]  # Trim to exact N samples
+        # Use concat() method which handles variable shapes
+        return result_ta.concat()
 
     def predict_proba(self, X):
         """
