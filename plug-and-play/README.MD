@@ -1,6 +1,6 @@
 # ArNet2: Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
 
-This README outlines the steps to seproduce the results for the ArNet2 AF detection pipeline.
+This README outlines the steps to reproduce the results for the ArNet2 AF detection pipeline.
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
@@ -163,6 +163,47 @@ Example notebooks for training and prediction can be found under the notebooks d
 - [Prediction Notebook](./notebooks/predict_example.ipynb)
 
 These notebooks demonstrate how to prepare the data, train the model, and run predictions using the trained model.
+
+## 5. Exporting ArNet2 as TensorFlow SavedModel
+
+ArNet2 can be exported as a TensorFlow SavedModel for production deployment, serving, or integration with TensorFlow Serving.
+
+### 5.1 Export Command
+
+To export a trained ArNet2 model:
+
+```bash
+python3 ArNet2/src/export_arnet2_savedmodel.py \
+  --model /path/to/ArNet2.pkl \
+  --feature_extractor /path/to/ResNet.pkl \
+  --output /path/to/exported_model
+```
+
+Where:
+- `--model`: Path to the **trained** ArNet2 pickle file
+- `--feature_extractor`: Path to the **trained** ResNet feature extractor pickle file
+- `--output`: Directory where the SavedModel will be saved
+- `--threshold` (optional): Default classification threshold (default: 0.5)
+
+### 6.2 Example
+
+```bash
+python3 ../ArNet2/src/export_arnet2_savedmodel.py \
+  --model ./model/ArNet2.pkl \
+  --feature_extractor ./model/ResNet.pkl \
+  --output exported_model
+```
+
+### 6.3 Using the Exported Model
+
+Once exported, the SavedModel can be loaded and used for inference under the `main` branch.
+
+### 6.4 Important Notes
+
+- **Clean Export**: If re-exporting after code changes, delete the old exported model directory first:
+  ```bash
+  rm -rf /path/to/exported_model
+  ```
 
 ## Citation
 ```
