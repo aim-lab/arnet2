@@ -1,4 +1,31 @@
 # Deep learning for atrial fibrillation diagnosis and phenotyping from the electrocardiogram time series
+
+---
+##  **IMPORTANT: Repository Branches** 
+
+This repository maintains **two separate branches** for different use cases:
+
+### **`main` Branch (Open Source)**
+- **Purpose**: Open-source code for research, development, and training
+- **Contents**: Full source code, training scripts, and model architecture
+- **Model Format**: Trained models saved as `.pkl` files
+
+### **`release` Branch (Deployment)**
+- **Purpose**: Production-ready deployment with TensorFlow SavedModel
+- **Contents**: Pre-trained exported SavedModel ready for inference
+- **Model Format**: TensorFlow SavedModel format
+
+**To switch branches:**
+```bash
+# For open-source development and training
+git checkout main
+
+# For production deployment
+git checkout release
+```
+
+---
+
 This README outlines the steps to set up the environment, install dependencies, and provide acess to both ArNet2 for AF detection ([LINK](https://github.com/aim-lab/Shany_Repo/tree/main/plug-and-play)) and phenotyping AF ([LINK]()), both developed as part of this work.
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
