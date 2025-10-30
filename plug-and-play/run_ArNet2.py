@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import pickle
 import datetime
+import tensorflow as tf
 
 import ArNet2.src.models.model_utils as model_utils
 from ArNet2.src.models.core import ArNet2
@@ -26,6 +27,7 @@ def parse_args():
     parser.add_argument('--mode', type=str, choices=['train', 'predict'], required=True,
                         help='Mode to run: "train" for training the model, "predict" for generating predictions')
     # Config file argument (optional)
+    parser.add_argument('--saved_model', type=str, default='./exported_model', help='Path to the .bp saved model')
     parser.add_argument(
         '--inference_mode',
         type=str,
@@ -493,17 +495,16 @@ def main():
 
         X, start_win, end_win = process_data_for_all_ids(data)
 
-        # Load the trained model
-        model_dict = load_model(path=config['path']['arnet2'], algo='ArNet2',
-                                path_feature_extractor=config['path']['resnet'])
-        model = model_dict['classifier']
-
-        # Predict
-        probas = predict_with_model(model, X, args.inference_mode)
-
-        # Conditional thresholding
-        threshold = model_dict['best_th'] if args.inference_mode == 'full' else 0.5
-        y_pred = probas > threshold
+        loaded = tf.saved_model.load(args.saved_model)
+        infer = loaded.signatures["predict_fixed"]
+        out = infer(
+            x=X[:, :-3].astype('float32'),
+            prec_windows=X[:, -3].astype('int32'),
+            glob_lab=X[:, -2].astype('float32'),
+            ids=X[:, -1],
+        )
+        probas = out["probs"]
+        y_pred = out['pred']
 
         # Create prediction DataFrame and save it
         prediction_df = create_prediction_df(X, probas, y_pred, start_win, end_win)
