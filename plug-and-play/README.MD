@@ -185,7 +185,7 @@ Where:
 - `--output`: Directory where the SavedModel will be saved
 - `--threshold` (optional): Default classification threshold (default: 0.5)
 
-### 6.2 Example
+### 5.2 Example
 
 ```bash
 python3 ../ArNet2/src/export_arnet2_savedmodel.py \
@@ -194,11 +194,11 @@ python3 ../ArNet2/src/export_arnet2_savedmodel.py \
   --output exported_model
 ```
 
-### 6.3 Using the Exported Model
+### 5.3 Using the Exported Model
 
 Once exported, the SavedModel can be loaded and used for inference under the `main` branch.
 
-### 6.4 Important Notes
+### 5.4 Important Notes
 
 - **Clean Export**: If re-exporting after code changes, delete the old exported model directory first:
   ```bash
