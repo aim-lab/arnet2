@@ -45,8 +45,6 @@ It includes preprocessing scripts, model training pipelines, and inference tools
 ```
 Shany_Repo/
 │
-├── ArNet2/          # Core implementation of the ArNet2 architecture and model dependencies
-├── parsing/         # Unified source code for database parsing used in this project
 ├── plug-and-play/   # Implementation and scripts for running ArNet2 in plug-and-play mode
 ├── utils/           # Utility functions and shared dependencies used across the project
 │

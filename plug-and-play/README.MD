@@ -52,26 +52,24 @@ python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [
 ```
 Where:
 
-- `--mode`: Run the code with pretrained model defined in config to generate predictions.
 - `--input_file`: Path to the **input data file** (CSV/Excel format).
 - `inference_mode`: Choose whether to use the full architecture or just window classification:
   - `full`: Uses both Part 1 & 2 for full temporal sequence modeling (default option).
   - `window`: Uses only Part 1, running classification per 60-beat window independently (suitable for short signals).
+- `--saved_model` *(optional)*: Path to the **.pb model file** (.bp format).
 - `--output_name` *(optional)*: **output predictions** filename under which the predictions will be saved.
 - `--save_output_path` *(optional)*: Path where the **output predictions** will be saved as a CSV file.
-- `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
 
 Example usage:
 
 ```angular2html
-python3 run_ArNet2.py --mode predict --input_file ./data/df_test.csv --output_name predictions
+python3 run_ArNet2.py --saved_model ./exported_model --input_file ./data/df_test.csv --output_name predictions
 ```
 
 This will:
-- `--mode`: Run the code to predict.
 - Take input data from `./data/df_test.csv`.
-- Save the output predictions to `./results/df_out.csv`.
-- Use the custom configuration file `./config/custom_config.yml`.
+- Load the pre-trained model from `./exported_model`
+- Save the output predictions to `./results/predictions/predictions.csv`.
 
 ### 2. Model Usage Options: Window Classification vs. Full Architecture
 
@@ -109,101 +107,13 @@ For prediction, you only need a CSV file with the RR intervals (beats), their re
 and third column with a string or numeric identifier for the recording or patient. See example `./data/df_test.csv`
 The algorithm will then split the data into 60-beat windows, and use this to make predictions.
 
-#### 3.2 Training Data
-
-For training, the input data should already be split into 60-beat windows, with the following additional columns:
-
-| rr\_data (60 beats) | global\_label | patient\_id  | prec\_window | win\_start | win\_end |
-|---------------------|---------------|--------------|--------------|------------|----------|
-| \[0.8, 0.7, ...]    | 1             | 101          | 3            | 0.0        | 0.6      |
-| \[0.7, 0.9, ...]    | 2             | 102          | 9            | 0.6        | 1.2      |
-| \[0.9, 0.6, ...]    | 2             | 102          | 2            | 1.2        | 2.2      |
-| ...                 | ...           | ...          | ...          | ...        | ...      |
-
-Where:
-
-- `rr_data`: The 60 RR intervals (beats) in the window.
-- `global_label`: The label assigned to the patient based on their AF burden (e.g., `NON_AF`, `AF_MILD`, `AF_MODERATE`, `AF_SEVERE`).
-- `patient_id`: The patient ID to which the window belongs. This is important for leveraging the temporal relationships between windows.
-- `win_start`: The start time of the window.
-- `win_end`: The end time of the window.
-
-See example `./data/training_data.pickle`
-
-### 4. Run training
-
-To train the ArNet2 model, execute the following command:
-```
-python3 run_ArNet2.py --mode train --input_file /path/to/your/input_file.csv [--model_name ArNet2 --config /path/to/config_file.yml --save_model_path /path/to/save/model]
-```
-Where:
-
-- `--mode`: Run the code to train a model.
-- `--input_file`: Path to the **input data file** (pickle format).
-- `--model_name`*(optional)*: The filename under which the **trained model** will be saved.
-- `--save_model_path` *(optional)*: Path where the **trained model** will be saved as a pkl file.
-- `--config` *(optional)*: Path to the **config file**. If not provided, it will default to `./config/config.yml`.
-
-Example usage:
-
-```angular2html
-python3 run_ArNet2.py --mode train --input_file ./data/training_data.pickle --model_name ArNet2
-```
-
-This will:
-
-- Train a model using an input data from `./data/training_data.pickle`.
-- And save the trained model to `./model/ArNet2_{datetime-string}.pkl`.
-
 ## Example Notebooks
 
-Example notebooks for training and prediction can be found under the notebooks directory:
+Example notebooks for prediction can be found under the notebooks directory:
 
-- [Training Notebook](./notebooks/train_example.ipynb)
 - [Prediction Notebook](./notebooks/predict_example.ipynb)
 
-These notebooks demonstrate how to prepare the data, train the model, and run predictions using the trained model.
-
-## 5. Exporting ArNet2 as TensorFlow SavedModel
-
-ArNet2 can be exported as a TensorFlow SavedModel for production deployment, serving, or integration with TensorFlow Serving.
-
-### 5.1 Export Command
-
-To export a trained ArNet2 model:
-
-```bash
-python3 ArNet2/src/export_arnet2_savedmodel.py \
-  --model /path/to/ArNet2.pkl \
-  --feature_extractor /path/to/ResNet.pkl \
-  --output /path/to/exported_model
-```
-
-Where:
-- `--model`: Path to the **trained** ArNet2 pickle file
-- `--feature_extractor`: Path to the **trained** ResNet feature extractor pickle file
-- `--output`: Directory where the SavedModel will be saved
-- `--threshold` (optional): Default classification threshold (default: 0.5)
-
-### 5.2 Example
-
-```bash
-python3 ../ArNet2/src/export_arnet2_savedmodel.py \
-  --model ./model/ArNet2.pkl \
-  --feature_extractor ./model/ResNet.pkl \
-  --output exported_model
-```
-
-### 5.3 Using the Exported Model
-
-Once exported, the SavedModel can be loaded and used for inference under the `main` branch.
-
-### 5.4 Important Notes
-
-- **Clean Export**: If re-exporting after code changes, delete the old exported model directory first:
-  ```bash
-  rm -rf /path/to/exported_model
-  ```
+This notebook demonstrate how to prepare the data and run predictions using the pre-trained model.
 
 ## Citation
 ```
