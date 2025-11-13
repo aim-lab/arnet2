@@ -9,6 +9,15 @@ For more details and to cite this work, please refer to our paper [1].
 ## Model Overview
 ArNet2 is a deep learning algorithm designed to detect AF from long-term beat-to-beat (RR interval) data. For the purpose of AF detection in long-term cardiac monitoring and AF burden (AFB) estimation, ArNet2 focuses on generalization performance to ensure robustness across different patient groups and conditions. This approach builds on our previous work developing the original ArNet model [2].
 
+### Performance and Validation
+ArNet2 was developed on a large retrospective dataset of 2,147 patients totaling 51,386 hours obtained from continuous ECG recordings. The model's generalization performance was evaluated on manually annotated test sets from four centers (USA, Israel, Japan, and China) totaling 402 patients, and further validated on a retrospective dataset of 1,825 consecutive Holter recordings from Israel. For the task of window classification, ArNet2 achieved an F1 score of 0.95, outperforming benchmark state-of-the-art models including ArNet (F1 = 0.93), XGBoost (F1 = 0.92), and the AFEv rule-based approach (F1 = 0.90). The model demonstrated robust generalization across geography, ages, and sexes.
+
+<p align="center">
+  <img src="https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41746-023-00791-1/MediaObjects/41746_2023_791_Fig3_HTML.png?as=webp" alt="ArNet2 Performance" width="1000"/>
+</p>
+
+*Figure: ArNet2 performance comparison across different models and datasets.*
+
 ## Architecture
 ArNet2 algorithm work in two parts:
 
