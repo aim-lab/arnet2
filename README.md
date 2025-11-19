@@ -1,7 +1,7 @@
 # Deep learning for atrial fibrillation diagnosis and phenotyping from the electrocardiogram time series
 ---
 
-This README outlines the steps to set up the environment, install dependencies, and provide acess to both ArNet2 for AF detection ([LINK](https://github.com/aim-lab/Shany_Repo/tree/main/plug-and-play)) and phenotyping AF ([LINK]()), both developed as part of this work.
+This README outlines the steps to set up the environment, install dependencies, and provide acess to both ArNet2 for AF detection ([LINK](https://github.com/aim-lab/arnet2/tree/release/plug-and-play)) and phenotyping AF ([LINK]()), both developed as part of this work.
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
@@ -85,8 +85,8 @@ Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
 
 ## 5. Usage
 
-- **Run ArNet2 for AF detection**: Follow [readme](https://github.com/aim-lab/Shany_Repo/blob/main/plug-and-play/README.MD) under plug-and-play.
+- **Run ArNet2 for AF detection**: Follow [readme](https://github.com/aim-lab/arnet2/tree/release/plug-and-play/README.MD) under plug-and-play.
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0). For more details check the [LICENSE](https://github.com/aim-lab/Shany_Repo/blob/main/LICENCE.md).
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0). For more details check the [LICENSE](https://github.com/aim-lab/arnet2/tree/release/LICENCE.md).
