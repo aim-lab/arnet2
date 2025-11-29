@@ -18,7 +18,7 @@ It includes preprocessing scripts, model training pipelines, and inference tools
 
 ## 2. Repository Structure 
 ```
-Shany_Repo/
+arnet2/
 │
 ├── plug-and-play/   # Implementation and scripts for running ArNet2 in plug-and-play mode
 ├── utils/           # Utility functions and shared dependencies used across the project
