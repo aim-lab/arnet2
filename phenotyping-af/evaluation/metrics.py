@@ -137,11 +137,44 @@ class ClusteringMetrics:
         return results
     
     def print_metrics(self, metrics):
-        """Print metrics in a readable format."""
-        print(f"\nClustering Metrics:")
-        print(f"  Silhouette Score: {metrics['silhouette']:.3f} (higher is better)")
-        print(f"  Davies-Bouldin Index: {metrics['davies_bouldin']:.3f} (lower is better)")
-        print(f"  Calinski-Harabasz Index: {metrics['calinski_harabasz']:.1f} (higher is better)")
-        print(f"  Number of clusters: {metrics['n_clusters']}")
-        print(f"  Number of samples: {metrics['n_samples']}")
+        """Print metrics in a readable format with interpretation."""
+        sil = metrics['silhouette']
+        db = metrics['davies_bouldin']
+        ch = metrics['calinski_harabasz']
+        
+        # Interpret silhouette score
+        if sil > 0.7:
+            sil_interp = "strong structure"
+        elif sil > 0.5:
+            sil_interp = "reasonable structure"
+        elif sil > 0.25:
+            sil_interp = "weak structure"
+        else:
+            sil_interp = "no substantial structure"
+        
+        # Interpret Davies-Bouldin (lower is better, <1 is generally good)
+        if db < 0.5:
+            db_interp = "excellent separation"
+        elif db < 1.0:
+            db_interp = "good separation"
+        elif db < 2.0:
+            db_interp = "moderate separation"
+        else:
+            db_interp = "poor separation"
+        
+        print(f"\n{'='*50}")
+        print(f"CLUSTERING METRICS")
+        print(f"{'='*50}")
+        print(f"\nSilhouette Score: {sil:.3f}")
+        print(f"  Range: [-1, +1], higher is better")
+        print(f"  Interpretation: {sil_interp}")
+        print(f"\nDavies-Bouldin Index: {db:.3f}")
+        print(f"  Range: [0, ∞), lower is better")
+        print(f"  Interpretation: {db_interp}")
+        print(f"\nCalinski-Harabasz Index: {ch:.1f}")
+        print(f"  Range: [0, ∞), higher is better")
+        print(f"  Note: Scale depends on data, compare across k values")
+        print(f"\n{'='*50}")
+        print(f"Clusters: {metrics['n_clusters']} | Samples: {metrics['n_samples']}")
+        print(f"{'='*50}")
 
