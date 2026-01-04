@@ -74,15 +74,27 @@ print(tf.config.list_physical_devices('GPU'))  # Should list available GPUs
 
 ## 4. Setting `PYTHONPATH`
 
-To ensure that Python can access `ArNet2` directory during runtime, you need to set the `PYTHONPATH` environment variable.
+To ensure that Python can access the modules during runtime, you need to set the `PYTHONPATH` environment variable.
 
-Run the following command in your terminal to set the `PYTHONPATH` variable with the necessary directory:
+### For plug-and-play (ArNet2):
+```bash
+# Linux/Mac
+export PYTHONPATH="/path/to/repo/:$PYTHONPATH"
 
-```angular2html
-export PYTHONPATH="/root/folder/of/repo/:$PYTHONPATH"
+# Windows (PowerShell)
+$env:PYTHONPATH = "C:\path\to\repo\;$env:PYTHONPATH"
 ```
 
-Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
+### For phenotyping-af:
+```bash
+# Linux/Mac
+export PYTHONPATH="/path/to/repo/phenotyping-af:$PYTHONPATH"
+
+# Windows (PowerShell)
+$env:PYTHONPATH = "C:\path\to\repo\phenotyping-af;$env:PYTHONPATH"
+```
+
+Note: Replace `/path/to/repo` with the actual path to the repository directory.
 
 ## 5. Usage
 

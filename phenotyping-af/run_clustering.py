@@ -11,27 +11,18 @@ Output:
     - Dendrogram visualization
 """
 
-import sys
-import os
-
-# Add paths so imports work
-sys.path.append(os.path.join(os.path.dirname(__file__), 'clustering'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'evaluation'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'visualization'))
-
 import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from loader import DataLoader
-from preprocessing import ShortBurdenPreprocessor
-from hierarchical import HierarchicalClusterer
-from metrics import ClusteringMetrics
-from stability import BootstrapStability
-from plots import PhenotypePlots
+from data.loader import DataLoader
+from data.preprocessing import ShortBurdenPreprocessor
+from clustering.hierarchical import HierarchicalClusterer
+from evaluation.metrics import ClusteringMetrics
+from evaluation.stability import BootstrapStability
+from visualization.plots import PhenotypePlots
 
 
 def parse_args():

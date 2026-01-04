@@ -9,7 +9,7 @@ This is an exploratory clustering method that produces:
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 
-from base import BaseClusterer
+from clustering.base import BaseClusterer
 
 
 class HierarchicalClusterer(BaseClusterer):
@@ -176,12 +176,8 @@ class HierarchicalClusterer(BaseClusterer):
 
 if __name__ == '__main__':
     # Example usage
-    import sys
-    import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'visualization'))
-    
     import numpy as np
-    from plots import PhenotypePlots
+    from visualization.plots import PhenotypePlots
     
     # Create sample data
     np.random.seed(42)

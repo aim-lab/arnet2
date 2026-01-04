@@ -70,6 +70,20 @@ phenotyping-af/
 
 ---
 
+## Prerequisites
+
+Before running any scripts, ensure `PYTHONPATH` is set to include the `phenotyping-af` directory. See the [main README](../README.md#4-setting-pythonpath) for instructions.
+
+```bash
+# Linux/Mac
+export PYTHONPATH="/path/to/repo/phenotyping-af:$PYTHONPATH"
+
+# Windows (PowerShell)
+$env:PYTHONPATH = "C:\path\to\repo\phenotyping-af;$env:PYTHONPATH"
+```
+
+---
+
 ## Usage
 
 ### 1. Clustering (Discover Chronophenotypes)

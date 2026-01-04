@@ -15,22 +15,15 @@ Usage:
     python run_prediction.py predict --model_file model.pkl --input_file new_burden_profiles.csv --output_file predictions.csv
 """
 
-import sys
-import os
-
-# Add paths so imports work
-sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'prediction'))
-
 import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from loader import DataLoader
-from preprocessing import ShortBurdenPreprocessor
-from predictor import PhenotypePredictor
+from data.loader import DataLoader
+from data.preprocessing import ShortBurdenPreprocessor
+from prediction.predictor import PhenotypePredictor
 
 
 def parse_args():
