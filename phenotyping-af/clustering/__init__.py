@@ -1,2 +1,2 @@
-from base import BaseClusterer
-from hierarchical import HierarchicalClusterer
+from clustering.base import BaseClusterer
+from clustering.hierarchical import HierarchicalClusterer

@@ -1,1 +1,1 @@
-from plots import PhenotypePlots
+from visualization.plots import PhenotypePlots

@@ -1,2 +1,2 @@
-from loader import DataLoader
-from preprocessing import ShortBurdenPreprocessor
+from data.loader import DataLoader
+from data.preprocessing import ShortBurdenPreprocessor

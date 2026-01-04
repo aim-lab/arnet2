@@ -1,1 +1,1 @@
-from predictor import PhenotypePredictor
+from prediction.predictor import PhenotypePredictor

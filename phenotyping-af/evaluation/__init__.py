@@ -1,2 +1,2 @@
-from metrics import ClusteringMetrics
-from stability import BootstrapStability
+from evaluation.metrics import ClusteringMetrics
+from evaluation.stability import BootstrapStability
