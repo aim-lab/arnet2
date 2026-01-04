@@ -191,29 +191,121 @@ class PhenotypePlots:
         clusters = sorted(heatmap_df[cluster_col].unique())
         n_clusters = len(clusters)
         
-        fig, axs = plt.subplots(nrows=n_clusters, sharex=True, figsize=(6, 12))
-        cbar_ax = fig.add_axes([.91, .3, .03, .4])
-        
-        for i, (ax, cluster) in enumerate(zip(axs, clusters)):
-            df_plot = heatmap_df[heatmap_df[cluster_col] == cluster]
-            # Get only numeric columns (time bins)
-            numeric_cols = [c for c in df_plot.columns if c != cluster_col]
+        # Smaller font for heatmaps
+        with plt.rc_context({'font.size': 10, 'axes.titlesize': 12, 'axes.labelsize': 10}):
+            fig, axs = plt.subplots(nrows=n_clusters, sharex=True, figsize=(8, 2 * n_clusters))
+            if n_clusters == 1:
+                axs = [axs]
+            cbar_ax = fig.add_axes([.92, .3, .02, .4])
             
-            sns.heatmap(
-                data=df_plot[numeric_cols], 
-                cmap='vlag', 
-                cbar=(i == 0),
-                linewidths=0.5, 
-                ax=ax,
-                yticklabels=False, 
-                vmin=0., 
-                vmax=1., 
-                cbar_ax=None if i else cbar_ax
-            )
-            ax.set_ylabel(f'Cluster {cluster}')
+            for i, (ax, cluster) in enumerate(zip(axs, clusters)):
+                df_plot = heatmap_df[heatmap_df[cluster_col] == cluster]
+                # Get only numeric columns (time bins)
+                numeric_cols = [c for c in df_plot.columns if c != cluster_col]
+                n_samples = len(df_plot)
+                
+                sns.heatmap(
+                    data=df_plot[numeric_cols], 
+                    cmap='vlag', 
+                    cbar=(i == 0),
+                    linewidths=0, 
+                    ax=ax,
+                    yticklabels=False,
+                    xticklabels=(i == n_clusters - 1),  # Only show x labels on bottom
+                    vmin=0., 
+                    vmax=1., 
+                    cbar_ax=None if i else cbar_ax
+                )
+                ax.set_ylabel(f'C{cluster} (n={n_samples})', fontsize=10)
+                ax.set_xlabel('')
+            
+            axs[-1].set_xlabel('Hour of Day', fontsize=10)
+            axs[-1].set_xticks([0, 6, 12, 18, 24])
+            axs[-1].set_xticklabels(['0', '6', '12', '18', '24'])
+            
+            plt.suptitle('Chronophenotypes Heatmap', fontsize=12)
+            plt.tight_layout(rect=[0, 0, .9, 0.96])
         
-        plt.suptitle('Chronophenotypes')
-        plt.tight_layout(rect=[0, 0.1, .9, 1])
+        if save_path:
+            self.save_figure(fig, save_path)
+        else:
+            plt.show()
+        
+        return fig
+    
+    def plot_chronophenotypes_combined(self, burden_profiles, cluster_labels, 
+                                        max_heatmap_samples=50, save_path=None):
+        """
+        Combined plot: heatmaps on left, mean line plots on right.
+        
+        Args:
+            burden_profiles: DataFrame with patients x time bins.
+            cluster_labels: Array of cluster labels.
+            max_heatmap_samples: Max samples per cluster for heatmap.
+            save_path: Path to save figure (optional).
+            
+        Returns:
+            Figure object.
+        """
+        clusters = np.unique(cluster_labels)
+        n_clusters = len(clusters)
+        colors = sns.color_palette('Set1', n_clusters)
+        
+        # Smaller fonts for this combined plot
+        with plt.rc_context({'font.size': 10, 'axes.titlesize': 11, 'axes.labelsize': 10}):
+            fig, axes = plt.subplots(nrows=n_clusters, ncols=2, 
+                                     figsize=(12, 2 * n_clusters),
+                                     gridspec_kw={'width_ratios': [1.5, 1]})
+            
+            if n_clusters == 1:
+                axes = axes.reshape(1, 2)
+            
+            time_bins = list(range(burden_profiles.shape[1]))
+            
+            for i, cluster in enumerate(clusters):
+                mask = cluster_labels == cluster
+                cluster_data = burden_profiles.values[mask] if hasattr(burden_profiles, 'values') else burden_profiles[mask]
+                n_total = mask.sum()
+                
+                # Left: Heatmap (sampled)
+                ax_heat = axes[i, 0]
+                n_show = min(max_heatmap_samples, n_total)
+                sample_idx = np.random.RandomState(42).choice(n_total, n_show, replace=False)
+                sample_data = cluster_data[sample_idx]
+                
+                sns.heatmap(
+                    sample_data,
+                    cmap='vlag',
+                    vmin=0, vmax=1,
+                    cbar=False,
+                    ax=ax_heat,
+                    yticklabels=False,
+                    xticklabels=(i == n_clusters - 1)
+                )
+                ax_heat.set_ylabel(f'Cluster {cluster}\n(n={n_total})', fontsize=10)
+                if i == n_clusters - 1:
+                    ax_heat.set_xlabel('Hour', fontsize=10)
+                    ax_heat.set_xticks([0, 6, 12, 18, 24])
+                
+                # Right: Line plot (mean ± std)
+                ax_line = axes[i, 1]
+                mean_profile = cluster_data.mean(axis=0)
+                std_profile = cluster_data.std(axis=0)
+                
+                ax_line.plot(time_bins, mean_profile, color=colors[i], linewidth=2)
+                ax_line.fill_between(time_bins, mean_profile - std_profile, 
+                                     mean_profile + std_profile, color=colors[i], alpha=0.2)
+                ax_line.set_ylim([0, 1])
+                ax_line.set_xlim([0, 23])
+                ax_line.set_ylabel('Burden', fontsize=10)
+                ax_line.spines['top'].set_visible(False)
+                ax_line.spines['right'].set_visible(False)
+                if i == n_clusters - 1:
+                    ax_line.set_xlabel('Hour', fontsize=10)
+                    ax_line.set_xticks([0, 6, 12, 18, 23])
+            
+            plt.suptitle('Chronophenotypes: Heatmaps & Mean Profiles', fontsize=12)
+            plt.tight_layout(rect=[0, 0, 1, 0.96])
         
         if save_path:
             self.save_figure(fig, save_path)

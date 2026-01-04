@@ -47,7 +47,7 @@ class DataLoader:
         if positive_only and self.label_col in df.columns:
             df = df[df[self.label_col] == True]
         
-        print(f"Loaded {len(df)} records from {filepath.name}")
+        print(f"Loaded {len(df)} rows from {filepath.name}")
         
         return df
     

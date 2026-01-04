@@ -70,7 +70,10 @@ def main():
     df = loader.load_analysis_data(args.input_file, positive_only=False)
     df_positive = df[df[args.label_col] == True] if args.label_col in df.columns else df
     
-    print(f"Total records: {len(df)}, Positive records: {len(df_positive)}")
+    n_patients = df[args.patient_col].nunique() if args.patient_col in df.columns else len(df)
+    n_patients_positive = df_positive[args.patient_col].nunique() if args.patient_col in df_positive.columns else len(df_positive)
+    print(f"Total rows: {len(df)}, Patients: {n_patients}")
+    print(f"Positive rows: {len(df_positive)}, Patients with positive events: {n_patients_positive}")
     
     # Compute burden profiles
     print("\n=== Computing burden profiles ===")
@@ -155,42 +158,26 @@ def main():
         save_path=figures_dir / 'tsne.png'
     )
     
-    # 3. Clusters heatmap (exclude mean_burden, max 50 samples per cluster)
+    # 3. Combined plot: heatmaps + line plots side by side
+    print("  - Plotting combined chronophenotypes (heatmaps + profiles)...")
+    plots.plot_chronophenotypes_combined(
+        burden_profiles,
+        labels,
+        max_heatmap_samples=50,
+        save_path=figures_dir / 'chronophenotypes_combined.png'
+    )
+    
+    # 4. Clusters heatmap only (for detailed view)
     print("  - Plotting clusters heatmap...")
     max_heatmap_per_cluster = 50
     heatmap_df = chronophenotypes.drop(columns=['mean_burden'], errors='ignore')
     heatmap_df = heatmap_df.groupby('cluster', group_keys=False).apply(
         lambda x: x.sample(min(max_heatmap_per_cluster, len(x)), random_state=42)
     )
-    print(f"    Heatmap sample: {len(heatmap_df)} patients (max {max_heatmap_per_cluster} per cluster)")
     plots.plot_clusters_heatmap(
         heatmap_df,
         cluster_col='cluster',
         save_path=figures_dir / 'clusters_heatmap.png'
-    )
-    
-    # 4. Temporal distribution (line plots per cluster)
-    print("  - Plotting temporal distribution...")
-    # Convert to long format for plot_temporal_distribution
-    time_cols = [c for c in burden_profiles.columns]
-    # Add patient ID as a column
-    temp_df = chronophenotypes.copy()
-    temp_df['pat'] = temp_df.index
-    long_df = temp_df.melt(
-        id_vars=['pat', 'cluster'],
-        value_vars=time_cols,
-        var_name='time_bin',
-        value_name='burden'
-    )
-    long_df['time_bin'] = long_df['time_bin'].astype(int)
-    
-    plots.plot_temporal_distribution(
-        long_df,
-        time_col='time_bin',
-        value_col='burden',
-        cluster_col='cluster',
-        patient_col='pat',
-        save_path=figures_dir / 'temporal_distribution.png'
     )
     
     # Bootstrap stability if requested
