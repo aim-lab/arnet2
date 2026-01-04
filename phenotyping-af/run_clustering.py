@@ -173,9 +173,9 @@ def main():
     print("  - Plotting temporal distribution...")
     # Convert to long format for plot_temporal_distribution
     time_cols = [c for c in burden_profiles.columns]
-    # Reset index to get patient ID as a column
-    temp_df = chronophenotypes.reset_index()
-    temp_df = temp_df.rename(columns={'index': 'pat'})
+    # Add patient ID as a column
+    temp_df = chronophenotypes.copy()
+    temp_df['pat'] = temp_df.index
     long_df = temp_df.melt(
         id_vars=['pat', 'cluster'],
         value_vars=time_cols,
