@@ -117,14 +117,6 @@ def main():
     metrics = metrics_calc.compute_all(burden_profiles.values, labels)
     metrics_calc.print_metrics(metrics)
     
-    # Compute and plot dendrogram
-    print("\n=== Computing dendrogram ===")
-    dendrogram_data = clusterer.compute_dendrogram(burden_profiles.values)
-    plots.plot_dendrogram(
-        dendrogram_data,
-        save_path=figures_dir / 'dendrogram.png'
-    )
-    
     # Create chronophenotypes DataFrame (burden profiles + cluster)
     chronophenotypes = burden_profiles.copy()
     chronophenotypes['cluster'] = labels
@@ -133,6 +125,57 @@ def main():
     # Save chronophenotypes
     chronophenotypes.to_csv(tables_dir / f'chronophenotypes_k{args.n_clusters}.csv')
     print(f"\nChronophenotypes saved to {tables_dir / f'chronophenotypes_k{args.n_clusters}.csv'}")
+    
+    # ================================================================
+    # VISUALIZATIONS
+    # ================================================================
+    print("\n=== Generating visualizations ===")
+    
+    # 1. Dendrogram
+    print("  - Plotting dendrogram...")
+    dendrogram_data = clusterer.compute_dendrogram(burden_profiles.values)
+    plots.plot_dendrogram(
+        dendrogram_data,
+        save_path=figures_dir / 'dendrogram.png'
+    )
+    
+    # 2. t-SNE
+    print("  - Plotting t-SNE...")
+    plots.plot_tsne(
+        burden_profiles.values,
+        labels,
+        save_path=figures_dir / 'tsne.png'
+    )
+    
+    # 3. Clusters heatmap
+    print("  - Plotting clusters heatmap...")
+    plots.plot_clusters_heatmap(
+        chronophenotypes,
+        cluster_col='cluster',
+        save_path=figures_dir / 'clusters_heatmap.png'
+    )
+    
+    # 4. Temporal distribution (line plots per cluster)
+    print("  - Plotting temporal distribution...")
+    # Convert to long format for plot_temporal_distribution
+    time_cols = [c for c in burden_profiles.columns]
+    long_df = chronophenotypes.melt(
+        id_vars=['cluster'],
+        value_vars=time_cols,
+        var_name='time_bin',
+        value_name='burden'
+    )
+    long_df['time_bin'] = long_df['time_bin'].astype(int)
+    long_df['pat'] = long_df.index  # Add patient identifier
+    
+    plots.plot_temporal_distribution(
+        long_df,
+        time_col='time_bin',
+        value_col='burden',
+        cluster_col='cluster',
+        patient_col='pat',
+        save_path=figures_dir / 'temporal_distribution.png'
+    )
     
     # Bootstrap stability if requested
     if args.evaluate_stability:
