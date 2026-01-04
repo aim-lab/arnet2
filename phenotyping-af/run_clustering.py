@@ -139,18 +139,32 @@ def main():
         save_path=figures_dir / 'dendrogram.png'
     )
     
-    # 2. t-SNE
-    print("  - Plotting t-SNE...")
+    # 2. t-SNE (balanced sampling: max 500 samples per cluster)
+    print("  - Plotting t-SNE (balanced)...")
+    max_samples_per_cluster = 500
+    balanced_idx = chronophenotypes.groupby('cluster', group_keys=False).apply(
+        lambda x: x.sample(min(max_samples_per_cluster, len(x)), random_state=42)
+    ).index
+    balanced_profiles = burden_profiles.loc[balanced_idx]
+    balanced_labels = chronophenotypes.loc[balanced_idx, 'cluster'].values
+    print(f"    Balanced sample: {len(balanced_idx)} patients (max {max_samples_per_cluster} per cluster)")
+    
     plots.plot_tsne(
-        burden_profiles.values,
-        labels,
+        balanced_profiles.values,
+        balanced_labels,
         save_path=figures_dir / 'tsne.png'
     )
     
-    # 3. Clusters heatmap
+    # 3. Clusters heatmap (exclude mean_burden, max 50 samples per cluster)
     print("  - Plotting clusters heatmap...")
+    max_heatmap_per_cluster = 50
+    heatmap_df = chronophenotypes.drop(columns=['mean_burden'], errors='ignore')
+    heatmap_df = heatmap_df.groupby('cluster', group_keys=False).apply(
+        lambda x: x.sample(min(max_heatmap_per_cluster, len(x)), random_state=42)
+    )
+    print(f"    Heatmap sample: {len(heatmap_df)} patients (max {max_heatmap_per_cluster} per cluster)")
     plots.plot_clusters_heatmap(
-        chronophenotypes,
+        heatmap_df,
         cluster_col='cluster',
         save_path=figures_dir / 'clusters_heatmap.png'
     )
@@ -159,14 +173,16 @@ def main():
     print("  - Plotting temporal distribution...")
     # Convert to long format for plot_temporal_distribution
     time_cols = [c for c in burden_profiles.columns]
-    long_df = chronophenotypes.melt(
-        id_vars=['cluster'],
+    # Reset index to get patient ID as a column
+    temp_df = chronophenotypes.reset_index()
+    temp_df = temp_df.rename(columns={'index': 'pat'})
+    long_df = temp_df.melt(
+        id_vars=['pat', 'cluster'],
         value_vars=time_cols,
         var_name='time_bin',
         value_name='burden'
     )
     long_df['time_bin'] = long_df['time_bin'].astype(int)
-    long_df['pat'] = long_df.index  # Add patient identifier
     
     plots.plot_temporal_distribution(
         long_df,
