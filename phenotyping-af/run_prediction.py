@@ -25,6 +25,15 @@ from data.loader import DataLoader
 from data.preprocessing import ShortBurdenPreprocessor
 from prediction.predictor import PhenotypePredictor
 
+# Chronophenotype names from paper
+CHRONOPHENOTYPE_NAMES = {
+    0: 'Nocturnal-to-Morning',
+    1: 'Evening-to-Early Morning',
+    2: 'Daytime',
+    3: 'Persistent AF',
+    4: 'Non-AF'
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train or run phenotype prediction')
@@ -87,7 +96,8 @@ def train_mode(args):
     print(f"  Total samples: {len(cluster_labels)}")
     print(f"  Chronophenotypes: {len(unique)}")
     for label, count in zip(unique, counts):
-        print(f"    Chronophenotype {label}: {count} subjects")
+        name = CHRONOPHENOTYPE_NAMES.get(label, f'Cluster {label}')
+        print(f"    {name}: {count} subjects")
 
 
 def predict_mode(args):
@@ -123,7 +133,8 @@ def predict_mode(args):
         mask = predictions['chronophenotype'] == phenotype
         count = mask.sum()
         conf = predictions.loc[mask, 'confidence'].mean()
-        print(f"  Chronophenotype {phenotype}: {count} subjects (avg confidence: {conf:.3f})")
+        name = CHRONOPHENOTYPE_NAMES.get(phenotype, f'Cluster {phenotype}')
+        print(f"  {name}: {count} subjects (avg confidence: {conf:.3f})")
 
 
 def main():
