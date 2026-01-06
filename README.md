@@ -5,10 +5,16 @@ This README outlines the steps to set up the environment, install dependencies, 
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
-For more details and to cite this work, please refer to our paper:
+AF Chronophenotyping is a data-driven framework for identifying circadian subtypes of paroxysmal AF based on short-term temporal burden patterns from 24-hour Holter recordings. Using hierarchical clustering of hourly AF burden profiles, this approach reveals five distinct chronophenotypes with unique clinical profiles and outcomes: Nocturnal-to-Morning, Evening-to-Early Morning, Daytime, Persistent AF, and Non-AF. These findings suggest that circadian manifestation patterns carry prognostic relevance for AF management.
+
+For more details and to cite this work, please refer to our papers:
 
 ```
+# ArNet2
 Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
+
+# AF Chronophenotyping
+Brimer, Shany, et al. "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes." Machine Learning: Health (2025).
 ```
 
 ## 1. Project Overview
