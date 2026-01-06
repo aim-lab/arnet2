@@ -45,9 +45,9 @@ When using the provided `chronophenotypes.csv`, the cluster IDs correspond to:
 
 | Cluster | Name | Description |
 |---------|------|-------------|
-| 0 | Nocturnal-to-Morning | AF burden peaks during night/early morning |
-| 1 | Evening-to-Early Morning | AF burden from evening through early morning |
-| 2 | Daytime | AF burden primarily during daytime hours |
+| 0 | Nocturnal-to-Morning | AF burden peaks during night/early morning (12AM-10AM) |
+| 1 | Evening-to-Early Morning | AF burden from evening through early morning (3PM-4AM) |
+| 2 | Daytime | AF burden primarily during daytime hours (9AM-7PM) |
 | 3 | Persistent AF | High AF burden throughout the day |
 | 4 | Non-AF | Low/minimal AF burden |
 
