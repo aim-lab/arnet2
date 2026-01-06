@@ -39,6 +39,25 @@ The original analysis pipeline consists of three stages:
 - **Burden Profiles**: For each patient, we compute the fraction of AF in each of the 24 hourly bins. This 24-dimensional vector represents their circadian AF pattern.
 - **Chronophenotypes**: The output file containing burden profiles + cluster assignments for each patient.
 
+### Chronophenotype Names (from Paper)
+
+When using the provided `chronophenotypes.csv`, the cluster IDs correspond to:
+
+| Cluster | Name | Description |
+|---------|------|-------------|
+| 0 | Nocturnal-to-Morning | AF burden peaks during night/early morning |
+| 1 | Evening-to-Early Morning | AF burden from evening through early morning |
+| 2 | Daytime | AF burden primarily during daytime hours |
+| 3 | Persistent AF | High AF burden throughout the day |
+| 4 | Non-AF | Low/minimal AF burden |
+
+To use these names in visualizations, set `use_paper_style=True`:
+
+```python
+plots.plot_tsne(burden_profiles, labels, use_paper_style=True)
+plots.plot_chronophenotypes_combined(burden_profiles, labels, use_paper_style=True)
+```
+
 ---
 
 ## Directory Structure

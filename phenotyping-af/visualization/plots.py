@@ -24,6 +24,25 @@ class PhenotypePlots:
         plots.plot_dendrogram(dendrogram_data, save_path='figures/dendrogram.png')
     """
     
+    # Chronophenotype names and colors (from paper)
+    CHRONOPHENOTYPE_NAMES = {
+        0: 'Nocturnal-to-Morning',
+        1: 'Evening-to-Early Morning',
+        2: 'Daytime',
+        3: 'Persistent AF',
+        4: 'Non-AF'
+    }
+    
+    # Color mapping using seaborn Set1 palette
+    _SET1 = sns.color_palette('Set1', 5)
+    CHRONOPHENOTYPE_COLORS = {
+        0: _SET1[1],  # Orange
+        1: _SET1[3],  # Purple
+        2: _SET1[4],  # Yellow
+        3: _SET1[0],  # Red
+        4: _SET1[2],  # Green
+    }
+    
     def __init__(self, figsize=(14, 8), dpi=400):
         """
         Initialize plotter.
@@ -80,7 +99,7 @@ class PhenotypePlots:
     
     def plot_temporal_distribution(self, cluster_df, time_col='time_bin', value_col='burden', 
                                    cluster_col='cluster', patient_col='pat',
-                                   cluster_colors=None, save_path=None):
+                                   cluster_colors=None, use_paper_style=False, save_path=None):
         """
         Plot temporal burden distribution per cluster.
         
@@ -91,6 +110,7 @@ class PhenotypePlots:
             cluster_col: Column name for cluster labels.
             patient_col: Column name for patient identifiers.
             cluster_colors: Dictionary mapping cluster -> color (optional).
+            use_paper_style: Use chronophenotype names and colors from the paper (default: False).
             save_path: Path to save figure (optional).
             
         Returns:
@@ -99,10 +119,13 @@ class PhenotypePlots:
         clusters = sorted(cluster_df[cluster_col].unique())
         n_clusters = len(clusters)
         
-        # Default colors
+        # Set colors
         if cluster_colors is None:
-            colors = sns.color_palette('Set1', n_clusters)
-            cluster_colors = {c: colors[i] for i, c in enumerate(clusters)}
+            if use_paper_style:
+                cluster_colors = {c: self.CHRONOPHENOTYPE_COLORS.get(c, 'gray') for c in clusters}
+            else:
+                colors = sns.color_palette('Set1', n_clusters)
+                cluster_colors = {c: colors[i] for i, c in enumerate(clusters)}
         
         fig, axs = plt.subplots(nrows=n_clusters, ncols=1, sharey=True, figsize=(10, 6 * n_clusters))
         if n_clusters == 1:
@@ -123,12 +146,18 @@ class PhenotypePlots:
             
             n_patients = cluster_data[patient_col].nunique() if patient_col in cluster_data.columns else len(cluster_data)
             
+            # Get cluster name
+            if use_paper_style and cluster in self.CHRONOPHENOTYPE_NAMES:
+                cluster_name = self.CHRONOPHENOTYPE_NAMES[cluster]
+            else:
+                cluster_name = f'Cluster {cluster}'
+            
             ax.set_ylabel('Burden')
             ax.set_xticks([0, 6, 12, 18, 24])
             ax.set_ylim([0., 1.])
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
-            ax.set_title(f'Cluster {cluster}, n={n_patients:,}')
+            ax.set_title(f'{cluster_name}, n={n_patients:,}')
         
         plt.tight_layout()
         
@@ -176,13 +205,15 @@ class PhenotypePlots:
         
         return fig
     
-    def plot_clusters_heatmap(self, heatmap_df, cluster_col='cluster', save_path=None):
+    def plot_clusters_heatmap(self, heatmap_df, cluster_col='cluster', 
+                               use_paper_style=False, save_path=None):
         """
         Plot heatmap per cluster (stacked vertically).
         
         Args:
             heatmap_df: DataFrame with cluster column and time bin columns.
             cluster_col: Column name for cluster labels.
+            use_paper_style: Use chronophenotype names from the paper (default: False).
             save_path: Path to save figure (optional).
             
         Returns:
@@ -204,6 +235,12 @@ class PhenotypePlots:
                 numeric_cols = [c for c in df_plot.columns if c != cluster_col]
                 n_samples = len(df_plot)
                 
+                # Get cluster name
+                if use_paper_style and cluster in self.CHRONOPHENOTYPE_NAMES:
+                    cluster_name = self.CHRONOPHENOTYPE_NAMES[cluster]
+                else:
+                    cluster_name = f'C{cluster}'
+                
                 sns.heatmap(
                     data=df_plot[numeric_cols], 
                     cmap='vlag', 
@@ -216,7 +253,7 @@ class PhenotypePlots:
                     vmax=1., 
                     cbar_ax=None if i else cbar_ax
                 )
-                ax.set_ylabel(f'C{cluster} (n={n_samples})', fontsize=10)
+                ax.set_ylabel(f'{cluster_name}\n(n={n_samples})', fontsize=10)
                 ax.set_xlabel('')
             
             axs[-1].set_xlabel('Hour of Day', fontsize=10)
@@ -234,7 +271,8 @@ class PhenotypePlots:
         return fig
     
     def plot_chronophenotypes_combined(self, burden_profiles, cluster_labels, 
-                                        max_heatmap_samples=50, save_path=None):
+                                        max_heatmap_samples=50, use_paper_style=False,
+                                        save_path=None):
         """
         Combined plot: heatmaps on left, mean line plots on right.
         
@@ -242,14 +280,22 @@ class PhenotypePlots:
             burden_profiles: DataFrame with patients x time bins.
             cluster_labels: Array of cluster labels.
             max_heatmap_samples: Max samples per cluster for heatmap.
+            use_paper_style: Use chronophenotype names and colors from the paper (default: False).
+                            Set to True when using the provided chronophenotypes.csv.
             save_path: Path to save figure (optional).
             
         Returns:
             Figure object.
         """
-        clusters = np.unique(cluster_labels)
+        clusters = sorted(np.unique(cluster_labels))
         n_clusters = len(clusters)
-        colors = sns.color_palette('Set1', n_clusters)
+        
+        # Set colors
+        if use_paper_style:
+            colors = {c: self.CHRONOPHENOTYPE_COLORS.get(c, 'gray') for c in clusters}
+        else:
+            palette = sns.color_palette('Set1', n_clusters)
+            colors = {c: palette[i] for i, c in enumerate(clusters)}
         
         # Smaller fonts for this combined plot
         with plt.rc_context({'font.size': 10, 'axes.titlesize': 11, 'axes.labelsize': 10}):
@@ -267,6 +313,12 @@ class PhenotypePlots:
                 cluster_data = burden_profiles.values[mask] if hasattr(burden_profiles, 'values') else burden_profiles[mask]
                 n_total = mask.sum()
                 
+                # Get label for this cluster
+                if use_paper_style and cluster in self.CHRONOPHENOTYPE_NAMES:
+                    cluster_name = self.CHRONOPHENOTYPE_NAMES[cluster]
+                else:
+                    cluster_name = f'Cluster {cluster}'
+                
                 # Left: Heatmap (sampled)
                 ax_heat = axes[i, 0]
                 n_show = min(max_heatmap_samples, n_total)
@@ -282,7 +334,7 @@ class PhenotypePlots:
                     yticklabels=False,
                     xticklabels=(i == n_clusters - 1)
                 )
-                ax_heat.set_ylabel(f'Cluster {cluster}\n(n={n_total})', fontsize=10)
+                ax_heat.set_ylabel(f'{cluster_name}\n(n={n_total})', fontsize=10)
                 if i == n_clusters - 1:
                     ax_heat.set_xlabel('Hour', fontsize=10)
                     ax_heat.set_xticks([0, 6, 12, 18, 24])
@@ -292,9 +344,9 @@ class PhenotypePlots:
                 mean_profile = cluster_data.mean(axis=0)
                 std_profile = cluster_data.std(axis=0)
                 
-                ax_line.plot(time_bins, mean_profile, color=colors[i], linewidth=2)
+                ax_line.plot(time_bins, mean_profile, color=colors[cluster], linewidth=2)
                 ax_line.fill_between(time_bins, mean_profile - std_profile, 
-                                     mean_profile + std_profile, color=colors[i], alpha=0.2)
+                                     mean_profile + std_profile, color=colors[cluster], alpha=0.2)
                 ax_line.set_ylim([0, 1])
                 ax_line.set_xlim([0, 23])
                 ax_line.set_ylabel('Burden', fontsize=10)
@@ -360,7 +412,8 @@ class PhenotypePlots:
         
         return fig
     
-    def plot_tsne(self, embeddings, cluster_labels, cluster_colors=None, save_path=None):
+    def plot_tsne(self, embeddings, cluster_labels, cluster_colors=None, 
+                   use_paper_style=False, save_path=None):
         """
         Plot t-SNE visualization of clusters.
         
@@ -368,6 +421,8 @@ class PhenotypePlots:
             embeddings: Feature matrix (n_samples, n_features).
             cluster_labels: Cluster labels for each sample.
             cluster_colors: Dictionary mapping cluster -> color (optional).
+            use_paper_style: Use chronophenotype names and colors from the paper (default: False).
+                            Set to True when using the provided chronophenotypes.csv.
             save_path: Path to save figure (optional).
             
         Returns:
@@ -375,12 +430,16 @@ class PhenotypePlots:
         """
         from sklearn.manifold import TSNE
         
-        n_clusters = len(np.unique(cluster_labels))
+        unique_labels = sorted(np.unique(cluster_labels))
+        n_clusters = len(unique_labels)
         
-        # Default colors
+        # Set colors
         if cluster_colors is None:
-            colors = sns.color_palette('Set1', n_clusters)
-            cluster_colors = {c: colors[i] for i, c in enumerate(np.unique(cluster_labels))}
+            if use_paper_style:
+                cluster_colors = {c: self.CHRONOPHENOTYPE_COLORS.get(c, 'gray') for c in unique_labels}
+            else:
+                colors = sns.color_palette('Set1', n_clusters)
+                cluster_colors = {c: colors[i] for i, c in enumerate(unique_labels)}
         
         tsne = TSNE(n_components=2, perplexity=10, early_exaggeration=30, 
                     n_iter=2000, init='pca', random_state=42)
@@ -388,16 +447,21 @@ class PhenotypePlots:
         
         fig, ax = plt.subplots(figsize=(15, 8))
         
-        for label in np.unique(cluster_labels):
+        for label in unique_labels:
             mask = cluster_labels == label
+            # Use chronophenotype name if paper style and label exists
+            if use_paper_style and label in self.CHRONOPHENOTYPE_NAMES:
+                legend_label = self.CHRONOPHENOTYPE_NAMES[label]
+            else:
+                legend_label = f'Cluster {label}'
             ax.scatter(X_embedded[mask, 0], X_embedded[mask, 1], 
-                       c=[cluster_colors[label]], label=f'Cluster {label}')
+                       c=[cluster_colors[label]], label=legend_label, s=50, alpha=0.7)
         
-        ax.set_xlabel('X1')
-        ax.set_ylabel('X2')
+        ax.set_xlabel('t-SNE 1')
+        ax.set_ylabel('t-SNE 2')
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.legend(loc='right', bbox_to_anchor=(1.15, 0.5))
+        ax.legend(loc='right', bbox_to_anchor=(1.35, 0.5), fontsize=12)
         
         plt.tight_layout()
         
