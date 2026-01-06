@@ -421,6 +421,9 @@ class PhenotypePlots:
         if str(path).endswith('.png'):
             pdf_path = str(path).replace('.png', '.pdf')
             fig.savefig(pdf_path, dpi=self.dpi, bbox_inches='tight')
+        
+        # Close figure to prevent double display in notebooks
+        plt.close(fig)
 
 
 if __name__ == '__main__':

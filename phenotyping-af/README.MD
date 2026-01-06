@@ -64,8 +64,11 @@ phenotyping-af/
 │   ├── metrics.py           # ClusteringMetrics
 │   └── stability.py         # BootstrapStability
 │
-└── visualization/           # Plotting utilities
-    └── plots.py             # PhenotypePlots
+├── visualization/           # Plotting utilities
+│   └── plots.py             # PhenotypePlots
+│
+└── notebooks/               # Example notebooks
+    └── predict_example.ipynb
 ```
 
 ---
@@ -169,6 +172,18 @@ The clustering output is a CSV with:
 - **Columns 0-23**: Burden profile (AF fraction per hour).
 - **cluster**: Assigned chronophenotype (0, 1, 2, ...).
 - **mean_burden**: Average burden across all hours.
+
+---
+
+## Example Notebook
+
+See [`notebooks/predict_example.ipynb`](notebooks/predict_example.ipynb) for a complete walkthrough that demonstrates:
+
+1. Loading ArNet2 predictions from the SHDB-AF dataset
+2. Computing 24-hour burden profiles
+3. Training a chronophenotype classifier
+4. Predicting chronophenotypes for new patients
+5. Visualizing results (t-SNE, heatmaps, temporal profiles)
 
 ---
 
