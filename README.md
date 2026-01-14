@@ -14,7 +14,7 @@ For more details and to cite this work, please refer to our papers:
 Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
 
 # AF Chronophenotyping
-Brimer, Shany, et al. "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes." Machine Learning: Health (2025).
+Brimer Biton, Shany, et al. "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes." Machine Learning: Health (2026).
 ```
 
 ## 1. Project Overview
