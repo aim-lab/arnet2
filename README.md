@@ -1,14 +1,20 @@
 # Deep learning for atrial fibrillation diagnosis and phenotyping from the electrocardiogram time series
 ---
 
-This README outlines the steps to set up the environment, install dependencies, and provide acess to both ArNet2 for AF detection ([LINK](https://github.com/aim-lab/arnet2/tree/release/plug-and-play)) and phenotyping AF ([LINK]()), both developed as part of this work.
+This README outlines the steps to set up the environment, install dependencies, and provide access to both ArNet2 for AF detection ([LINK](./plug-and-play/README.MD)) and phenotyping AF ([LINK](./phenotyping-af/README.MD)), both developed as part of this work.
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
-For more details and to cite this work, please refer to our paper:
+AF Chronophenotyping is a data-driven framework for identifying circadian subtypes of paroxysmal AF based on short-term temporal burden patterns from 24-hour Holter recordings. Using hierarchical clustering of hourly AF burden profiles, this approach reveals five distinct chronophenotypes with unique clinical profiles and outcomes: Nocturnal-to-Morning, Evening-to-Early Morning, Daytime, Persistent AF, and Non-AF. These findings suggest that circadian manifestation patterns carry prognostic relevance for AF management.
+
+For more details and to cite this work, please refer to our papers:
 
 ```
+# ArNet2
 Biton, Shany, et al. "Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes." NPJ Digital Medicine 6.1 (2023): 44.
+
+# AF Chronophenotyping
+Brimer, Shany, et al. "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes." Machine Learning: Health (2025).
 ```
 
 ## 1. Project Overview
@@ -21,6 +27,7 @@ It includes preprocessing scripts, model training pipelines, and inference tools
 arnet2/
 │
 ├── plug-and-play/   # Implementation and scripts for running ArNet2 in plug-and-play mode
+├── phenotyping-af/  # AF phenotype clustering and prediction tools
 ├── utils/           # Utility functions and shared dependencies used across the project
 │
 ├── README.md        # Project overview and usage documentation (this file)
@@ -73,19 +80,33 @@ print(tf.config.list_physical_devices('GPU'))  # Should list available GPUs
 
 ## 4. Setting `PYTHONPATH`
 
-To ensure that Python can access `ArNet2` directory during runtime, you need to set the `PYTHONPATH` environment variable.
+To ensure that Python can access the modules during runtime, you need to set the `PYTHONPATH` environment variable.
 
-Run the following command in your terminal to set the `PYTHONPATH` variable with the necessary directory:
+### For plug-and-play (ArNet2):
+```bash
+# Linux/Mac
+export PYTHONPATH="/path/to/repo/:$PYTHONPATH"
 
-```angular2html
-export PYTHONPATH="/root/folder/of/repo/:$PYTHONPATH"
+# Windows (PowerShell)
+$env:PYTHONPATH = "C:\path\to\repo\;$env:PYTHONPATH"
 ```
 
-Note: Replace `/root/folder/of/repo` with the actual path to the repo directory
+### For phenotyping-af:
+```bash
+# Linux/Mac
+export PYTHONPATH="/path/to/repo/phenotyping-af:$PYTHONPATH"
+
+# Windows (PowerShell)
+$env:PYTHONPATH = "C:\path\to\repo\phenotyping-af;$env:PYTHONPATH"
+```
+
+Note: Replace `/path/to/repo` with the actual path to the repository directory.
 
 ## 5. Usage
 
-- **Run ArNet2 for AF detection**: Follow [readme](https://github.com/aim-lab/arnet2/tree/release/plug-and-play/README.MD) under plug-and-play.
+- **Run ArNet2 for AF detection**: Follow the [plug-and-play README](./plug-and-play/README.MD).
+
+- **Run AF Phenotyping**: Follow the [phenotyping-af README](./phenotyping-af/README.MD).
 
 ## License
 

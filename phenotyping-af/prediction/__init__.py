@@ -1,0 +1,1 @@
+from prediction.predictor import PhenotypePredictor
