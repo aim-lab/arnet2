@@ -6,7 +6,7 @@ This approach uses hierarchical clustering of short-term AF burden (AFB) to reve
 
 > **Note:** While developed for AF chronophenotyping, this framework generalizes to any time series data with known time-of-day information.
 
-For more details and citation, see: *Brimer et al., "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes," Machine Learning: Health (2025).*
+For more details and citation, see: *Brimer Biton et al., "Temporal Phenotyping of Paroxysmal Atrial Fibrillation Reveals Prognostic Circadian Subtypes," Machine Learning: Health (2026).*
 
 ---
 
