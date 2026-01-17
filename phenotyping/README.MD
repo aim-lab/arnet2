@@ -63,7 +63,7 @@ plots.plot_chronophenotypes_combined(burden_profiles, labels, use_paper_style=Tr
 ## Directory Structure
 
 ```
-phenotyping-af/
+phenotyping/
 ├── run_clustering.py        # Main script: discover chronophenotypes
 ├── run_prediction.py        # Main script: predict chronophenotypes
 ├── README.MD
@@ -94,14 +94,14 @@ phenotyping-af/
 
 ## Prerequisites
 
-Before running any scripts, ensure `PYTHONPATH` is set to include the `phenotyping-af` directory. See the [main README](../README.md#4-setting-pythonpath) for instructions.
+Before running any scripts, ensure `PYTHONPATH` is set to include the `phenotyping` directory. See the [main README](../README.md#setting-pythonpath) for instructions.
 
 ```bash
 # Linux/Mac
-export PYTHONPATH="/path/to/repo/phenotyping-af:$PYTHONPATH"
+export PYTHONPATH="/path/to/repo/phenotyping:$PYTHONPATH"
 
 # Windows (PowerShell)
-$env:PYTHONPATH = "C:\path\to\repo\phenotyping-af;$env:PYTHONPATH"
+$env:PYTHONPATH = "C:\path\to\repo\phenotyping;$env:PYTHONPATH"
 ```
 
 ---
@@ -198,7 +198,7 @@ The clustering output is a CSV with:
 
 See [`notebooks/predict_example.ipynb`](notebooks/predict_example.ipynb) for a complete walkthrough that demonstrates:
 
-1. Loading ArNet2 predictions from the SHDB-AF dataset
+1. Loading ArNet2 predictions from the detection pipeline (SHDB-AF dataset)
 2. Computing 24-hour burden profiles
 3. Training a chronophenotype classifier
 4. Predicting chronophenotypes for new patients
