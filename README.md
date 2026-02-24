@@ -5,30 +5,6 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ---
-##  **IMPORTANT: Repository Branches** 
-
-This repository maintains **two separate branches** for different use cases:
-
-### **`main` Branch (Open Source)**
-- **Purpose**: Open-source code for research, development, and training
-- **Contents**: Full source code, training scripts, and model architecture
-- **Model Format**: Trained models saved as `.pkl` files
-
-### **`release` Branch (Deployment)**
-- **Purpose**: Production-ready deployment with TensorFlow SavedModel
-- **Contents**: Pre-trained exported SavedModel ready for inference
-- **Model Format**: TensorFlow SavedModel format
-
-**To switch branches:**
-```bash
-# For open-source development and training
-git checkout main
-
-# For production deployment
-git checkout release
-```
-
----
 
 A comprehensive deep learning framework for **atrial fibrillation (AF) detection** and **circadian phenotype classification** from ECG-derived RR interval time series.
 
