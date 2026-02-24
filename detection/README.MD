@@ -1,6 +1,22 @@
-# ArNet2: Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
+# Detection pre-trained models
+This README outlines the steps to reproduce the results for the AF detection pipeline, which includes two algorithms: **ArNet2** (RR-interval based) and **ArNetECG** (raw-ECG based).
 
-This README outlines the steps to reproduce the results for the ArNet2 AF detection pipeline.
+## Table of contents
+
+- [ArNet2: Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes](#arnet2-generalizable-and-robust-deep-learning-algorithm-for-atrial-fibrillation-diagnosis-across-geography-ages-and-sexes)
+  - [Model Overview](#model-overview)
+  - [Architecture](#architecture)
+- [ArNetECG: Deep Learning for AF Detection from the Raw Electrocardiogram](#arnetecg-deep-learning-for-af-detection-from-the-raw-electrocardiogram)
+  - [Model Overview](#model-overview-1)
+  - [Architecture](#architecture-1)
+- [Reproducibility and Usage](#reproducibility-and-usage)
+  - [1. Running prediction](#1-running-prediction)
+  - [2. Model Usage Options: Window Classification vs. Full Architecture](#2-model-usage-options-window-classification-vs-full-architecture)
+  - [3. Preparing Data for Training and Prediction](#3-preparing-data-for-training-and-prediction)
+- [Example Notebooks](#example-notebooks)
+- [Citation](#citation)
+
+## ArNet2: Generalizable and robust deep learning algorithm for atrial fibrillation diagnosis across geography, ages and sexes
 
 ArNet2 is a deep learning algorithm developed to detect AF events from windows/long-term beat-to-beat interval data. AF is the most common arrhythmia, linked to a significantly higher risk of stroke and increased mortality. Early and accurate detection of AF is crucial for timely intervention, risk assessment, and personalized treatment strategies.
 
@@ -12,10 +28,10 @@ ArNet2 is a deep learning algorithm developed to detect AF events from windows/l
 
 For more details and to cite this work, please refer to our paper [1].
 
-## Model Overview
+### Model Overview
 ArNet2 is a deep learning algorithm designed to detect AF from long-term beat-to-beat (RR interval) data. For the purpose of AF detection in long-term cardiac monitoring and AF burden (AFB) estimation, ArNet2 focuses on generalization performance to ensure robustness across different patient groups and conditions. This approach builds on our previous work developing the original ArNet model [2].
 
-### Performance and Validation
+#### Performance and Validation
 ArNet2 was developed on a large retrospective dataset of 2,147 patients totaling 51,386 hours obtained from continuous ECG recordings. The model's generalization performance was evaluated on manually annotated test sets from four centers (USA, Israel, Japan, and China) totaling 402 patients, and further validated on a retrospective dataset of 1,825 consecutive Holter recordings from Israel. For the task of window classification, ArNet2 achieved an F1 score of 0.95, outperforming benchmark state-of-the-art models including ArNet (F1 = 0.93), XGBoost (F1 = 0.92), and the AFEv rule-based approach (F1 = 0.90). The model demonstrated robust generalization across geography, ages, and sexes.
 
 <p align="center">
@@ -24,10 +40,10 @@ ArNet2 was developed on a large retrospective dataset of 2,147 patients totaling
 
 *Figure: ArNet2 performance comparison across different models and datasets.*
 
-## Architecture
+### Architecture
 ArNet2 algorithm work in two parts:
 
-### Part 1: Residual Embedding Layer (Figure part a)
+#### Part 1: Residual Embedding Layer (Figure part a)
 
 - **Input**: A 60-beat window of RR intervals.
 
@@ -37,7 +53,7 @@ ArNet2 algorithm work in two parts:
 
 The output of the first part is a binary classification (AF or non-AF) for each input window.
 
-### Part 2: Recurrent Neural Network (RNN) (Figure part c)
+#### Part 2: Recurrent Neural Network (RNN) (Figure part c)
 
 - **Sequence Modeling**: The second part of the model consists of a sequence encoder made of four identical GRU (Gated Recurrent Units) layers. These layers account for time dependencies and select relevant past information to accurately predict AF.
 
@@ -55,6 +71,30 @@ During training, the true AFB is used for selection. However, during inference, 
 
 *Figure: Overview of the ArNet2 model architecture for AF detection.*
 
+## ArNetECG: Deep Learning for AF Detection from the Raw Electrocardiogram
+
+ArNetECG detects atrial fibrillation (and atrial flutter) directly from **raw single-lead ECG** rather than derived RR intervals. By processing the raw waveform, the model leverages both **morphological** information (e.g. f-waves) and **rhythm** information, yielding better detection of AF and atrial flutter than rhythm-only (RR-based) models. This approach is extended and rigorously validated in RawECGNet [3].
+
+For more details and to cite this work, please refer to [3].
+
+### Model Overview
+
+ArNetECG is a deep learning algorithm designed to detect AF from **raw ECG signals** in long-term cardiac monitoring. Unlike RR-interval models, it takes the continuous waveform as input, enabling use of both rhythm and morphology. The model focuses on generalization across recording conditions, lead positions, and populations. RawECGNet [3] builds on this approach with extensive benchmarking across geography, ethnicity, lead position, age, and sex.
+
+#### Performance and Validation
+
+Validated on external test sets with over 5,000 hours of continuously annotated data from two independent datasets. **RBDB**: F1 0.91–0.94 across leads; **SHDB**: F1 0.93. Outperformed ArNet2 (F1 0.89–0.91 on RBDB, 0.91 on SHDB). The study includes quantitative error analysis of false positives and negatives and demonstrates robust generalization across geography, lead position, age, and sex.
+
+### Architecture
+
+- **Input**: Raw single-lead ECG at **200 Hz**. The model operates on **30-second windows** (6000 samples per window).
+
+- **Representation**: The network processes the raw waveform to extract both rhythm and morphological features (including f-waves), providing a richer signal than beat-to-beat intervals alone.
+
+- **Output**: Binary classification (AF/non-AF) per 30 s window; the same pipeline supports detection of atrial flutter.
+
+**Running ArNetECG:** Use `run_detection.py` with `--model_type ArNetECG`. Input must be preprocessed into 30 s windows: shape `(n_windows, 6004)` with columns `[ECG 0..5999, prec_windows, succ_windows, global_label, ids]`. See the [ArNetECG prediction notebook](./notebooks/predict_example_ecg.ipynb) for data preparation and usage.
+
 ## Reproducibility and Usage
 
 This section covers how to reproduce the training and prediction steps.
@@ -63,7 +103,7 @@ This section covers how to reproduce the training and prediction steps.
 
 To run the trained ArNet2 model for prediction, run the following command:
 ```
-python3 run_ArNet2.py --mode predict --input_file /path/to/your/input_file.csv [--inference_mode full|window --output_name predictions --config /path/to/config_file.yml --save_output_path /path/to/results/dir]
+python3 run_detection.py --model_type ArNet2 --input_file /path/to/your/input_file.csv [--inference_mode full|window --output_name predictions --save_output_path /path/to/results/dir]
 ```
 Where:
 
@@ -78,7 +118,7 @@ Where:
 Example usage:
 
 ```angular2html
-python3 run_ArNet2.py --saved_model ./exported_model --input_file ./data/df_test.csv --output_name predictions
+python3 run_detection.py --model_type ArNet2 --saved_model ./exported_model --input_file ./data/df_test.csv --output_name predictions
 ```
 
 This will:
@@ -126,9 +166,8 @@ The algorithm will then split the data into 60-beat windows, and use this to mak
 
 Example notebooks for prediction can be found under the notebooks directory:
 
-- [Prediction Notebook](./notebooks/predict_example.ipynb)
-
-This notebook demonstrate how to prepare the data and run predictions using the pre-trained model.
+- [ArNet2 (RR) prediction](./notebooks/predict_example.ipynb) — prepare RR data and run ArNet2.
+- [ArNetECG (raw ECG) prediction](./notebooks/predict_example_ecg.ipynb) — prepare 30 s ECG windows and run ArNetECG.
 
 ## Citation
 ```
@@ -139,5 +178,8 @@ NPJ Digital Medicine 6.1 (2023): 44.
 [2] Chocron, Armand, et al. 
 "Remote atrial fibrillation burden estimation using deep recurrent neural network." 
 IEEE Transactions on Biomedical Engineering 68.8 (2020): 2447-2455.
+
+[3] RawECGNet: Deep Learning Generalization for Atrial Fibrillation Detection From the Raw ECG. 
+IEEE Journal of Biomedical and Health Informatics. https://ieeexplore.ieee.org/document/10538381
 ```
 

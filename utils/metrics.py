@@ -116,25 +116,84 @@ def maximize_Se_plus_Sp(probas, y_true):
     return best_th
 
 
-def mean_abs_afb_error(X, y, y_true):
+def mean_abs_afb_error(X, y, y_true, window_size=None, sampling_rate=200):
     """
     This function returns average absolute AF Burden.
+    Works with both RR intervals (ArNet2) and raw ECG signals (ArNetECG).
+    
     :param X: The raw data on which the classifier has been trained.
+              - For ArNet2 (RR intervals): format [RR_data (60), prec_windows, global_label, ids]
+              - For ArNetECG (ECG): format [ECG_data (6000), prec_windows, succ_windows, global_label, ids]
     :param y: The predicted labels.
     :param y_true: The actual labels.
-    :returns mean_abs_error_af_burden: The threshold which optimizes the F_beta score.
+    :param window_size: Optional. Window size (60 for RR, 6000 for ECG). If None, auto-detects from data.
+    :param sampling_rate: Sampling rate for ECG data (default 200 Hz). Only used for ECG data.
+    :returns mean_abs_error_af_burden: The mean absolute error in AF burden estimation.
     """
-    pat_list = np.unique(X[:, -1].astype(str))
+    pat_list = np.unique(X[:, -1])
     mean_abs_error_af_burden = 0
+    
+    # Auto-detect data type if window_size not provided
+    if window_size is None:
+        # Check if it's ECG (large window size) or RR intervals (small window size)
+        # ArNet2: last 3 columns are metadata -> data starts at column 0, ends at -3
+        # ArNetECG: last 4 columns are metadata -> data starts at column 0, ends at -4
+        n_cols = X.shape[1]
+        
+        # Try ArNetECG format first (has succ_windows, so 4 metadata columns)
+        if n_cols >= 6004:  # At least 6000 + 4 metadata columns
+            window_size = n_cols - 4
+            is_ecg = True
+        # Try ArNet2 format (3 metadata columns)
+        elif n_cols >= 63:  # At least 60 + 3 metadata columns
+            window_size = n_cols - 3
+            is_ecg = False
+        else:
+            # Default: assume RR intervals if window size is small
+            window_size = n_cols - 3
+            is_ecg = window_size > 100  # If window size > 100, likely ECG
+    else:
+        # Use provided window_size to determine data type
+        is_ecg = window_size > 100  # ECG windows are typically 6000, RR windows are 60
+    
+    # Determine metadata column positions
+    if is_ecg:
+        # ArNetECG format: [ECG_data, prec_windows, succ_windows, global_label, ids]
+        # Last 4 columns are metadata
+        data_cols_end = -4
+        window_duration = window_size / sampling_rate  # Duration in seconds (e.g., 6000/200 = 30s)
+    else:
+        # ArNet2 format: [RR_data, prec_windows, global_label, ids]
+        # Last 3 columns are metadata
+        data_cols_end = -3
+        window_duration = None  # Will be calculated from RR intervals
+    
     for i, pat in enumerate(pat_list):
-        X_pat = X[X[:, -1] == pat].astype(str)
+        X_pat = X[X[:, -1] == pat]
         y_pat = y[X[:, -1] == pat].astype(np.float32)
         y_pred_pat = y_true[X[:, -1] == pat].astype(np.float32)
-        rr = X_pat[:, :-3].astype(np.float32)
-        true_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pat) / np.sum(rr))
-        pred_af_burden = 100 * (np.sum(np.sum(rr, axis=1) * y_pred_pat) / np.sum(rr))
+        
+        if is_ecg:
+            # For ECG: use constant window duration
+            # Each window has the same duration (e.g., 30 seconds)
+            window_durations = np.full(len(X_pat), window_duration, dtype=np.float32)
+        else:
+            # For RR intervals: calculate duration from sum of RR intervals
+            rr = X_pat[:, :data_cols_end].astype(np.float32)
+            window_durations = np.sum(rr, axis=1).astype(np.float32)  # Duration of each window in seconds
+        
+        # Calculate total duration
+        total_duration = np.sum(window_durations)
+        
+        if total_duration == 0:
+            continue  # Skip patients with zero duration
+        
+        # Calculate AF burden: (time_in_AF / total_time) * 100
+        true_af_burden = 100 * (np.sum(window_durations * y_pat) / total_duration)
+        pred_af_burden = 100 * (np.sum(window_durations * y_pred_pat) / total_duration)
         error_af_burden = pred_af_burden - true_af_burden
         mean_abs_error_af_burden += abs(error_af_burden) / len(pat_list)
+    
     return mean_abs_error_af_burden
 
 
