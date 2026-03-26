@@ -76,7 +76,7 @@ If you use this code, please cite our papers:
 
 #### (ArNetECG)
 ```bibtex
-@article{10538381,
+@article{benmoshe2024rawecgnet,
   author={Ben-Moshe, Noam and Tsutsui, Kenta and Brimer, Shany Biton and Zvuloni, Eran and Sörnmo, Leif and Behar, Joachim A.},
   journal={IEEE Journal of Biomedical and Health Informatics}, 
   title={RawECGNet: Deep Learning Generalization for Atrial Fibrillation Detection From the Raw ECG}, 
