@@ -179,7 +179,8 @@ NPJ Digital Medicine 6.1 (2023): 44.
 "Remote atrial fibrillation burden estimation using deep recurrent neural network." 
 IEEE Transactions on Biomedical Engineering 68.8 (2020): 2447-2455.
 
-[3] RawECGNet: Deep Learning Generalization for Atrial Fibrillation Detection From the Raw ECG. 
-IEEE Journal of Biomedical and Health Informatics. https://ieeexplore.ieee.org/document/10538381
+[3] Ben-Moshe, Noam, et al.
+"RawECGNet: Deep Learning Generalization for Atrial Fibrillation Detection From the Raw ECG."
+IEEE Journal of Biomedical and Health Informatics 28.9 (2024): 5180-5188.
 ```
 
